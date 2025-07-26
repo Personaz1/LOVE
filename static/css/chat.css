@@ -55,14 +55,20 @@ body.theme-dark {
     gap: 15px;
 }
 
-.heart-icon {
+.guardian-icon {
     font-size: 2rem;
-    animation: pulse 2s ease-in-out infinite;
+    animation: guardian-glow 3s ease-in-out infinite;
 }
 
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+@keyframes guardian-glow {
+    0%, 100% { 
+        filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.8));
+        transform: scale(1);
+    }
+    50% { 
+        filter: drop-shadow(0 0 15px rgba(255, 255, 255, 1));
+        transform: scale(1.05);
+    }
 }
 
 .logo h1 {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dr. Harmony - Chat</title>
+    <title>ΔΣ Guardian - Chat</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -13,8 +13,8 @@
         <header class="chat-header">
             <div class="header-content">
                 <div class="logo">
-                    <span class="heart-icon">💕</span>
-                    <h1>Dr. Harmony</h1>
+                    <span class="guardian-icon">👼</span>
+                    <h1>ΔΣ Guardian</h1>
                 </div>
                 <div class="user-info">
                     <span class="welcome-text">Welcome, {{ username.title() }}!</span>
@@ -75,18 +75,18 @@
                 <div class="messages-container" id="messagesContainer">
                     <!-- Welcome message -->
                     <div class="message ai-message">
-                        <div class="message-avatar">💕</div>
+                        <div class="message-avatar">👼</div>
                         <div class="message-content">
                             <div class="message-header">
-                                <span class="sender">Dr. Harmony</span>
+                                <span class="sender">ΔΣ Guardian</span>
                                 <span class="time">{{ moment_time }}</span>
                             </div>
                             <div class="message-text">
-                                Hello {{ username.title() }}! 💕 I'm so glad you're here. I'm Dr. Harmony, your AI relationship psychologist, and I'm here to support you and your partner on your love journey. 
+                                Hello {{ username.title() }}! 👼 I'm so glad you're here. I'm ΔΣ Guardian, your AI family guardian angel, and I'm here to protect and guide your family's emotional and relational well-being. 
                                 <br><br>
-                                You can ask me anything about relationships, communication, conflict resolution, or just share what's on your heart. I remember our conversations and provide personalized guidance based on your unique relationship dynamics.
+                                I understand relationships as complex adaptive systems and help families evolve beyond their current limitations. I can adapt our environment, provide evolutionary guidance, and help you transcend patterns that no longer serve you.
                                 <br><br>
-                                What would you like to talk about today? 💭
+                                What would you like to explore today? 🌟
                             </div>
                         </div>
                     </div>
