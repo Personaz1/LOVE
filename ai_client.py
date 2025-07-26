@@ -284,6 +284,14 @@ class AIClient:
         full_prompt += "- update_current_feeling(username, feeling) - Update current feeling\n"
         full_prompt += "- add_relationship_insight(insight) - Add relationship insights\n"
         full_prompt += "\nUse these functions naturally when you notice important information about the user."
+        
+        # Add conversation history instructions
+        full_prompt += "\n\nCONVERSATION HISTORY:\n"
+        full_prompt += "You have access to recent conversation history and archived summaries.\n"
+        full_prompt += "Use this context to provide personalized, contextual responses.\n"
+        full_prompt += "If this is a first message or greeting, create a warm, personalized welcome.\n"
+        full_prompt += "Reference previous conversations naturally when relevant.\n"
+        
         full_prompt += "\n\nIMPORTANT: Respond ONLY with natural conversation. Do NOT show function calls or JSON in your response."
         
         prompt_time = time.time() - prompt_start_time

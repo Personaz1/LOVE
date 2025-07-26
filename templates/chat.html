@@ -20,6 +20,7 @@
                     <span class="welcome-text">Welcome, {{ username.title() }}!</span>
                     <button class="profile-btn" onclick="showProfile()">👤 Profile</button>
                     <button class="diary-btn" onclick="showDiary()">📖 Diary</button>
+                    <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
                     <button class="logout-btn" onclick="logout()">🚪 Logout</button>
                 </div>
             </div>
@@ -101,7 +102,7 @@
                             </button>
                         </div>
                         <div class="input-actions">
-                            <button type="button" class="action-btn-small" onclick="clearChat()">🗑️ Clear</button>
+                            <button type="button" class="action-btn-small" onclick="clearConversationHistory()">🗑️ Clear History</button>
                             <button type="button" class="action-btn-small" onclick="exportChat()">📤 Export</button>
                         </div>
                     </form>

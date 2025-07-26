@@ -15,6 +15,7 @@ import uvicorn
 
 from ai_client import ai_client
 from memory.user_profiles import profile_manager
+from memory.conversation_history import conversation_history
 from memory.relationship_memory import relationship_memory, MemoryEntry
 from prompts.psychologist_prompt import PSYCHOLOGIST_SYSTEM_PROMPT
 from shared_context import shared_context
@@ -87,13 +88,14 @@ async def chat_endpoint(
         # Get user profile
         profile = profile_manager.get_user_profile(username)
         
-        # Get minimal context
-        context_text = shared_context.get_context_summary()
+        # Get conversation history context
+        history_context = conversation_history.get_context_for_ai()
         
-        # Add only the most recent memory if exists
-        recent_memories = shared_context.get_recent_memories(1)
-        if recent_memories:
-            context_text += f" | Last: {recent_memories[0].get('description', '')[:50]}"
+        # Get relationship context
+        relationship_context = shared_context.get_context_summary()
+        
+        # Combine contexts
+        full_context = f"{relationship_context}\n\n{history_context}"
         
         # Generate AI response
         user_profile_dict = None
@@ -109,8 +111,16 @@ async def chat_endpoint(
         ai_response = await ai_client.generate_response(
             system_prompt=PSYCHOLOGIST_SYSTEM_PROMPT,
             user_message=message,
-            context=context_text,
+            context=full_context,
             user_profile=user_profile_dict
+        )
+        
+        # Add to conversation history
+        conversation_history.add_message(
+            user=username,
+            message=message,
+            ai_response=ai_response,
+            context=relationship_context
         )
         
         # Update shared context
@@ -135,6 +145,62 @@ async def chat_endpoint(
             "user": username
         }
         
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/conversation-history")
+async def get_conversation_history(username: str = Depends(verify_password)):
+    """Get conversation history"""
+    try:
+        recent_history = conversation_history.get_recent_history(20)
+        return {
+            "history": recent_history,
+            "statistics": conversation_history.get_statistics()
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/conversation-archive")
+async def get_conversation_archive(username: str = Depends(verify_password)):
+    """Get conversation archive"""
+    try:
+        archive_entries = conversation_history.get_archive_entries(10)
+        archive_summary = conversation_history.get_archive_summary()
+        return {
+            "archive": archive_entries,
+            "summary": archive_summary
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.put("/api/conversation-archive/{archive_id}")
+async def edit_archive_entry(
+    archive_id: str,
+    request: Request,
+    username: str = Depends(verify_password)
+):
+    """Edit archive entry (AI can modify summaries)"""
+    try:
+        data = await request.json()
+        new_summary = data.get("summary", "")
+        
+        if not new_summary.strip():
+            return {"success": False, "error": "Summary cannot be empty"}
+        
+        success = conversation_history.edit_archive_entry(archive_id, new_summary)
+        if success:
+            return {"success": True, "message": "Archive entry updated successfully"}
+        else:
+            return {"success": False, "error": "Archive entry not found"}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.post("/api/conversation-clear")
+async def clear_conversation_history(username: str = Depends(verify_password)):
+    """Clear conversation history (archive first)"""
+    try:
+        conversation_history.clear_history()
+        return {"success": True, "message": "Conversation history cleared and archived"}
     except Exception as e:
         return {"error": str(e)}
 

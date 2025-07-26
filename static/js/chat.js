@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Focus on input when page loads
     messageInput.focus();
+    
+    // Load conversation history
+    loadConversationHistory();
 
     // Handle message submission
     messageForm.addEventListener('submit', async function(e) {
@@ -584,6 +587,224 @@ function exportChat() {
     link.href = URL.createObjectURL(dataBlob);
     link.download = `dr-harmony-chat-${currentUser}-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
+}
+
+// Load conversation history
+async function loadConversationHistory() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || currentUser;
+        const password = urlParams.get('password') || '';
+
+        let authUsername = username;
+        let authPassword = password;
+        
+        if (username === 'musser') {
+            authUsername = 'meranda';
+            authPassword = 'musser';
+        }
+
+        const response = await fetch('/api/conversation-history', {
+            headers: {
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Display conversation history
+            if (data.history && data.history.length > 0) {
+                displayConversationHistory(data.history);
+            }
+            
+            // Update statistics if needed
+            if (data.statistics) {
+                updateConversationStats(data.statistics);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading conversation history:', error);
+    }
+}
+
+// Display conversation history in chat
+function displayConversationHistory(history) {
+    const messagesContainer = document.getElementById('messagesContainer');
+    
+    // Clear existing messages
+    messagesContainer.innerHTML = '';
+    
+    // Add each message from history
+    history.forEach(entry => {
+        // Add user message
+        if (entry.message) {
+            addMessage(entry.message, 'user', entry.timestamp);
+        }
+        
+        // Add AI response
+        if (entry.ai_response) {
+            addMessage(entry.ai_response, 'ai', entry.timestamp);
+        }
+    });
+    
+    // Scroll to bottom
+    scrollToBottom();
+}
+
+// Update conversation statistics
+function updateConversationStats(stats) {
+    // You can add UI elements to show statistics
+    console.log('Conversation stats:', stats);
+}
+
+// Load conversation archive
+async function loadConversationArchive() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || currentUser;
+        const password = urlParams.get('password') || '';
+
+        let authUsername = username;
+        let authPassword = password;
+        
+        if (username === 'musser') {
+            authUsername = 'meranda';
+            authPassword = 'musser';
+        }
+
+        const response = await fetch('/api/conversation-archive', {
+            headers: {
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            displayConversationArchive(data);
+        }
+    } catch (error) {
+        console.error('Error loading conversation archive:', error);
+    }
+}
+
+// Display conversation archive
+function displayConversationArchive(data) {
+    // Create modal for archive display
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'archiveModal';
+    
+    let archiveContent = '<div class="modal-content">';
+    archiveContent += '<span class="close" onclick="closeModal(\'archiveModal\')">&times;</span>';
+    archiveContent += '<h2>Conversation Archive</h2>';
+    
+    if (data.summary) {
+        archiveContent += `<p><strong>Summary:</strong> ${data.summary}</p>`;
+    }
+    
+    if (data.archive && data.archive.length > 0) {
+        archiveContent += '<div class="archive-entries">';
+        data.archive.forEach(entry => {
+            archiveContent += `
+                <div class="archive-entry">
+                    <h3>${entry.timestamp}</h3>
+                    <p><strong>Period:</strong> ${entry.period_start} to ${entry.period_end}</p>
+                    <p><strong>Messages:</strong> ${entry.original_count}</p>
+                    <p><strong>Summary:</strong> ${entry.summary}</p>
+                    <button onclick="editArchiveEntry('${entry.id}')">Edit Summary</button>
+                </div>
+            `;
+        });
+        archiveContent += '</div>';
+    } else {
+        archiveContent += '<p>No archived conversations yet.</p>';
+    }
+    
+    archiveContent += '</div>';
+    modal.innerHTML = archiveContent;
+    
+    document.body.appendChild(modal);
+    modal.style.display = 'block';
+}
+
+// Edit archive entry
+async function editArchiveEntry(archiveId) {
+    const newSummary = prompt('Enter new summary for this archive entry:');
+    if (!newSummary) return;
+    
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || currentUser;
+        const password = urlParams.get('password') || '';
+
+        let authUsername = username;
+        let authPassword = password;
+        
+        if (username === 'musser') {
+            authUsername = 'meranda';
+            authPassword = 'musser';
+        }
+
+        const response = await fetch(`/api/conversation-archive/${archiveId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            },
+            body: JSON.stringify({ summary: newSummary })
+        });
+
+        if (response.ok) {
+            alert('Archive entry updated successfully!');
+            // Reload archive
+            loadConversationArchive();
+        } else {
+            alert('Error updating archive entry');
+        }
+    } catch (error) {
+        console.error('Error editing archive entry:', error);
+        alert('Error updating archive entry');
+    }
+}
+
+// Clear conversation history
+async function clearConversationHistory() {
+    if (!confirm('Are you sure you want to clear the conversation history? This will archive current messages.')) {
+        return;
+    }
+    
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || currentUser;
+        const password = urlParams.get('password') || '';
+
+        let authUsername = username;
+        let authPassword = password;
+        
+        if (username === 'musser') {
+            authUsername = 'meranda';
+            authPassword = 'musser';
+        }
+
+        const response = await fetch('/api/conversation-clear', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            }
+        });
+
+        if (response.ok) {
+            alert('Conversation history cleared and archived!');
+            // Reload page to show fresh chat
+            location.reload();
+        } else {
+            alert('Error clearing conversation history');
+        }
+    } catch (error) {
+        console.error('Error clearing conversation history:', error);
+        alert('Error clearing conversation history');
+    }
 }
 
 function logout() {
