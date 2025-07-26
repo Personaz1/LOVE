@@ -1,0 +1,68 @@
+{
+  "romantic_pink": {
+    "name": "romantic_pink",
+    "primary": "#ff69b4",
+    "secondary": "#ff1493",
+    "accent": "#ffb6c1",
+    "background": "#fff5f5",
+    "text": "#333333",
+    "success": "#4caf50",
+    "warning": "#ff9800",
+    "error": "#f44336"
+  },
+  "test_blue": {
+    "name": "test_blue",
+    "primary": "blue",
+    "secondary": "white",
+    "accent": "lightblue",
+    "background": "#fff5f5",
+    "text": "#333333",
+    "success": "#4caf50",
+    "warning": "#ff9800",
+    "error": "#f44336"
+  },
+  "custom_purple": {
+    "name": "custom_purple",
+    "primary": "purple",
+    "secondary": "white",
+    "accent": "lightblue",
+    "background": "#fff5f5",
+    "text": "#333333",
+    "success": "#4caf50",
+    "warning": "#ff9800",
+    "error": "#f44336"
+  },
+  "test_black": {
+    "name": "test_black",
+    "primary": "black",
+    "secondary": "white",
+    "accent": "lightblue",
+    "background": "#1a1a1a",
+    "text": "#333333",
+    "success": "#4caf50",
+    "warning": "#ff9800",
+    "error": "#f44336"
+  },
+  "custom_red": {
+    "name": "custom_red",
+    "primary": "red",
+    "secondary": "white",
+    "accent": "lightblue",
+    "background": "#fff5f5",
+    "text": "#333333",
+    "success": "#4caf50",
+    "warning": "#ff9800",
+    "error": "#f44336"
+  },
+  "custom_black": {
+    "name": "custom_black",
+    "primary": "black",
+    "secondary": "white",
+    "accent": "lightblue",
+    "background": "#1a1a1a",
+    "text": "#333333",
+    "success": "#4caf50",
+    "warning": "#ff9800",
+    "error": "#f44336"
+  }
+}

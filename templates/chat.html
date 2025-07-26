@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Harmony - Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="theme-{{ theme }}">
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="heart-icon">💕</span>
+                    <h1>Dr. Harmony</h1>
+                </div>
+                <div class="user-info">
+                    <span class="welcome-text">Welcome, {{ username.title() }}!</span>
+                    <button class="profile-btn" onclick="showProfile()">👤 Profile</button>
+                    <button class="diary-btn" onclick="showDiary()">📖 Diary</button>
+                    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main chat area -->
+        <main class="chat-main">
+            <!-- Sidebar -->
+            <aside class="chat-sidebar">
+                <div class="sidebar-section">
+                    <h3>💭 Quick Actions</h3>
+                    <button class="action-btn" onclick="sendQuickMessage('I need relationship advice')">
+                        💕 Relationship Advice
+                    </button>
+                    <button class="action-btn" onclick="sendQuickMessage('Help me with communication')">
+                        💬 Communication Help
+                    </button>
+                    <button class="action-btn" onclick="sendQuickMessage('We had a disagreement')">
+                        ⚖️ Conflict Resolution
+                    </button>
+                    <button class="action-btn" onclick="sendQuickMessage('Celebrate our relationship')">
+                        🎉 Celebrate Love
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>📊 Your Profile</h3>
+                    <div class="profile-summary">
+                        {% if user_profile %}
+                        <p><strong>Status:</strong> {{ user_profile.relationship_status }}</p>
+                        <p><strong>Feeling:</strong> {{ user_profile.current_feeling }}</p>
+                        <p><strong>Last Updated:</strong> {{ user_profile.last_updated[:10] if user_profile.last_updated else 'Never' }}</p>
+                        {% else %}
+                        <p>Profile not loaded</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>💡 Tips</h3>
+                    <div class="tips">
+                        <p>💝 Be open and honest in your communication</p>
+                        <p>💝 Practice active listening</p>
+                        <p>💝 Celebrate small victories together</p>
+                        <p>💝 Remember to express gratitude</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Chat messages -->
+            <section class="chat-messages">
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Welcome message -->
+                    <div class="message ai-message">
+                        <div class="message-avatar">💕</div>
+                        <div class="message-content">
+                            <div class="message-header">
+                                <span class="sender">Dr. Harmony</span>
+                                <span class="time">{{ moment_time }}</span>
+                            </div>
+                            <div class="message-text">
+                                Hello {{ username.title() }}! 💕 I'm so glad you're here. I'm Dr. Harmony, your AI relationship psychologist, and I'm here to support you and your partner on your love journey. 
+                                <br><br>
+                                You can ask me anything about relationships, communication, conflict resolution, or just share what's on your heart. I remember our conversations and provide personalized guidance based on your unique relationship dynamics.
+                                <br><br>
+                                What would you like to talk about today? 💭
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message input -->
+                <div class="message-input-container">
+                    <form id="messageForm" class="message-form">
+                        <div class="input-wrapper">
+                            <input type="text" id="messageInput" placeholder="Type your message here..." maxlength="1000">
+                            <button type="submit" class="send-btn">
+                                <span class="send-icon">💕</span>
+                            </button>
+                        </div>
+                        <div class="input-actions">
+                            <button type="button" class="action-btn-small" onclick="clearChat()">🗑️ Clear</button>
+                            <button type="button" class="action-btn-small" onclick="exportChat()">📤 Export</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👤 Your Profile</h2>
+                <span class="close" onclick="closeModal('profileModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="profileContent">
+                    <!-- Profile content will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Diary Modal -->
+    <div id="diaryModal" class="modal">
+        <div class="modal-content diary-modal">
+            <div class="modal-header">
+                <h2>📖 Personal Diary</h2>
+                <span class="close" onclick="closeModal('diaryModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="diary-info">
+                    <p>💡 <strong>How to use:</strong> Write "write in diary - [your thoughts]" or "add to diary - [your message]" in the chat, and I'll create diary entries for you!</p>
+                </div>
+                <div class="diary-entries" id="diaryEntries">
+                    <!-- Diary entries will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-heart">💕</div>
+            <p>Dr. Harmony is thinking...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+</body>
+</html> 

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Harmony - Love & Relationship AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/login.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Floating hearts background -->
+        <div class="hearts">
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+            <div class="heart"></div>
+        </div>
+
+        <!-- Main login card -->
+        <div class="login-card">
+            <div class="card-header">
+                <div class="logo">
+                    <span class="heart-icon">💕</span>
+                    <h1>Dr. Harmony</h1>
+                </div>
+                <p class="subtitle">Your AI Relationship Psychologist</p>
+            </div>
+
+            <div class="card-body">
+                <div class="welcome-text">
+                    <h2>Welcome to Your Love Journey</h2>
+                    <p>Enter your special password to access your personalized relationship guidance</p>
+                </div>
+
+                <form class="login-form" id="loginForm">
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required 
+                               placeholder="Enter your username">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required 
+                               placeholder="Enter your password">
+                    </div>
+
+                    <button type="submit" class="login-btn">
+                        <span class="btn-text">Enter with Love</span>
+                        <span class="btn-heart">💖</span>
+                    </button>
+                </form>
+
+                <div class="credentials-hint">
+                    <p>💝 <strong>Meranda:</strong> username: meranda, password: musser</p>
+                    <p>💝 <strong>Stepan:</strong> username: stepan, password: stepan</p>
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <div class="features">
+                    <div class="feature">
+                        <span class="feature-icon">🧠</span>
+                        <span>AI-Powered Insights</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">💭</span>
+                        <span>Personal Diaries</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🎯</span>
+                        <span>Relationship Goals</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decorative elements -->
+        <div class="decorative-elements">
+            <div class="floating-rose">🌹</div>
+            <div class="floating-rose">🌹</div>
+            <div class="floating-rose">🌹</div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/login.js') }}"></script>
+</body>
+</html> 
