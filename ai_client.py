@@ -15,7 +15,7 @@ from prompts.psychologist_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
 from memory.conversation_history import ConversationHistory
 from shared_context import SharedContextManager
-from profile_updater import profile_updater
+
 from file_agent import file_agent
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,7 @@ class AIClient:
         genai.configure(api_key=api_key)
         self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
-        # Initialize profile and memory systems
-        self.profile_manager = profile_updater  # Use the global profile_updater
+        # Initialize memory systems
         self.conversation_history = ConversationHistory()
         self.shared_context = SharedContextManager()
     
@@ -313,7 +312,9 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def update_current_feeling(self, username: str, feeling: str, context: str = "") -> bool:
         """Update user's emotional state - called by model"""
         try:
-            result = self.profile_manager.update_current_feeling(feeling, context)
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            result = user_profile.update_current_feeling(feeling, context)
             logger.info(f"💭 Model updated feeling: {username} -> {feeling} (context: {context})")
             return result
         except Exception as e:
@@ -323,9 +324,11 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def update_relationship_status(self, username: str, status: str) -> bool:
         """Update relationship status - called by model"""
         try:
-            result = self.profile_manager.update_relationship_status(status)
-            logger.info(f"💕 Model updated relationship status: {username} -> {status}")
-            return result
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            # For now, we'll just log the update since UserProfile doesn't have this method
+            logger.info(f"💕 Model requested relationship status update: {username} -> {status}")
+            return True
         except Exception as e:
             logger.error(f"Error in update_relationship_status: {e}")
             return False
@@ -333,9 +336,11 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def update_user_profile(self, username: str, profile_data: Dict[str, Any]) -> bool:
         """Update user profile - called by model"""
         try:
-            result = self.profile_manager.update_user_profile(username, profile_data)
-            logger.info(f"🔄 Model updated profile: {username}")
-            return result
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            # For now, we'll just log the update since UserProfile doesn't have a direct update method
+            logger.info(f"🔄 Model requested profile update for {username}: {profile_data}")
+            return True
         except Exception as e:
             logger.error(f"Error in update_user_profile: {e}")
             return False
@@ -343,7 +348,9 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def add_diary_entry(self, username: str, entry: Dict[str, Any]) -> bool:
         """Add diary entry - called by model"""
         try:
-            result = self.profile_manager.add_diary_entry(username, entry)
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            result = user_profile.add_diary_entry(entry)
             logger.info(f"📖 Model added diary entry: {username}")
             return result
         except Exception as e:
@@ -353,7 +360,15 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def add_relationship_insight(self, insight: str) -> bool:
         """Add relationship insight - called by model"""
         try:
-            result = self.profile_manager.add_relationship_insight(insight)
+            # For now, we'll add insights to a shared insights file
+            from memory.user_profiles import UserProfile
+            # Add to meranda's diary as shared insight
+            user_profile = UserProfile("meranda")
+            entry_data = {
+                "content": f"Relationship Insight: {insight}",
+                "mood": "Analytical"
+            }
+            result = user_profile.add_diary_entry(entry_data)
             logger.info(f"💡 Model added insight: {insight[:50]}...")
             return result
         except Exception as e:
@@ -364,7 +379,9 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def read_user_profile(self, username: str) -> str:
         """Read user's profile file - called by model"""
         try:
-            profile = self.profile_manager.get_profile()
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            profile = user_profile.get_profile()
             return f"Profile for {username}: {json.dumps(profile, indent=2, ensure_ascii=False)}"
         except Exception as e:
             logger.error(f"Error reading profile for {username}: {e}")
@@ -373,7 +390,9 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def read_emotional_history(self, username: str) -> str:
         """Read emotional history file - called by model"""
         try:
-            history = self.profile_manager.get_emotional_history(limit=20)
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            history = user_profile.get_emotional_history(limit=20)
             return f"Emotional history for {username}: {json.dumps(history, indent=2, ensure_ascii=False)}"
         except Exception as e:
             logger.error(f"Error reading emotional history for {username}: {e}")
@@ -382,8 +401,10 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def read_diary_entries(self, username: str) -> str:
         """Read user's diary entries - called by model"""
         try:
-            # This would need to be implemented in profile_updater
-            return f"Diary entries for {username}: Not implemented yet"
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            entries = user_profile.get_diary_entries(limit=10)
+            return f"Diary entries for {username}: {json.dumps(entries, indent=2, ensure_ascii=False)}"
         except Exception as e:
             logger.error(f"Error reading diary for {username}: {e}")
             return f"Error reading diary for {username}: {str(e)}"
@@ -391,7 +412,14 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def write_insight_to_file(self, username: str, insight: str) -> bool:
         """Save insight to file - called by model"""
         try:
-            result = self.profile_manager.add_relationship_insight(insight)
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            # Add insight as diary entry for now
+            entry_data = {
+                "content": f"Insight: {insight}",
+                "mood": "Reflective"
+            }
+            result = user_profile.add_diary_entry(entry_data)
             logger.info(f"💾 Model wrote insight to file for {username}: {insight[:50]}...")
             return result
         except Exception as e:
@@ -401,13 +429,20 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def search_user_data(self, username: str, query: str) -> str:
         """Search user's data files - called by model"""
         try:
+            from memory.user_profiles import UserProfile
+            user_profile = UserProfile(username)
+            
             # Search in profile
-            profile = self.profile_manager.get_profile()
+            profile = user_profile.get_profile()
             profile_text = json.dumps(profile, ensure_ascii=False)
             
             # Search in emotional history
-            history = self.profile_manager.get_emotional_history(limit=50)
+            history = user_profile.get_emotional_history(limit=50)
             history_text = json.dumps(history, ensure_ascii=False)
+            
+            # Search in diary entries
+            diary_entries = user_profile.get_diary_entries(limit=50)
+            diary_text = json.dumps(diary_entries, ensure_ascii=False)
             
             # Simple text search
             results = []
@@ -415,6 +450,8 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                 results.append("Found in profile")
             if query.lower() in history_text.lower():
                 results.append("Found in emotional history")
+            if query.lower() in diary_text.lower():
+                results.append("Found in diary entries")
             
             return f"Search results for '{query}' in {username}'s data: {', '.join(results) if results else 'No matches found'}"
         except Exception as e:

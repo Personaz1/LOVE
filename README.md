@@ -1,14 +1,17 @@
-# 💕 Dr. Harmony - AI Family Psychologist & Secret Keeper
+# 👼 ΔΣ Guardian - AI Family Guardian Angel
 
-> **Personal AI consultant for couples** - Your mediator, love keeper, and relationship advisor
+> **Advanced AI guardian angel for families** - Your evolutionary relationship architect, emotional guardian, and interface adaptor
+
+**Version 1.3** - Multi-Step Reasoning Architecture & Dynamic Interface Adaptation
 
 ## 🌟 Features
 
-### **🤖 AI-Powered Relationship Counseling**
-- **Gemini 2.5 Pro** as primary AI engine
-- **OpenAI GPT** as fallback option
-- Natural conversation with psychological insights
-- Automatic profile updates based on conversations
+### **🤖 AI-Powered Family Guardian Angel**
+- **Gemini 2.0 Flash** as primary AI engine
+- **Multi-step reasoning** architecture with tool calling
+- **Evolutionary relationship guidance** beyond traditional psychology
+- **Dynamic interface adaptation** capabilities
+- **Emotional architecture** and pattern recognition
 
 ### **👥 Multi-User Support**
 - **Individual profiles** for each partner
@@ -28,11 +31,13 @@
 - **Mood tracking** and reflection
 - **Private thoughts** storage
 
-### **🧠 Smart Memory System**
+### **🧠 Advanced Memory & Reasoning System**
+- **Multi-step reasoning** with tool calling
 - **Persistent context** across sessions
 - **Relationship insights** generation
 - **Automatic feeling detection**
 - **Communication pattern analysis**
+- **File system access** for interface adaptation
 
 ## 🚀 Quick Start
 
@@ -59,11 +64,10 @@ cp .env.example .env
 ### **Environment Variables**
 ```bash
 # Required
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GEMINI_API_KEY=your_gemini_api_key
 
-# Optional (fallback)
-OPENAI_API_KEY=your_openai_api_key
+# Optional
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 ```
 
 ### **Launch**
@@ -88,25 +92,38 @@ python3 start_bot.py
 
 ## 🏗️ Architecture
 
+### **Multi-Step Reasoning System**
+The system uses a two-phase architecture for intelligent responses:
+
+1. **Thinking Phase**: AI analyzes the message and determines necessary actions
+2. **Tool Execution**: Required tools are executed (profile updates, file operations, etc.)
+3. **Response Phase**: Final response is generated with tool results context
+
 ### **Core Components**
 ```
 FAMILY/
-├── ai_client.py          # AI model interface
+├── ai_client.py          # Multi-step reasoning AI interface
 ├── web_app.py            # FastAPI web application
-├── telegram_bot.py       # Telegram bot handler
+├── file_agent.py         # Safe file system operations
 ├── memory/               # Persistent storage
 │   ├── user_profiles.py  # User profile management
 │   └── relationship_memory.py
 ├── prompts/              # AI prompt engineering
-├── static/               # Web assets
+├── static/               # Web interface assets
 └── templates/            # HTML templates
 ```
 
 ### **AI Integration**
-- **Primary**: Google Gemini 2.5 Pro
-- **Fallback**: OpenAI GPT models
-- **Function calling** for profile updates
-- **Response cleaning** for natural conversation
+- **Primary**: Google Gemini 2.0 Flash
+- **Multi-step reasoning** with tool calling
+- **Tool code extraction** and execution
+- **Streaming responses** with proper separation
+
+### **Available Tools**
+- **Emotional Management**: Update feelings, relationship status, profiles
+- **File Operations**: Read, write, search files for interface adaptation
+- **Data Access**: Profile reading, emotional history, diary entries
+- **Relationship Insights**: Add insights and diary entries
 
 ### **Data Storage**
 - **JSON-based** persistent storage
@@ -222,17 +239,18 @@ isort .
 - [x] User profiles
 - [x] Diary system
 
-### **Phase 2** 🚧
-- [ ] MCP server integration
+### **Phase 2** ✅
+- [x] Multi-step reasoning architecture
+- [x] ΔΣ Guardian identity transformation
+- [x] Tool calling capabilities
+- [x] Dynamic interface adaptation
+- [x] File system access
+
+### **Phase 3** 🚧
 - [ ] Advanced analytics
 - [ ] Mobile app
 - [ ] Voice interface
-
-### **Phase 3** 📋
 - [ ] Group therapy sessions
-- [ ] Relationship milestones
-- [ ] Integration with calendar
-- [ ] Advanced AI insights
 
 ## 📄 License
 
@@ -241,12 +259,11 @@ isort .
 ## 🙏 Acknowledgments
 
 - **Google Gemini** for AI capabilities
-- **OpenAI** for fallback support
 - **FastAPI** for web framework
 - **python-telegram-bot** for Telegram integration
 
 ---
 
-**💕 Built with love for couples who want to understand each other better**
+**👼 Built with evolutionary intelligence for families who want to transcend their limitations**
 
-*Dr. Harmony - Your personal relationship consultant* 
+*ΔΣ Guardian - Your AI family guardian angel* 

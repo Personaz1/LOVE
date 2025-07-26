@@ -271,6 +271,116 @@ class UserProfile:
         except Exception as e:
             logger.error(f"Error analyzing emotional trends for {self.username}: {e}")
             return {"trend": "Error", "most_common": "Error", "recent_changes": []}
+    
+    # Diary methods
+    def get_diary_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent diary entries for the user"""
+        try:
+            file_path = f"memory/user_profiles/{self.username}_diary.json"
+            
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    entries = json.load(f)
+                    return entries[-limit:] if limit > 0 else entries
+            else:
+                # Return default entry if file doesn't exist
+                return [{
+                    "content": "Hi Diary",
+                    "timestamp": datetime.now().isoformat(),
+                    "mood": "Reflective"
+                }]
+        except Exception as e:
+            logger.error(f"Error loading diary entries for {self.username}: {e}")
+            return [{
+                "content": "Hi Diary",
+                "timestamp": datetime.now().isoformat(),
+                "mood": "Reflective"
+            }]
+    
+    def add_diary_entry(self, entry_data: Dict[str, Any]):
+        """Add diary entry for the user"""
+        try:
+            file_path = f"memory/user_profiles/{self.username}_diary.json"
+            
+            # Load existing entries
+            entries = []
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    entries = json.load(f)
+            
+            # Add new entry
+            new_entry = {
+                "content": entry_data.get("content", ""),
+                "timestamp": entry_data.get("timestamp", datetime.now().isoformat()),
+                "mood": entry_data.get("mood", "Reflective")
+            }
+            entries.append(new_entry)
+            
+            # Save back to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(entries, f, indent=2, ensure_ascii=False)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error adding diary entry for {self.username}: {e}")
+            return False
+    
+    def update_diary_entry(self, index: int, new_content: str):
+        """Update diary entry at specific index"""
+        try:
+            file_path = f"memory/user_profiles/{self.username}_diary.json"
+            
+            if not os.path.exists(file_path):
+                return False
+            
+            # Load existing entries
+            with open(file_path, 'r', encoding='utf-8') as f:
+                entries = json.load(f)
+            
+            # Check if index is valid
+            if index < 0 or index >= len(entries):
+                return False
+            
+            # Update the entry
+            entries[index]["content"] = new_content
+            entries[index]["timestamp"] = datetime.now().isoformat()
+            
+            # Save back to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(entries, f, indent=2, ensure_ascii=False)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error updating diary entry for {self.username}: {e}")
+            return False
+    
+    def delete_diary_entry(self, index: int):
+        """Delete diary entry at specific index"""
+        try:
+            file_path = f"memory/user_profiles/{self.username}_diary.json"
+            
+            if not os.path.exists(file_path):
+                return False
+            
+            # Load existing entries
+            with open(file_path, 'r', encoding='utf-8') as f:
+                entries = json.load(f)
+            
+            # Check if index is valid
+            if index < 0 or index >= len(entries):
+                return False
+            
+            # Remove the entry
+            entries.pop(index)
+            
+            # Save back to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(entries, f, indent=2, ensure_ascii=False)
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting diary entry for {self.username}: {e}")
+            return False
 
 class UserProfileManager:
     """Manager for all user profiles"""

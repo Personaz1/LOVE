@@ -234,6 +234,59 @@ async def get_conversation_history(
         logger.error(f"Error getting conversation history: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/diary")
+async def get_diary(username: str = Depends(verify_password)):
+    """Get user's diary entries"""
+    try:
+        user_profile = UserProfile(username)
+        diary_entries = user_profile.get_diary_entries()
+        return {"entries": diary_entries}
+        
+    except Exception as e:
+        logger.error(f"Error getting diary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/diary/{entry_id}")
+async def update_diary_entry(
+    entry_id: int,
+    content: str = Form(...),
+    username: str = Depends(verify_password)
+):
+    """Update diary entry"""
+    try:
+        user_profile = UserProfile(username)
+        result = user_profile.update_diary_entry(entry_id, content)
+        if result:
+            logger.info(f"✅ Diary entry {entry_id} updated successfully for user {username}")
+            return {"success": True, "message": "Diary entry updated successfully"}
+        else:
+            logger.error(f"❌ Failed to update diary entry {entry_id} for user {username}")
+            return {"success": False, "error": "Failed to update diary entry"}
+        
+    except Exception as e:
+        logger.error(f"Error updating diary entry: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/diary/{entry_id}")
+async def delete_diary_entry(
+    entry_id: int,
+    username: str = Depends(verify_password)
+):
+    """Delete diary entry"""
+    try:
+        user_profile = UserProfile(username)
+        result = user_profile.delete_diary_entry(entry_id)
+        if result:
+            logger.info(f"✅ Diary entry {entry_id} deleted successfully for user {username}")
+            return {"success": True, "message": "Diary entry deleted successfully"}
+        else:
+            logger.error(f"❌ Failed to delete diary entry {entry_id} for user {username}")
+            return {"success": False, "error": "Failed to delete diary entry"}
+        
+    except Exception as e:
+        logger.error(f"Error deleting diary entry: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/files/list")
 async def list_files(
     directory: str = "",
