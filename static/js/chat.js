@@ -5,6 +5,7 @@ if (currentUser === 'musser') {
     currentUser = 'meranda';
 }
 let messageHistory = [];
+let currentStreamingMessage = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     const messageForm = document.getElementById('messageForm');
@@ -29,23 +30,13 @@ document.addEventListener('DOMContentLoaded', function() {
         addMessage(message, 'user');
         messageInput.value = '';
 
-        // Show loading
-        showLoading();
-
+        // Immediately start streaming - no loading screen
         try {
-            // Send message to API
-            const response = await sendMessage(message);
-            
-            if (response.error) {
-                addMessage('Sorry, I encountered an error. Please try again.', 'ai');
-            } else {
-                addMessage(response.response, 'ai');
-            }
+            // Send message to streaming API
+            await sendStreamingMessage(message);
         } catch (error) {
             console.error('Error sending message:', error);
             addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'ai');
-        } finally {
-            hideLoading();
         }
     });
 
@@ -64,7 +55,210 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Send message to API
+// Send streaming message to API
+async function sendStreamingMessage(message) {
+    const formData = new FormData();
+    formData.append('message', message);
+
+    // Get current credentials from URL or localStorage
+    const urlParams = new URLSearchParams(window.location.search);
+    const username = urlParams.get('username') || currentUser;
+    const password = urlParams.get('password') || '';
+
+    // Use the correct credentials based on username
+    let authUsername = username;
+    let authPassword = password;
+    
+    // Map old credentials to new ones
+    if (username === 'musser') {
+        authUsername = 'meranda';
+        authPassword = 'musser';
+    }
+
+    // Create AI message container for streaming
+    currentStreamingMessage = addStreamingMessage();
+    
+    try {
+        const response = await fetch('/api/chat/stream', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            }
+        });
+
+        if (!response.ok) {
+            // Fallback to regular API if streaming fails
+            console.log('Streaming not available, falling back to regular API');
+            const regularResponse = await sendMessage(message);
+            
+            if (regularResponse.error) {
+                currentStreamingMessage.textContent = 'Sorry, I encountered an error. Please try again.';
+            } else {
+                currentStreamingMessage.textContent = regularResponse.response;
+                finalizeStreamingMessage(currentStreamingMessage);
+            }
+            currentStreamingMessage = null;
+            return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep incomplete line in buffer
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        await handleStreamData(data);
+                    } catch (e) {
+                        console.error('Error parsing stream data:', e);
+                    }
+                }
+            }
+        }
+        
+        // Finalize the streaming message
+        if (currentStreamingMessage) {
+            finalizeStreamingMessage(currentStreamingMessage);
+            currentStreamingMessage = null;
+        }
+        
+    } catch (error) {
+        console.error('Streaming error:', error);
+        
+        // Try fallback to regular API
+        try {
+            console.log('Trying fallback to regular API...');
+            const regularResponse = await sendMessage(message);
+            
+            if (regularResponse.error) {
+                currentStreamingMessage.textContent = 'Sorry, I encountered an error. Please try again.';
+            } else {
+                currentStreamingMessage.textContent = regularResponse.response;
+                finalizeStreamingMessage(currentStreamingMessage);
+            }
+        } catch (fallbackError) {
+            console.error('Fallback also failed:', fallbackError);
+            currentStreamingMessage.textContent = 'Sorry, I\'m having trouble connecting. Please try again.';
+        }
+        
+        currentStreamingMessage = null;
+    }
+}
+
+// Handle streaming data
+async function handleStreamData(data) {
+    switch (data.type) {
+        case 'status':
+            console.log('Status:', data.message);
+            // Show status message
+            showStatusMessage(data.message);
+            break;
+            
+        case 'chunk':
+            if (currentStreamingMessage && data.content) {
+                // Remove typing indicator when we start receiving content
+                const typingIndicator = document.querySelector('.typing-indicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                currentStreamingMessage.textContent += data.content;
+                scrollToBottom();
+            }
+            break;
+            
+        case 'complete':
+            console.log('Streaming completed');
+            break;
+            
+        case 'error':
+            console.error('Streaming error:', data.message);
+            if (currentStreamingMessage) {
+                currentStreamingMessage.textContent = 'Sorry, I encountered an error. Please try again.';
+            }
+            break;
+    }
+}
+
+// Add streaming message container
+function addStreamingMessage() {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai-message streaming';
+    messageDiv.innerHTML = `
+        <div class="message-content">
+            <div class="message-text"></div>
+            <div class="message-time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+    `;
+    
+    const messagesContainer = document.getElementById('messagesContainer');
+    messagesContainer.appendChild(messageDiv);
+    
+    // Add typing indicator
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'typing-indicator';
+    typingIndicator.innerHTML = `
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+    `;
+    messagesContainer.appendChild(typingIndicator);
+    
+    scrollToBottom();
+    
+    return messageDiv.querySelector('.message-text');
+}
+
+// Finalize streaming message
+function finalizeStreamingMessage(messageElement) {
+    // Remove typing indicator
+    const typingIndicator = document.querySelector('.typing-indicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    
+    // Remove streaming class
+    const messageDiv = messageElement.closest('.message');
+    if (messageDiv) {
+        messageDiv.classList.remove('streaming');
+    }
+    
+    // Add any final formatting or processing here
+    const messageText = messageElement.textContent;
+    messageElement.innerHTML = formatMessage(messageText);
+}
+
+// Show status message
+function showStatusMessage(message) {
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'status-message';
+    statusDiv.textContent = message;
+    
+    const messagesContainer = document.getElementById('messagesContainer');
+    messagesContainer.appendChild(statusDiv);
+    
+    // Remove status message after 3 seconds
+    setTimeout(() => {
+        if (statusDiv.parentNode) {
+            statusDiv.remove();
+        }
+    }, 3000);
+    
+    scrollToBottom();
+}
+
+// Send message to API (legacy function for fallback)
 async function sendMessage(message) {
     const formData = new FormData();
     formData.append('message', message);
@@ -152,16 +346,16 @@ function scrollToBottom() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// Show loading overlay
+// Show loading overlay - DISABLED for streaming
 function showLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.style.display = 'flex';
+    // Loading overlay removed - streaming shows live generation instead
+    console.log('Loading disabled - using streaming instead');
 }
 
-// Hide loading overlay
+// Hide loading overlay - DISABLED for streaming
 function hideLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.style.display = 'none';
+    // Loading overlay removed - streaming shows live generation instead
+    console.log('Loading disabled - using streaming instead');
 }
 
 // Quick message functions

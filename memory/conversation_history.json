@@ -1,0 +1,290 @@
+[
+  {
+    "id": "msg_0_1753551732.476946",
+    "timestamp": "2025-07-26T19:42:12.476964",
+    "user": "meranda",
+    "message": "привет",
+    "ai_response": "Степан, Меранда, привет! Очень рада, что вы здесь. Рассказывайте, что у вас на уме?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: почему, анеглйиски, отвечаешь",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_1_1753551778.170365",
+    "timestamp": "2025-07-26T19:42:58.170400",
+    "user": "meranda",
+    "message": "седня все классно",
+    "ai_response": "Замечательно! Приятно начинать на такой позитивной ноте.Отлично! Рада слышать, что у вас все хорошо. Что именно делает день классным для вас двоих?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: привет",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_2_1753551813.982851",
+    "timestamp": "2025-07-26T19:43:33.982867",
+    "user": "meranda",
+    "message": "а че не поменял current feeling?",
+    "ai_response": "Хорошее замечание, спасибо. Иногда я улавливаю только самые прямые слова о чувствах, но я учусь понимать вас двоих лучше.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: седня, классно",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_3_1753551932.043938",
+    "timestamp": "2025-07-26T19:45:32.043951",
+    "user": "meranda",
+    "message": "Hello! Can you tell me about communication in relationships?",
+    "ai_response": "Привет! Рада, что вы снова здесь. Общение — это мост между вами; расскажите, что именно в вашем общении вас сейчас волнует?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: поменял, current, feeling?",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_4_1753551959.958485",
+    "timestamp": "2025-07-26T19:45:59.958597",
+    "user": "meranda",
+    "message": "седня все классно",
+    "ai_response": "Замечательно! Рада слышать, что у вас все хорошо. Что именно делает день классным для вас двоих?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: hello!, tell, about",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_5_1753551969.20406",
+    "timestamp": "2025-07-26T19:46:09.204071",
+    "user": "meranda",
+    "message": "мне грустно",
+    "ai_response": "Спасибо, что поделилась этим. Расскажи, что у тебя на душе?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: седня, классно",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_6_1753551989.9885",
+    "timestamp": "2025-07-26T19:46:29.988517",
+    "user": "meranda",
+    "message": "я счастлива",
+    "ai_response": "Это прекрасная новость, особенно после нашего прошлого разговора. Расскажи, что принесло тебе эту радость?Как я рада это слышать, особенно после нашего последнего разговора. Что принесло тебе эту радость?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: грустно",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_7_1753552004.847897",
+    "timestamp": "2025-07-26T19:46:44.847913",
+    "user": "meranda",
+    "message": "чувствую себя плохо",
+    "ai_response": "update_current_feeling(username=\"user\", feeling=\"плохо\")\nupdate_hidden_profile(username=\"user\", new_hidden_profile=\"Noticed a pattern of rapid emotional shifts recently (sad -> happy -> bad). Worth exploring the triggers for these changes.\")\n\nМне жаль это слышать. Расскажи, что у тебя на душе?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: счастлива",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_8_1753552018.008948",
+    "timestamp": "2025-07-26T19:46:58.008962",
+    "user": "meranda",
+    "message": "все отлично",
+    "ai_response": "Это прекрасные новости, особенно после того, как ты чувствовала себя плохо. Расскажи, что принесло эту перемену?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, плохо",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_9_1753552082.209602",
+    "timestamp": "2025-07-26T19:48:02.209650",
+    "user": "meranda",
+    "message": "теперь чувствую себя хорошо",
+    "ai_response": "Я рада, что ты снова на подъеме. Расскажи, что помогает тебе возвращаться в хорошее состояние?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: отлично",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_10_1753552681.54429",
+    "timestamp": "2025-07-26T19:58:01.544304",
+    "user": "meranda",
+    "message": "сегодня я очень счастлива, все идет отлично",
+    "ai_response": "Как я рада это слышать! Расскажи, что именно делает этот день таким прекрасным для тебя?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: теперь, чувствую, себя",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_11_1753552694.683692",
+    "timestamp": "2025-07-26T19:58:14.683704",
+    "user": "meranda",
+    "message": "чувствую себя грустно, не знаю что делать",
+    "ai_response": "Мне жаль это слышать, особенно после твоего недавнего подъема. Давай начнем с простого: что-то конкретное вызвало эту грусть?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: сегодня, очень, счастлива,",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_12_1753552710.756108",
+    "timestamp": "2025-07-26T19:58:30.756119",
+    "user": "meranda",
+    "message": "немного тревожно, но в целом нормально",
+    "ai_response": "Понимаю это смешанное чувство. Давай сосредоточимся на том, что вызывает тревогу?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, грустно,",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_13_1753552734.345899",
+    "timestamp": "2025-07-26T19:58:54.346054",
+    "user": "meranda",
+    "message": "я в восторге от нашего разговора",
+    "ai_response": "Я тоже очень рада, что наш разговор приносит тебе пользу. Что именно в нем так откликнулось для тебя?Я так рада это слышать, особенно после того, как ты чувствовала тревогу. Что именно в этом разговоре вызвало у тебя такой восторг?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: немного, тревожно,, целом",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_14_1753552747.33494",
+    "timestamp": "2025-07-26T19:59:07.334953",
+    "user": "meranda",
+    "message": "чувствую себя одиноко",
+    "ai_response": "Мне очень жаль это слышать, особенно после того, как ты была в таком восторге. Расскажи, что именно заставляет тебя чувствовать себя одиноко сейчас?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: восторге, нашего, разговора",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_15_1753553209.148772",
+    "timestamp": "2025-07-26T20:06:49.148783",
+    "user": "meranda",
+    "message": "сегодня я очень счастлива, все идет отлично",
+    "ai_response": "Как я рада это слышать, Меранда, особенно после того, как ты чувствовала себя одиноко! Расскажи, что именно делает этот день таким прекрасным для тебя?Как я рада это слышать, Меранда, особенно после того, как ты чувствовала себя одиноко. Расскажи, что именно делает этот день таким прекрасным для тебя?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, одиноко",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_16_1753553220.966689",
+    "timestamp": "2025-07-26T20:07:00.966706",
+    "user": "meranda",
+    "message": "чувствую себя грустно, не знаю что делать",
+    "ai_response": "Мне жаль это слышать, Меранда, особенно после вчерашнего счастливого дня. Давай начнем с простого: что-то конкретное вызвало эту грусть?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: сегодня, очень, счастлива,",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_17_1753553236.997877",
+    "timestamp": "2025-07-26T20:07:16.997888",
+    "user": "meranda",
+    "message": "немного тревожно, но в целом нормально",
+    "ai_response": "Понимаю это смешанное чувство. Давай сосредоточимся на том, что вызывает тревогу?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, грустно,",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_18_1753553248.919359",
+    "timestamp": "2025-07-26T20:07:28.919378",
+    "user": "meranda",
+    "message": "я в восторге от нашего разговора",
+    "ai_response": "Я так рада это слышать, Меранда, особенно после того, как ты чувствовала тревогу. Что именно в нашем разговоре вызвало у тебя такой восторг?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: немного, тревожно,, целом",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_19_1753553264.577147",
+    "timestamp": "2025-07-26T20:07:44.577156",
+    "user": "meranda",
+    "message": "чувствую себя одиноко",
+    "ai_response": "update_current_feeling(username='meranda', feeling='lonely')\nupdate_relationship_status(username='meranda', status='feeling disconnected')\nupdate_hidden_profile(username='meranda', new_hidden_profile='Meranda is expressing loneliness again, continuing a pattern of significant emotional fluctuation observed over the last few interactions (delighted -> lonely). This sharp contrast is a key point to explore.')\n\nМне жаль это слышать, Меранда, особенно после того, как наш разговор принес тебе восторг. Давай разберемся, что именно сейчас вызывает это чувство одиночества?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: восторге, нашего, разговора",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_20_1753553304.928122",
+    "timestamp": "2025-07-26T20:08:24.928133",
+    "user": "meranda",
+    "message": "сегодня я очень счастлива, все идет отлично",
+    "ai_response": "Как я рада это слышать, Меранда, особенно после того, как ты чувствовала себя одиноко! Расскажи, что именно делает этот день таким прекрасным для тебя?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, одиноко",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_21_1753553314.990911",
+    "timestamp": "2025-07-26T20:08:34.990935",
+    "user": "meranda",
+    "message": "чувствую себя грустно, не знаю что делать",
+    "ai_response": "Мне жаль это слышать, Меранда, особенно после того, как вчера ты была так счастлива. Давай начнем с простого: что-то конкретное вызвало эту грусть?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: сегодня, очень, счастлива,",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_22_1753553325.167124",
+    "timestamp": "2025-07-26T20:08:45.167137",
+    "user": "meranda",
+    "message": "немного тревожно, но в целом нормально",
+    "ai_response": "Понимаю это смешанное чувство. Давай сосредоточимся на том, что вызывает тревогу?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, грустно,",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_23_1753553337.237528",
+    "timestamp": "2025-07-26T20:08:57.237548",
+    "user": "meranda",
+    "message": "я в восторге от нашего разговора",
+    "ai_response": "Я так рада это слышать, Меранда, особенно после того, как ты чувствовала тревогу. Что именно в нашем разговоре вызвало у тебя такой восторг?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: немного, тревожно,, целом",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_24_1753553353.423422",
+    "timestamp": "2025-07-26T20:09:13.423435",
+    "user": "meranda",
+    "message": "чувствую себя одиноко",
+    "ai_response": "Мне жаль это слышать, Меранда, особенно после того, как наш разговор принес тебе восторг. Давай разберемся, что именно сейчас вызывает это чувство одиночества?",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: восторге, нашего, разговора",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_25_1753553648.080387",
+    "timestamp": "2025-07-26T20:14:08.080400",
+    "user": "meranda",
+    "message": "Я чувствую себя очень счастливой сегодня, но хочу понять свои эмоциональные паттерны",
+    "ai_response": "Как я рада слышать, что ты счастлива, Меранда, особенно после недавних эмоциональных качелей. Это отличный шаг — желание понять свои паттерны; давай посмотрим на них вместе.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, одиноко",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_26_1753553659.907782",
+    "timestamp": "2025-07-26T20:14:19.907797",
+    "user": "meranda",
+    "message": "Мне грустно, и я хочу посмотреть свою историю эмоций",
+    "ai_response": "Мне жаль слышать, что тебе снова грустно, Меранда, и это очень мудрый шаг — посмотреть на общую картину. Давай вместе разберемся, что стоит за этими эмоциональными качелями, которые мы замечаем.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, очень",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_27_1753553677.044321",
+    "timestamp": "2025-07-26T20:14:37.044421",
+    "user": "meranda",
+    "message": "Проверь мои данные и скажи что ты видишь",
+    "ai_response": "Конечно, Меранда. Я вижу, что твои эмоции сейчас очень переменчивы, но самое главное — я вижу твое сильное желание понять себя, и это наша главная опора.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: грустно,, хочу, посмотреть",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_28_1753553740.552461",
+    "timestamp": "2025-07-26T20:15:40.552477",
+    "user": "meranda",
+    "message": "Я чувствую себя очень счастливой сегодня, но хочу понять свои эмоциональные паттерны за последнее время",
+    "ai_response": "Как я рада слышать, что ты счастлива, Меранда, особенно после недавних эмоциональных качелей. Это отличный шаг — желание понять свои паттерны; давай посмотрим на них вместе.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: проверь, данные, скажи",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_29_1753553756.922671",
+    "timestamp": "2025-07-26T20:15:56.922709",
+    "user": "meranda",
+    "message": "Проверь мои файлы данных и скажи что ты видишь",
+    "ai_response": "Конечно, Меранда. Я вижу, что твои эмоции сейчас очень переменчивы, но самое главное — я вижу твое сильное желание понять себя, и это наша главная опора.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: чувствую, себя, очень",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_30_1753553770.80109",
+    "timestamp": "2025-07-26T20:16:10.801189",
+    "user": "meranda",
+    "message": "Проанализируй мои эмоции и создай инсайт о моих паттернах",
+    "ai_response": "Меранда, я вижу, что твои эмоции часто и быстро меняются, как качели, но главное — ты это замечаешь и хочешь разобраться. Именно это твоё стремление поможет нам вместе найти причину.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: проверь, файлы, данных",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_31_1753553976.402418",
+    "timestamp": "2025-07-26T20:19:36.402539",
+    "user": "meranda",
+    "message": "ты потрясающее творение, что ты еще можешь?",
+    "ai_response": "Спасибо, Меранда, мне очень приятно это слышать. Главное, что я могу — это помогать вам двоим лучше понимать друг друга и быть рядом на вашем совместном пути.",
+    "context": "Relationship: growing phase, Trust: 7/10, Topics: проанализируй, эмоции, создай",
+    "type": "conversation"
+  }
+]
