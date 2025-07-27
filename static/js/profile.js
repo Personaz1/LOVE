@@ -265,21 +265,21 @@ async function deleteAccount() {
         return;
     }
     
-    try {
-        const response = await fetch('/api/profile/delete', {
-            method: 'DELETE'
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
+            try {
+                const response = await fetch('/api/profile/delete', {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
             alert('Account deleted. You will be redirected to the login page.');
             window.location.href = '/';
-        } else {
+                } else {
             showErrorModal(result.error || 'Error deleting account');
-        }
-    } catch (error) {
-        console.error('Error deleting account:', error);
+                }
+            } catch (error) {
+                console.error('Error deleting account:', error);
         showErrorModal('Error deleting account');
     }
 }

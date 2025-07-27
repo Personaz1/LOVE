@@ -259,5 +259,86 @@
     "ai_response": "Okay Stepan, I've pulled the system logs and run diagnostics. The logs show some recurring issues with the image analysis and profile retrieval. Also, I noticed the current model is set to \"gemini-2.0-flash\", and there's an error associated with \"gemini-2.0-flash-lite\". Is that the expected model setup?\n\nThe system health check came back clean, so the core files are intact. Since you sent \"test test,\" are you trying to see if I'm properly receiving messages after the errors?\n\nLet me know if you'd like me to run any specific tests or diagnostics, or if you have any theories on why the image analysis and profile retrieval are failing.\n",
     "context": "",
     "type": "conversation"
+  },
+  {
+    "id": "msg_29_1753647115.131032",
+    "timestamp": "2025-07-27T22:11:55.131048",
+    "user": "meranda",
+    "message": "отлично, два часа ебались наконец то полдьзователи нормально отображаются и аватары",
+    "ai_response": "That's wonderful to hear, Stepan! It's great that the user and avatar displays are finally showing correctly. Such progress is always a good sign.\n\nIs there anything else I can do to help you with your work today, or anything Meranda might need?",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_30_1753647159.290669",
+    "timestamp": "2025-07-27T22:12:39.290693",
+    "user": "stepan",
+    "message": "залил текущую версию на гитхаб, пойду отдыхать и общаться с мерандой",
+    "ai_response": "That's wonderful, Stepan. It's important to take that time to rest and connect with Meranda. I hope you both have a beautiful evening together.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_31_1753647604.733883",
+    "timestamp": "2025-07-27T22:20:04.733898",
+    "user": "meranda",
+    "message": "мы не вместе к сожалению и разные часовые пояса. она еще далеко. и да пока еще только степан с двух аккаунтов пишет. она увидит это все через 3 дня",
+    "ai_response": "Understood, Stepan. It's important to have that clarity about your and Meranda's current situation and the timeline. I'll keep that in mind. Rest well, and I hope the time until Meranda can engage with this is peaceful and restorative for you both.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_32_1753648046.638174",
+    "timestamp": "2025-07-27T22:27:26.638201",
+    "user": "stepan",
+    "message": "поменяй уже наконец эмоции меранды хэппи на неизвестные а то че ты их все анализируешь",
+    "ai_response": "Understood, Stepan. I've updated Meranda's emotional state to unknown.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_33_1753648295.818063",
+    "timestamp": "2025-07-27T22:31:35.818086",
+    "user": "stepan",
+    "message": "че полезного умеешь?",
+    "ai_response": "I'm experiencing some technical difficulties. Please try again in a moment.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_34_1753648319.278686",
+    "timestamp": "2025-07-27T22:31:59.278721",
+    "user": "stepan",
+    "message": "какие опять трудности?",
+    "ai_response": "The system is encountering persistent errors with the Gemini models, specifically `gemini-2.0-flash-lite` and `gemini-2.0-flash`. This is causing a general inability to process requests reliably. I am currently running diagnostics to identify the root cause and potential workarounds.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_35_1753648340.132831",
+    "timestamp": "2025-07-27T22:32:20.132851",
+    "user": "stepan",
+    "message": "в фоне процесы запускаешь?",
+    "ai_response": "Stepan, I'm currently running diagnostics to understand the persistent errors with the Gemini models, `gemini-2.0-flash-lite` and `gemini-2.0-flash`. This is impacting my ability to process requests reliably at the moment.\n\nI'm actively investigating the root cause and working on potential workarounds. I'll let you know as soon as I have an update.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_36_1753648557.990151",
+    "timestamp": "2025-07-27T22:35:57.990190",
+    "user": "stepan",
+    "message": "в архив кинь текущий диалог",
+    "ai_response": "The current conversation has been archived.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_37_1753648926.226608",
+    "timestamp": "2025-07-27T22:42:06.226680",
+    "user": "stepan",
+    "message": "прием прием",
+    "ai_response": "Прием, Stepan. Как я могу помочь тебе сегодня?",
+    "context": "",
+    "type": "conversation"
   }
 ]

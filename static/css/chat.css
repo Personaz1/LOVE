@@ -923,10 +923,36 @@ body.theme-dark .diary-entry {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
     padding: 15px;
-    color: white;
-    font-size: 13px;
-    line-height: 1.5;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 10px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.status-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid #ff1493;
+}
+
+.status-section h5 {
+    color: #ff1493;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-section p {
+    color: #333;
+    line-height: 1.4;
+    font-size: 0.85rem;
+    margin: 0;
 }
 
 .tips-content {

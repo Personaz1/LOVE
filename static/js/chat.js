@@ -95,7 +95,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load user profile for avatar
 async function loadUserProfile() {
     try {
-        const response = await fetch('/api/profile');
+        const response = await fetch('/api/profile', {
+            credentials: 'include'
+        });
         const data = await response.json();
         
         if (data.success && data.profile) {
@@ -111,7 +113,9 @@ async function loadUserProfile() {
 // Load guardian profile for avatar
 async function loadGuardianProfile() {
     try {
-        const response = await fetch('/api/guardian/profile');
+        const response = await fetch('/api/guardian/profile', {
+            credentials: 'include'
+        });
         const data = await response.json();
         
         if (data.success && data.profile) {
@@ -140,7 +144,7 @@ async function loadUserAvatar(username) {
             `avatar_${username}.jpg`,
             `avatar_${username}.png`
         ];
-        
+
         // Check each possible filename
         for (const filename of possibleNames) {
             const avatarUrl = `/static/avatars/${filename}`;
@@ -188,7 +192,8 @@ async function sendStreamingMessage(message) {
     try {
         const response = await fetch('/api/chat/stream', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include'
         });
 
         if (!response.ok) {
@@ -358,7 +363,8 @@ async function sendMessage(message) {
     try {
     const response = await fetch('/api/chat', {
         method: 'POST',
-            body: formData
+        body: formData,
+            credentials: 'include'
     });
 
     if (!response.ok) {
@@ -619,7 +625,9 @@ function exportChat() {
 // Load conversation history
 async function loadConversationHistory() {
     try {
-        const response = await fetch('/api/conversation-history?limit=20');
+        const response = await fetch('/api/conversation-history?limit=20', {
+            credentials: 'include'
+        });
 
         if (response.ok) {
             const data = await response.json();
@@ -690,19 +698,19 @@ function displayConversationHistory(history) {
     
     // Wait for avatars to load, then display messages
     Promise.all(avatarPromises).then(() => {
-        // Add each message from history
-        history.forEach(entry => {
+    // Add each message from history
+    history.forEach(entry => {
             // Add user message with correct username
-            if (entry.message) {
+        if (entry.message) {
                 const sender = entry.user || 'user'; // Use actual username from history
                 addMessage(entry.message, sender, entry.timestamp, entry.id);
-            }
-            
-            // Add AI response
-            if (entry.ai_response) {
+        }
+        
+        // Add AI response
+        if (entry.ai_response) {
                 addMessage(entry.ai_response, 'ai', entry.timestamp, entry.id);
-            }
-        });
+        }
+    });
         
         // Update avatars after loading history
         updateUserAvatars();
@@ -710,9 +718,9 @@ function displayConversationHistory(history) {
         
         // Update avatars for specific users
         updateSpecificUserAvatars();
-        
-        // Scroll to bottom
-        scrollToBottom();
+    
+    // Scroll to bottom
+    scrollToBottom();
     });
 }
 
@@ -754,7 +762,9 @@ function updateConversationStats(stats) {
 // Load conversation archive
 async function loadConversationArchive() {
     try {
-        const response = await fetch('/api/conversation-archive');
+        const response = await fetch('/api/conversation-archive', {
+            credentials: 'include'
+        });
 
         if (response.ok) {
             const data = await response.json();
@@ -811,14 +821,15 @@ function displayConversationArchive(data) {
 async function editArchiveEntry(archiveId) {
     const summary = prompt('Enter new summary for this conversation:');
     if (!summary) return;
-
+    
     try {
         const formData = new FormData();
         formData.append('summary', summary);
 
         const response = await fetch(`/api/conversation-archive/${archiveId}`, {
             method: 'PUT',
-            body: formData
+            body: formData,
+            credentials: 'include'
         });
 
         if (response.ok) {
@@ -841,7 +852,8 @@ async function clearConversationHistory() {
     
     try {
         const response = await fetch('/api/conversation-clear', {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include'
         });
 
         if (response.ok) {
@@ -939,7 +951,9 @@ createChatHearts();
 // Load system analysis
 async function loadSystemAnalysis() {
     try {
-        const response = await fetch('/api/system-analysis');
+        const response = await fetch('/api/system-analysis', {
+            credentials: 'include'  // Include cookies for authentication
+        });
         
         if (response.ok) {
             const data = await response.json();
@@ -970,14 +984,16 @@ function applyTheme(themeName) {
     if (themeName && ['romantic', 'neutral', 'melancholy'].includes(themeName)) {
     document.body.classList.add(`theme-${themeName}`);
         console.log(`Applied theme: ${themeName}`);
-    }
+        }
 }
 
 // Show model status
 async function showModelStatus() {
     try {
-        const response = await fetch('/api/model-status');
-        
+        const response = await fetch('/api/model-status', {
+            credentials: 'include'
+        });
+
         if (response.ok) {
             const data = await response.json();
             
@@ -1053,11 +1069,24 @@ function updateSystemPanel(analysis) {
     // Update system status
     const statusElement = document.getElementById('systemStatus');
     if (statusElement && analysis.system_status) {
-        statusElement.innerHTML = `
-            <div class="status-text">
-                ${analysis.system_status.replace(/\n/g, '<br>')}
-            </div>
-        `;
+        // Handle system_status as object with multiple fields
+        let statusHtml = '';
+        if (typeof analysis.system_status === 'object') {
+            // Format object fields
+            for (const [key, value] of Object.entries(analysis.system_status)) {
+                const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                statusHtml += `
+                    <div class="status-section">
+                        <h5>${formattedKey}:</h5>
+                        <p>${typeof value === 'string' ? value : JSON.stringify(value, null, 2)}</p>
+                    </div>
+                `;
+            }
+        } else {
+            // Handle as string
+            statusHtml = `<div class="status-text">${analysis.system_status.replace(/\n/g, '<br>')}</div>`;
+        }
+        statusElement.innerHTML = statusHtml;
     }
     
     // Update tips
@@ -1157,17 +1186,18 @@ function handleFileSelect(e) {
 async function handleFiles(files) {
     for (const file of files) {
         await uploadFile(file);
-    }
+        }
 }
 
 async function uploadFile(file) {
         const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
         const response = await fetch('/api/upload-file', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include'
         });
         
         const data = await response.json();
@@ -1297,7 +1327,8 @@ async function sendImageForAnalysis(filePath, fileName) {
             body: JSON.stringify({
                 file_path: filePath,
                 file_name: fileName
-            })
+            }),
+            credentials: 'include'
         });
         
         const data = await response.json();
@@ -1331,7 +1362,8 @@ async function deleteFile(filePath) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ file_path: filePath })
+            body: JSON.stringify({ file_path: filePath }),
+            credentials: 'include'
         });
         
             const data = await response.json();
@@ -1476,7 +1508,8 @@ async function saveMessageEdit(messageId) {
             body: JSON.stringify({
                 message_id: messageId,
                 new_content: newContent
-            })
+            }),
+            credentials: 'include'
         });
         
         const data = await response.json();
@@ -1526,7 +1559,8 @@ async function deleteMessage(messageId) {
             },
             body: JSON.stringify({
                 message_id: messageId
-            })
+            }),
+            credentials: 'include'
         });
         
         const data = await response.json();
@@ -1561,4 +1595,4 @@ function showStatusMessage(message, type = 'info') {
             statusDiv.parentNode.removeChild(statusDiv);
         }
     }, 3000);
-}
+} 

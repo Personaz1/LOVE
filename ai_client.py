@@ -1071,10 +1071,13 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             # Extract function name and arguments
             func_match = re.match(r'(\w+)\s*\((.*)\)', tool_call.strip())
             if not func_match:
+                logger.error(f"❌ Invalid tool call format: {tool_call}")
                 return f"Invalid tool call format: {tool_call}"
             
             func_name = func_match.group(1)
             args_str = func_match.group(2)
+            
+            logger.info(f"🔧 Tool: {func_name}, Args: {args_str}")
             
             # Parse arguments safely
             try:
@@ -1086,9 +1089,12 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         username = arg_match.group(1)
                         feeling = arg_match.group(2)
                         context = arg_match.group(3) if arg_match.group(3) else ""
+                        logger.info(f"🔧 update_current_feeling: username={username}, feeling={feeling}, context={context}")
                         result = self.update_current_feeling(username, feeling, context)
+                        logger.info(f"✅ update_current_feeling result: {result}")
                         return f"Updated feeling to '{feeling}' for {username}"
                     else:
+                        logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
                         return f"Invalid arguments for update_current_feeling: {args_str}"
                 
                 elif func_name == "update_relationship_status":
@@ -1096,36 +1102,43 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         username = arg_match.group(1)
                         status = arg_match.group(2)
+                        logger.info(f"🔧 update_relationship_status: username={username}, status={status}")
                         result = self.update_relationship_status(username, status)
+                        logger.info(f"✅ update_relationship_status result: {result}")
                         return f"Updated relationship status to '{status}' for {username}"
                     else:
+                        logger.error(f"❌ Invalid arguments for update_relationship_status: {args_str}")
                         return f"Invalid arguments for update_relationship_status: {args_str}"
                 
                 elif func_name == "update_user_profile":
                     # Поддержка как строки, так и JSON-объекта
-                    logger.info(f"TOOL_CALL: update_user_profile args: {args_str}")
+                    logger.info(f"🔧 update_user_profile args: {args_str}")
                     # Попытка как строка
                     arg_match_str = re.match(r'"([^"]+)"\s*,\s*"([^"]+)"', args_str)
                     if arg_match_str:
                         username = arg_match_str.group(1)
                         profile_text = arg_match_str.group(2)
+                        logger.info(f"🔧 update_user_profile: username={username}, profile_text={profile_text[:50]}...")
                         result = self.update_user_profile(username, profile_text)
-                        logger.info(f"TOOL_CALL: update_user_profile result: {result}")
+                        logger.info(f"✅ update_user_profile result: {result}")
                         return f"Updated profile for {username} (as string)"
                     # Попытка как JSON-объект
                     arg_match_json = re.match(r'"([^"]+)"\s*,\s*({[^}]+})', args_str)
                     if arg_match_json:
                         username = arg_match_json.group(1)
                         profile_data_str = arg_match_json.group(2)
+                        logger.info(f"🔧 update_user_profile: username={username}, profile_data={profile_data_str}")
                         try:
                             profile_data = json.loads(profile_data_str)
                             # Преобразуем dict в строку для профиля
                             profile_text = str(profile_data)
                             result = self.update_user_profile(username, profile_text)
-                            logger.info(f"TOOL_CALL: update_user_profile result: {result}")
+                            logger.info(f"✅ update_user_profile result: {result}")
                             return f"Updated profile for {username} (from JSON)"
                         except json.JSONDecodeError:
+                            logger.error(f"❌ Invalid JSON in profile data: {profile_data_str}")
                             return f"Invalid JSON in profile data: {profile_data_str}"
+                    logger.error(f"❌ Invalid arguments for update_user_profile: {args_str}")
                     return f"Invalid arguments for update_user_profile: {args_str}"
                 
 
@@ -1136,17 +1149,22 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match_with_user:
                         username = arg_match_with_user.group(1)
                         insight = arg_match_with_user.group(2)
+                        logger.info(f"🔧 add_relationship_insight: username={username}, insight={insight[:50]}...")
                         result = self.add_relationship_insight(username, insight)
+                        logger.info(f"✅ add_relationship_insight result: {result}")
                         return f"Added relationship insight for {username}: {insight[:50]}..."
                     else:
                         # Попытка без username (старый формат)
                         arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                         if arg_match:
                             insight = arg_match.group(1)
+                            logger.info(f"🔧 add_relationship_insight: insight={insight[:50]}...")
                             # Используем текущего пользователя по умолчанию
                             result = self.add_relationship_insight("meranda", insight)
+                            logger.info(f"✅ add_relationship_insight result: {result}")
                             return f"Added relationship insight: {insight[:50]}..."
                         else:
+                            logger.error(f"❌ Invalid arguments for add_relationship_insight: {args_str}")
                             return f"Invalid arguments for add_relationship_insight: {args_str}"
                 
 
@@ -1155,18 +1173,24 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         username = arg_match.group(1)
+                        logger.info(f"🔧 read_user_profile: username={username}")
                         result = self.read_user_profile(username)
+                        logger.info(f"✅ read_user_profile result: {result[:100]}...")
                         return f"Read profile for {username}: {result[:100]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
                         return f"Invalid arguments for read_user_profile: {args_str}"
                 
                 elif func_name == "read_emotional_history":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         username = arg_match.group(1)
+                        logger.info(f"🔧 read_emotional_history: username={username}")
                         result = self.read_emotional_history(username)
+                        logger.info(f"✅ read_emotional_history result: {result[:100]}...")
                         return f"Read emotional history for {username}: {result[:100]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
                         return f"Invalid arguments for read_emotional_history: {args_str}"
                 
                 elif func_name == "search_user_data":
@@ -1174,18 +1198,24 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         username = arg_match.group(1)
                         query = arg_match.group(2)
+                        logger.info(f"🔧 search_user_data: username={username}, query={query}")
                         result = self.search_user_data(username, query)
+                        logger.info(f"✅ search_user_data result: {result[:100]}...")
                         return f"Searched data for {username}: {result[:100]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for search_user_data: {args_str}")
                         return f"Invalid arguments for search_user_data: {args_str}"
                 
                 elif func_name == "read_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
+                        logger.info(f"🔧 read_file: path={path}")
                         result = self.read_file(path)
+                        logger.info(f"✅ read_file result: {result[:200]}..." if len(result) > 200 else result)
                         return f"File content for {path}: {result[:200]}..." if len(result) > 200 else result
                     else:
+                        logger.error(f"❌ Invalid arguments for read_file: {args_str}")
                         return f"Invalid arguments for read_file: {args_str}"
                 
                 elif func_name == "write_file":
@@ -1194,9 +1224,12 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         content = arg_match.group(2)
+                        logger.info(f"�� write_file: path={path}, content={content[:50]}...")
                         result = self.write_file(path, content)
+                        logger.info(f"✅ write_file result: {result}")
                         return f"File write {'successful' if result else 'failed'} for {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for write_file: {args_str}")
                         return f"Invalid arguments for write_file: {args_str}"
                 
                 elif func_name == "create_file":
@@ -1204,9 +1237,12 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         content = arg_match.group(2) if arg_match.group(2) else ""
+                        logger.info(f"🔧 create_file: path={path}, content={content[:50]}...")
                         result = self.create_file(path, content)
+                        logger.info(f"✅ create_file result: {result}")
                         return f"File creation {'successful' if result else 'failed'} for {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for create_file: {args_str}")
                         return f"Invalid arguments for create_file: {args_str}"
                 
                 elif func_name == "edit_file":
@@ -1214,54 +1250,72 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         content = arg_match.group(2)
+                        logger.info(f"🔧 edit_file: path={path}, content={content[:50]}...")
                         result = self.edit_file(path, content)
+                        logger.info(f"✅ edit_file result: {result}")
                         return f"File edit {'successful' if result else 'failed'} for {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for edit_file: {args_str}")
                         return f"Invalid arguments for edit_file: {args_str}"
                 
                 elif func_name == "list_files":
                     arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
                     if arg_match:
                         directory = arg_match.group(1)
+                        logger.info(f"🔧 list_files: directory={directory}")
                         result = self.list_files(directory)
+                        logger.info(f"✅ list_files result: {result}")
                         return result
                     else:
+                        logger.error(f"❌ Invalid arguments for list_files: {args_str}")
                         return f"Invalid arguments for list_files: {args_str}"
                 
                 elif func_name == "search_files":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         query = arg_match.group(1)
+                        logger.info(f"🔧 search_files: query={query}")
                         result = self.search_files(query)
+                        logger.info(f"✅ search_files result: {result}")
                         return result
                     else:
+                        logger.error(f"❌ Invalid arguments for search_files: {args_str}")
                         return f"Invalid arguments for search_files: {args_str}"
                 
                 elif func_name == "get_file_info":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
+                        logger.info(f"🔧 get_file_info: path={path}")
                         result = self.get_file_info(path)
+                        logger.info(f"✅ get_file_info result: {result}")
                         return result
                     else:
+                        logger.error(f"❌ Invalid arguments for get_file_info: {args_str}")
                         return f"Invalid arguments for get_file_info: {args_str}"
                 
                 elif func_name == "delete_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
+                        logger.info(f"🔧 delete_file: path={path}")
                         result = self.delete_file(path)
+                        logger.info(f"✅ delete_file result: {result}")
                         return f"File deletion {'successful' if result else 'failed'} for {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for delete_file: {args_str}")
                         return f"Invalid arguments for delete_file: {args_str}"
                 
                 elif func_name == "create_directory":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
+                        logger.info(f"🔧 create_directory: path={path}")
                         result = self.create_directory(path)
+                        logger.info(f"✅ create_directory result: {result}")
                         return f"Directory creation {'successful' if result else 'failed'} for {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for create_directory: {args_str}")
                         return f"Invalid arguments for create_directory: {args_str}"
                 
                 elif func_name == "add_model_note":
@@ -1269,16 +1323,21 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         note_text = arg_match.group(1)
                         category = arg_match.group(2)
+                        logger.info(f"🔧 add_model_note: note_text={note_text[:50]}..., category={category}")
                         result = self.add_model_note(note_text, category)
+                        logger.info(f"✅ add_model_note result: {result}")
                         return f"Added model note: {note_text[:50]}..."
                     else:
                         # Try without category
                         arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                         if arg_match:
                             note_text = arg_match.group(1)
+                            logger.info(f"🔧 add_model_note: note_text={note_text[:50]}...")
                             result = self.add_model_note(note_text, "general")
+                            logger.info(f"✅ add_model_note result: {result}")
                             return f"Added model note: {note_text[:50]}..."
                         else:
+                            logger.error(f"❌ Invalid arguments for add_model_note: {args_str}")
                             return f"Invalid arguments for add_model_note: {args_str}"
                 
                 elif func_name == "add_user_observation":
@@ -1286,37 +1345,50 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         username = arg_match.group(1)
                         observation = arg_match.group(2)
+                        logger.info(f"🔧 add_user_observation: username={username}, observation={observation[:50]}...")
                         result = self.add_user_observation(username, observation)
+                        logger.info(f"✅ add_user_observation result: {result}")
                         return f"Added user observation for {username}: {observation[:50]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for add_user_observation: {args_str}")
                         return f"Invalid arguments for add_user_observation: {args_str}"
                 
                 elif func_name == "add_personal_thought":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         thought = arg_match.group(1)
+                        logger.info(f"🔧 add_personal_thought: thought={thought[:50]}...")
                         result = self.add_personal_thought(thought)
+                        logger.info(f"✅ add_personal_thought result: {result}")
                         return f"Added personal thought: {thought[:50]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for add_personal_thought: {args_str}")
                         return f"Invalid arguments for add_personal_thought: {args_str}"
                 
                 elif func_name == "add_system_insight":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         insight = arg_match.group(1)
+                        logger.info(f"🔧 add_system_insight: insight={insight[:50]}...")
                         result = self.add_system_insight(insight)
+                        logger.info(f"✅ add_system_insight result: {result}")
                         return f"Added system insight: {insight[:50]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for add_system_insight: {args_str}")
                         return f"Invalid arguments for add_system_insight: {args_str}"
                 
                 elif func_name == "get_model_notes":
                     arg_match = re.match(r'(\d+)', args_str)
                     if arg_match:
                         limit = int(arg_match.group(1))
+                        logger.info(f"🔧 get_model_notes: limit={limit}")
                         result = self.get_model_notes(limit)
+                        logger.info(f"✅ get_model_notes result: {result[:200]}...")
                         return f"Model notes: {result[:200]}..."
                     else:
+                        logger.error(f"❌ Invalid arguments for get_model_notes: {args_str}")
                         result = self.get_model_notes(20)
+                        logger.info(f"✅ get_model_notes result: {result[:200]}...")
                         return f"Model notes: {result[:200]}..."
                 
                 # Sandbox file operations
@@ -1325,9 +1397,12 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         content = arg_match.group(2) if arg_match.group(2) else ""
+                        logger.info(f"🔧 create_sandbox_file: path={path}, content={content[:50]}...")
                         result = self.create_sandbox_file(path, content)
+                        logger.info(f"✅ create_sandbox_file result: {result}")
                         return f"✅ Created sandbox file: {path}" if result else f"❌ Failed to create sandbox file: {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for create_sandbox_file: {args_str}")
                         return f"Invalid arguments for create_sandbox_file: {args_str}"
                 
                 elif func_name == "edit_sandbox_file":
@@ -1335,36 +1410,48 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         content = arg_match.group(2)
+                        logger.info(f"🔧 edit_sandbox_file: path={path}, content={content[:50]}...")
                         result = self.edit_sandbox_file(path, content)
+                        logger.info(f"✅ edit_sandbox_file result: {result}")
                         return f"✅ Edited sandbox file: {path}" if result else f"❌ Failed to edit sandbox file: {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for edit_sandbox_file: {args_str}")
                         return f"Invalid arguments for edit_sandbox_file: {args_str}"
                 
                 elif func_name == "read_sandbox_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
+                        logger.info(f"🔧 read_sandbox_file: path={path}")
                         result = self.read_sandbox_file(path)
+                        logger.info(f"✅ read_sandbox_file result: {result}")
                         return result
                     else:
+                        logger.error(f"❌ Invalid arguments for read_sandbox_file: {args_str}")
                         return f"Invalid arguments for read_sandbox_file: {args_str}"
                 
                 elif func_name == "list_sandbox_files":
                     arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
                     if arg_match:
                         directory = arg_match.group(1)
+                        logger.info(f"🔧 list_sandbox_files: directory={directory}")
                         result = self.list_sandbox_files(directory)
+                        logger.info(f"✅ list_sandbox_files result: {result}")
                         return result
                     else:
+                        logger.error(f"❌ Invalid arguments for list_sandbox_files: {args_str}")
                         return f"Invalid arguments for list_sandbox_files: {args_str}"
                 
                 elif func_name == "delete_sandbox_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
+                        logger.info(f"🔧 delete_sandbox_file: path={path}")
                         result = self.delete_sandbox_file(path)
+                        logger.info(f"✅ delete_sandbox_file result: {result}")
                         return f"✅ Deleted sandbox file: {path}" if result else f"❌ Failed to delete sandbox file: {path}"
                     else:
+                        logger.error(f"❌ Invalid arguments for delete_sandbox_file: {args_str}")
                         return f"Invalid arguments for delete_sandbox_file: {args_str}"
                 
                 elif func_name == "create_downloadable_file":
@@ -1374,12 +1461,16 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         filename = arg_match.group(1)
                         content = arg_match.group(2) if arg_match.group(2) else ""
                         file_type = arg_match.group(3) if arg_match.group(3) else "txt"
+                        logger.info(f"🔧 create_downloadable_file: filename={filename}, content={content[:50]}..., file_type={file_type}")
                         result = self.create_downloadable_file(filename, content, file_type)
                         if result:
+                            logger.info(f"✅ create_downloadable_file result: {result}")
                             return f"📁 Created downloadable file: {filename}\nDownload link: {result}"
                         else:
+                            logger.error(f"❌ Failed to create downloadable file: {filename}")
                             return f"❌ Failed to create downloadable file: {filename}"
                     else:
+                        logger.error(f"❌ Invalid arguments for create_downloadable_file: {args_str}")
                         return f"Invalid arguments for create_downloadable_file: {args_str}"
                 
                 elif func_name == "archive_conversation":
@@ -1390,9 +1481,11 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         # Archive current conversation
                         conversation_history._archive_old_messages()
                         logger.info("✅ Conversation archived successfully")
+                        logger.info(f"✅ archive_conversation result: ✅ Conversation archived successfully")
                         return "✅ Conversation archived successfully"
                     except Exception as e:
                         logger.error(f"Error archiving conversation: {e}")
+                        logger.error(f"❌ archive_conversation result: ❌ Failed to archive conversation: {e}")
                         return f"❌ Failed to archive conversation: {e}"
                 
                 # System diagnostics and debugging tools
@@ -1400,18 +1493,24 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     arg_match = re.match(r'(\d+)', args_str)
                     if arg_match:
                         lines = int(arg_match.group(1))
+                        logger.info(f"🔧 get_system_logs: lines={lines}")
                         result = self.get_system_logs(lines)
+                        logger.info(f"✅ get_system_logs result: {result}")
                         return f"System logs (last {lines} lines):\n{result}"
                     else:
+                        logger.error(f"❌ Invalid arguments for get_system_logs: {args_str}")
                         result = self.get_system_logs(50)
+                        logger.info(f"✅ get_system_logs result: {result}")
                         return f"System logs (last 50 lines):\n{result}"
                 
                 elif func_name == "get_error_summary":
                     result = self.get_error_summary()
+                    logger.info(f"✅ get_error_summary result: {result}")
                     return f"Error summary:\n{result}"
                 
                 elif func_name == "diagnose_system_health":
                     result = self.diagnose_system_health()
+                    logger.info(f"✅ diagnose_system_health result: {result}")
                     return f"System health report:\n{result}"
                 
                 elif func_name == "analyze_image":
@@ -1420,15 +1519,25 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         image_path = arg_match.group(1)
                         prompt = arg_match.group(2) if arg_match.group(2) else "Analyze this image in detail"
+                        logger.info(f"🔧 analyze_image: image_path={image_path}, prompt={prompt}")
                         result = self.analyze_image(image_path, prompt)
+                        logger.info(f"✅ analyze_image result: {result}")
                         return result
                     else:
+                        logger.error(f"❌ Invalid arguments for analyze_image: {args_str}")
                         return f"Invalid arguments for analyze_image: {args_str}"
                 
+                # Handle non-existent tools that model tries to call
+                elif func_name in ["elements", "effort", "earlier", "stabilization", "stable", "state"]:
+                    logger.warning(f"⚠️ Model attempted to call non-existent tool: {func_name}")
+                    return f"Tool '{func_name}' does not exist. Available tools: update_current_feeling, read_user_profile, add_model_note, etc."
+                    
                 else:
+                    logger.error(f"❌ Unknown tool: {func_name}")
                     return f"Unknown tool: {func_name}"
                     
             except Exception as parse_error:
+                logger.error(f"❌ Error parsing tool call arguments: {parse_error}")
                 return f"Error parsing tool call arguments: {parse_error}"
                 
         except Exception as e:

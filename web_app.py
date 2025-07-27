@@ -25,7 +25,7 @@ load_dotenv()
 from ai_client import AIClient
 from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
-from memory.conversation_history import ConversationHistory
+from memory.conversation_history import conversation_history
 from memory.guardian_profile import guardian_profile
 from memory.theme_manager import theme_manager
 
@@ -50,7 +50,7 @@ SESSION_SECRET = secrets.token_urlsafe(32)
 
 # Initialize components
 ai_client = AIClient()
-conversation_history = ConversationHistory()
+# conversation_history = ConversationHistory() # This line is removed
 
 def create_session(username: str) -> str:
     """Create a new session for user"""
