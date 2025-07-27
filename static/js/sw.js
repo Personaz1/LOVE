@@ -1,8 +1,8 @@
-// Simple Service Worker for Dr. Harmony
+// Simple Service Worker for ΔΣ Guardian
 // This prevents 404 errors in browser console
 
 self.addEventListener('install', function(event) {
-    console.log('Dr. Harmony Service Worker installed');
+    console.log('ΔΣ Guardian Service Worker installed');
 });
 
 self.addEventListener('fetch', function(event) {

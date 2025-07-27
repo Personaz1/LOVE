@@ -17,12 +17,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Form submission with loading state
     loginForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         
         if (!username || !password) {
+            e.preventDefault();
             showError('Please fill in all fields');
             return;
         }
@@ -31,20 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loginBtn.classList.add('loading');
         loginBtn.querySelector('.btn-text').textContent = 'Entering...';
         
-        // Map old credentials to new ones
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-        
-        // Simulate authentication (in real app, this would be handled by the server)
-        setTimeout(() => {
-            // Redirect to chat page with correct credentials
-            window.location.href = `/chat?username=${encodeURIComponent(authUsername)}&password=${encodeURIComponent(authPassword)}`;
-        }, 1000);
+        // Form will submit normally via POST to /login
     });
 
     // Error display function

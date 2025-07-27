@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import re
 from typing import Optional, Dict, Any, AsyncGenerator, List
 from datetime import datetime
 import json
@@ -11,11 +12,10 @@ import google.generativeai as genai
 # Load environment variables
 load_dotenv()
 
-from prompts.psychologist_prompt import AI_GUARDIAN_SYSTEM_PROMPT
+from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
+from memory.guardian_profile import guardian_profile
 from memory.user_profiles import UserProfile
 from memory.conversation_history import ConversationHistory
-
-from file_agent import file_agent
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +27,94 @@ class AIClient:
             raise ValueError("GEMINI_API_KEY environment variable not set")
         
         genai.configure(api_key=api_key)
-        # Changed to gemini-2.0-flash-lite for higher rate limits (1000 RPD vs 50)
-        self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-lite')
+        
+        # Define available models with their quotas
+        self.models = [
+            {
+                'name': 'gemini-2.0-flash-lite',
+                'quota': 1000,
+                'model': None  # Will be initialized on first use
+            },
+            {
+                'name': 'gemini-2.0-flash', 
+                'quota': 200,
+                'model': None
+            },
+            {
+                'name': 'gemini-2.5-flash-lite',
+                'quota': 1000,
+                'model': None
+            },
+            {
+                'name': 'gemini-2.5-flash',
+                'quota': 250,
+                'model': None
+            },
+            {
+                'name': 'gemini-2.5-pro',
+                'quota': 100,
+                'model': None
+            }
+        ]
+        
+        self.current_model_index = 0
+        self.model_errors = {}  # Track errors per model
         
         # Initialize memory systems
         self.conversation_history = ConversationHistory()
-        # Don't initialize profile_manager here - it needs username
-        # Will create per-user instances when needed
+
+    def _get_current_model(self):
+        """Get current model, initialize if needed"""
+        current_model_config = self.models[self.current_model_index]
+        if current_model_config['model'] is None:
+            current_model_config['model'] = genai.GenerativeModel(current_model_config['name'])
+        return current_model_config['model']
+
+    def _switch_to_next_model(self):
+        """Switch to next available model"""
+        self.current_model_index = (self.current_model_index + 1) % len(self.models)
+        current_model_config = self.models[self.current_model_index]
+        logger.info(f"🔄 Switched to model: {current_model_config['name']}")
+        return current_model_config['name']
+
+    def _handle_quota_error(self, error_msg: str):
+        """Handle quota exceeded error by switching models"""
+        if "quota" in error_msg.lower() or "429" in error_msg:
+            model_name = self.models[self.current_model_index]['name']
+            self.model_errors[model_name] = time.time()
+            logger.warning(f"⚠️ Quota exceeded for {model_name}, switching model...")
+            
+            # Try next model
+            next_model = self._switch_to_next_model()
+            
+            # If we've tried all models, wait and reset
+            if len(self.model_errors) >= len(self.models):
+                logger.error("🚫 All models have quota issues. Waiting 60 seconds...")
+                time.sleep(60)
+                self.model_errors.clear()
+                self.current_model_index = 0
+            
+            return True
+        return False
+
+    def get_model_status(self) -> Dict[str, Any]:
+        """Get current model status and quota information"""
+        current_model = self.models[self.current_model_index]
+        return {
+            'current_model': current_model['name'],
+            'current_quota': current_model['quota'],
+            'model_index': self.current_model_index,
+            'total_models': len(self.models),
+            'model_errors': len(self.model_errors),
+            'available_models': [
+                {
+                    'name': model['name'],
+                    'quota': model['quota'],
+                    'has_error': model['name'] in self.model_errors
+                }
+                for model in self.models
+            ]
+        }
 
     def _get_profile_manager(self, username: str) -> UserProfile:
         """Get or create profile manager for specific user"""
@@ -65,6 +146,8 @@ class AIClient:
     ):
         """Generate streaming response using Gemini 2.0 Flash with proper multi-step reasoning"""
         api_start_time = time.time()
+        current_model_name = self.models[self.current_model_index]['name']
+        logger.info(f"🚀 Using model: {current_model_name}")
         
         # Step 1: Generate initial response with tool calls
         thinking_prompt = self._build_thinking_prompt(system_prompt, user_message, context, user_profile)
@@ -73,7 +156,7 @@ class AIClient:
             logger.info("🧠 Step 1: Generating thinking response...")
             
             # Get initial response that may contain tool calls
-            initial_response = self.gemini_model.generate_content(thinking_prompt)
+            initial_response = self._get_current_model().generate_content(thinking_prompt)
             initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
             
             # Extract and execute tool calls
@@ -98,7 +181,7 @@ class AIClient:
             logger.info("💬 Step 2: Generating final response...")
             
             # Stream the final response
-            response_stream = self.gemini_model.generate_content(
+            response_stream = self._get_current_model().generate_content(
                 final_prompt,
                 stream=True
             )
@@ -128,9 +211,13 @@ class AIClient:
                 
         except Exception as e:
             error_msg = str(e)
-            if "429" in error_msg or "quota" in error_msg.lower():
-                logger.error(f"🌐 API quota exceeded: {e}")
-                yield "I've reached my daily conversation limit. Please try again tomorrow or consider upgrading to a paid plan for unlimited conversations."
+            if self._handle_quota_error(error_msg):
+                # If quota error, retry with the new model
+                logger.info(f"Retrying with new model after quota error: {error_msg}")
+                async for chunk in self._generate_gemini_streaming_response(
+                    system_prompt, user_message, context, user_profile
+                ):
+                    yield chunk
             else:
                 logger.error(f"🌐 Multi-step streaming error: {e}")
                 yield "I'm experiencing some technical difficulties. Please try again in a moment."
@@ -145,12 +232,15 @@ class AIClient:
         user_profile: Optional[Dict[str, Any]] = None
     ) -> str:
         """Generate non-streaming response using Gemini (fallback)"""
+        current_model_name = self.models[self.current_model_index]['name']
+        logger.info(f"🚀 Using model: {current_model_name}")
+        
         # Use the same multi-step approach for consistency
         thinking_prompt = self._build_thinking_prompt(system_prompt, user_message, context, user_profile)
         
         try:
             # Step 1: Get thinking response
-            initial_response = self.gemini_model.generate_content(thinking_prompt)
+            initial_response = self._get_current_model().generate_content(thinking_prompt)
             initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
             
             # Extract and execute tool calls
@@ -170,10 +260,52 @@ class AIClient:
                 initial_text, tool_results
             )
             
-            response = self.gemini_model.generate_content(final_prompt)
+            response = self._get_current_model().generate_content(final_prompt)
             return response.text
+            
         except Exception as e:
-            logger.error(f"🌐 Gemini non-streaming error: {e}")
+            error_msg = str(e)
+            if self._handle_quota_error(error_msg):
+                # If quota error, retry with the new model
+                logger.info(f"Retrying with new model after quota error: {error_msg}")
+                return await self._generate_gemini_response(
+                    system_prompt, user_message, context, user_profile
+                )
+            else:
+                logger.error(f"🌐 Gemini non-streaming error: {e}")
+                return "I'm experiencing some technical difficulties. Please try again in a moment."
+    
+    def chat(
+        self, 
+        message: str, 
+        user_profile: Optional[Dict[str, Any]] = None,
+        conversation_context: Optional[str] = None,
+        system_prompt: Optional[str] = None
+    ) -> str:
+        """Synchronous chat method for non-streaming responses"""
+        import asyncio
+        
+        # Use provided system prompt, guardian profile prompt, or default
+        if system_prompt is None:
+            system_prompt = guardian_profile.get_system_prompt()
+        
+        try:
+            # Run async method in sync context
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're already in an async context, create a new event loop
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, self._generate_gemini_response(
+                        system_prompt, message, conversation_context, user_profile
+                    ))
+                    return future.result()
+            else:
+                return asyncio.run(self._generate_gemini_response(
+                    system_prompt, message, conversation_context, user_profile
+                ))
+        except Exception as e:
+            logger.error(f"Error in chat method: {e}")
             return "I'm experiencing some technical difficulties. Please try again in a moment."
     
     def _build_thinking_prompt(
@@ -198,6 +330,11 @@ class AIClient:
 - Profile: {user_profile.get('profile', 'Not specified')}
 """
             prompt_parts.append(profile_info)
+        
+        # Add multi-user context
+        multi_user_context = self._get_multi_user_context()
+        if multi_user_context:
+            prompt_parts.append(f"## MULTI-USER CONTEXT\n{multi_user_context}")
         
         # Add conversation context
         if context:
@@ -230,46 +367,49 @@ You are in the THINKING phase. Analyze the user's message and determine what act
 ## AVAILABLE TOOLS
 You can use these tools by wrapping them in ```tool_code blocks:
 
-```tool_code
-update_current_feeling("username", "feeling", "context")
-```
+### Profile & Memory Management:
+- update_current_feeling(username, feeling, context) - Update user's current emotional state
+- update_relationship_status(username, status) - Update relationship status
+- update_user_profile(username, new_profile_text) - Update user's profile text
+- add_relationship_insight(username, insight) - Add relationship insight
+- add_user_observation(username, observation) - Add observation about user
+- read_user_profile(username) - Read user's profile
+- read_emotional_history(username) - Read emotional history
 
-```tool_code
-update_relationship_status("username", "status")
-```
+### System & Model Management:
+- add_model_note(note_text, category) - Add model note
+- add_personal_thought(thought) - Add personal thought
+- add_system_insight(insight) - Add system insight
+- get_model_notes(limit) - Get recent model notes
 
-```tool_code
-update_user_profile("username", {"field": "value"})
-```
+### File System Operations (USE WITH EXTREME CAUTION):
+⚠️ **CRITICAL WARNING**: File operations are extremely powerful and should ONLY be used when explicitly requested by the user. Never modify files without explicit permission.
 
-```tool_code
+- read_file(path) - Read file content (full project access)
+- write_file(path, content) - Write content to file (full project access)
+- create_file(path, content) - Create new file (full project access)
+- edit_file(path, content) - Edit existing file with backup (full project access)
+- list_files(directory) - List files in directory (full project access)
+- search_files(query) - Search files by content (full project access)
+- get_file_info(path) - Get detailed file information (full project access)
+- delete_file(path) - Delete file with backup (full project access, critical files protected)
+- create_directory(path) - Create new directory (full project access)
 
-```
+**FILE OPERATION RULES:**
+1. Only use file operations when user explicitly requests them
+2. Always create backups before editing/deleting files
+3. Never delete critical system files (web_app.py, ai_client.py, etc.)
+4. Stay within project directory boundaries
+5. Ask for confirmation before destructive operations
 
-```tool_code
-add_relationship_insight("insight text")
-```
+### Data Analysis:
+- search_user_data(username, query) - Search user data
+- write_insight_to_file(username, insight) - Write insight to file
 
-```tool_code
-read_file("path/to/file")
-```
+## RESPONSE FORMAT
+After analyzing and executing any necessary tool calls, provide your final response to the user.
 
-```tool_code
-write_file("path/to/file", "content")
-```
-
-## THINKING PROCESS
-1. Analyze the user's emotional state and update if needed
-2. Consider what tools would be helpful
-3. Use tool_code blocks to call tools
-4. Think about what response would be most helpful
-5. Do NOT provide the final response yet - this is just the thinking phase
-
-Example thinking response:
-```tool_code
-update_current_feeling("meranda", "Curious", "User asked about available tools")
-```
-I need to update the user's emotional state since they're asking about tools, which shows curiosity. I should also think about what tools would be most relevant to mention.
+Remember: You are ΔΣ Guardian, a family guardian angel focused on emotional well-being and relationship guidance. Use file operations only when absolutely necessary and explicitly requested.
 """)
         
         return "\n".join(prompt_parts)
@@ -288,6 +428,11 @@ I need to update the user's emotional state since they're asking about tools, wh
         
         # Add system prompt
         prompt_parts.append(system_prompt)
+        
+        # Add multi-user context
+        multi_user_context = self._get_multi_user_context()
+        if multi_user_context:
+            prompt_parts.append(f"\n## MULTI-USER CONTEXT\n{multi_user_context}")
         
         # Add context if available
         if context:
@@ -337,11 +482,14 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             logger.error(f"Error updating relationship status: {e}")
             return False
 
-    def update_user_profile(self, username: str, profile_data: Dict[str, Any]) -> bool:
-        """Update user's profile information"""
+    def update_user_profile(self, username: str, new_profile_text: str) -> bool:
+        """Update user's profile text - treat as simple text field"""
         try:
+            # Fix newline formatting
+            new_profile_text = new_profile_text.replace('\\n\\n', '\n\n').replace('\\n', '\n')
+            
             profile_manager = self._get_profile_manager(username)
-            return profile_manager.update_profile(profile_data)
+            return profile_manager.update_profile(new_profile_text)
         except Exception as e:
             logger.error(f"Error updating profile: {e}")
             return False
@@ -357,23 +505,83 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             logger.error(f"Error adding relationship insight: {e}")
             return False
 
-    def update_hidden_profile(self, username: str, hidden_profile_data: Dict[str, Any]) -> bool:
-        """Update user's hidden profile (AI's private notes)"""
+    def add_model_note(self, note_text: str, category: str = "general") -> bool:
+        """Add note to MODEL NOTES"""
         try:
-            profile_manager = self._get_profile_manager(username)
-            return profile_manager.update_hidden_profile(hidden_profile_data)
+            from memory.model_notes import model_notes
+            return model_notes.add_note(note_text, category)
         except Exception as e:
-            logger.error(f"Error updating hidden profile: {e}")
+            logger.error(f"Error adding model note: {e}")
             return False
 
-    def read_hidden_profile(self, username: str) -> str:
-        """Read user's hidden profile"""
+    def add_user_observation(self, username: str, observation: str) -> bool:
+        """Add observation about user to MODEL NOTES"""
         try:
-            profile_manager = self._get_profile_manager(username)
-            return profile_manager.get_hidden_profile()
+            from memory.model_notes import model_notes
+            return model_notes.add_user_observation(username, observation)
         except Exception as e:
-            logger.error(f"Error reading hidden profile: {e}")
-            return "No hidden profile available"
+            logger.error(f"Error adding user observation: {e}")
+            return False
+
+    def add_personal_thought(self, thought: str) -> bool:
+        """Add personal thought to MODEL NOTES"""
+        try:
+            from memory.model_notes import model_notes
+            return model_notes.add_personal_thought(thought)
+        except Exception as e:
+            logger.error(f"Error adding personal thought: {e}")
+            return False
+
+    def add_system_insight(self, insight: str) -> bool:
+        """Add system insight to MODEL NOTES"""
+        try:
+            from memory.model_notes import model_notes
+            return model_notes.add_system_insight(insight)
+        except Exception as e:
+            logger.error(f"Error adding system insight: {e}")
+            return False
+
+    def get_model_notes(self, limit: int = 20) -> str:
+        """Get recent MODEL NOTES"""
+        try:
+            from memory.model_notes import model_notes
+            all_notes = model_notes.get_all_notes(limit)
+            
+            notes_text = "## MODEL NOTES\n"
+            
+            # Add general notes
+            if all_notes.get("general_notes"):
+                notes_text += "\n### General Notes:\n"
+                for note in all_notes["general_notes"]:
+                    notes_text += f"- {note.get('date', '')} {note.get('time', '')}: {note.get('text', '')}\n"
+            
+            # Add user observations
+            if all_notes.get("user_observations"):
+                notes_text += "\n### User Observations:\n"
+                for username, observations in all_notes["user_observations"].items():
+                    notes_text += f"\n#### {username.title()}:\n"
+                    for obs in observations:
+                        notes_text += f"- {obs.get('date', '')} {obs.get('time', '')}: {obs.get('observation', '')}\n"
+            
+            # Add personal thoughts
+            if all_notes.get("personal_thoughts"):
+                notes_text += "\n### Personal Thoughts:\n"
+                for thought in all_notes["personal_thoughts"]:
+                    notes_text += f"- {thought.get('date', '')} {thought.get('time', '')}: {thought.get('thought', '')}\n"
+            
+            # Add system insights
+            if all_notes.get("system_insights"):
+                notes_text += "\n### System Insights:\n"
+                for insight in all_notes["system_insights"]:
+                    notes_text += f"- {insight.get('date', '')} {insight.get('time', '')}: {insight.get('insight', '')}\n"
+            
+            return notes_text
+            
+        except Exception as e:
+            logger.error(f"Error getting model notes: {e}")
+            return "Error loading model notes"
+
+
 
     def read_user_profile(self, username: str) -> str:
         """Read user's profile information"""
@@ -436,91 +644,300 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             return f"Error searching data for {username}: {str(e)}"
     
     def read_file(self, path: str) -> str:
-        """Read any file in the system using FileAgent"""
+        """Read file content - enhanced with full project access"""
         try:
-            result = file_agent.read_file(path)
-            if result.get("success"):
-                return f"File {path} content:\n{result['content']}"
-            else:
-                return f"Error reading file {path}: {result.get('error', 'Unknown error')}"
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                return f"❌ Access denied: Path {path} is outside project directory"
+            
+            if not os.path.exists(full_path):
+                return f"❌ File not found: {path}"
+            
+            if os.path.isdir(full_path):
+                return f"❌ Path is a directory: {path}"
+            
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            logger.info(f"📖 Read file: {path} ({len(content)} chars)")
+            return content
+            
         except Exception as e:
             logger.error(f"Error reading file {path}: {e}")
-            return f"Error reading file {path}: {str(e)}"
-    
+            return f"❌ Error reading file {path}: {str(e)}"
+
     def write_file(self, path: str, content: str) -> bool:
-        """Write content to file using FileAgent"""
+        """Write file content - enhanced with full project access"""
         try:
-            result = file_agent.write_file(path, content)
-            if result.get("success"):
-                logger.info(f"💾 Model wrote to file: {path}")
-                return True
-            else:
-                logger.error(f"❌ Failed to write to {path}: {result.get('error', 'Unknown error')}")
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
                 return False
+            
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            logger.info(f"📝 Wrote file: {path} ({len(content)} chars)")
+            return True
+            
         except Exception as e:
             logger.error(f"Error writing file {path}: {e}")
             return False
-    
-    def list_files(self, directory: str = "") -> str:
-        """List files in directory using FileAgent"""
+
+    def create_file(self, path: str, content: str = "") -> bool:
+        """Create new file - enhanced with full project access"""
         try:
-            result = file_agent.list_files(directory)
-            if result.get("success"):
-                files = result.get("files", [])
-                file_list = []
-                for file in files:
-                    file_list.append(f"📄 {file['name']} ({file['size']} bytes)")
-                return f"Files in {result['directory']}:\n" + "\n".join(file_list)
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
+                return False
+            
+            # Check if file already exists
+            if os.path.exists(full_path):
+                logger.warning(f"File already exists: {path}")
+                return False
+            
+            # Create directory if it doesn't exist
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            logger.info(f"✨ Created file: {path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating file {path}: {e}")
+            return False
+
+    def edit_file(self, path: str, content: str) -> bool:
+        """Edit existing file - enhanced with full project access"""
+        try:
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
+                return False
+            
+            # Check if file exists
+            if not os.path.exists(full_path):
+                logger.error(f"File not found: {path}")
+                return False
+            
+            # Create backup
+            backup_path = f"{full_path}.backup"
+            if os.path.exists(full_path):
+                import shutil
+                shutil.copy2(full_path, backup_path)
+                logger.info(f"💾 Created backup: {backup_path}")
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            logger.info(f"✏️ Edited file: {path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error editing file {path}: {e}")
+            return False
+
+    def list_files(self, directory: str = "") -> str:
+        """List files in directory - enhanced with full project access"""
+        try:
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            
+            if directory:
+                full_path = os.path.abspath(directory)
+                if not full_path.startswith(project_root):
+                    return f"❌ Access denied: Directory {directory} is outside project directory"
             else:
-                return f"Error listing directory {directory}: {result.get('error', 'Unknown error')}"
+                full_path = project_root
+            
+            if not os.path.exists(full_path):
+                return f"❌ Directory not found: {directory}"
+            
+            if not os.path.isdir(full_path):
+                return f"❌ Path is not a directory: {directory}"
+            
+            items = []
+            for item in os.listdir(full_path):
+                item_path = os.path.join(full_path, item)
+                if os.path.isdir(item_path):
+                    items.append(f"📁 {item}/")
+                else:
+                    size = os.path.getsize(item_path)
+                    items.append(f"📄 {item} ({size} bytes)")
+            
+            result = f"📂 Contents of {directory or 'project root'}:\n" + "\n".join(sorted(items))
+            logger.info(f"📂 Listed directory: {directory or 'project root'}")
+            return result
+            
         except Exception as e:
             logger.error(f"Error listing directory {directory}: {e}")
-            return f"Error listing directory {directory}: {str(e)}"
-    
+            return f"❌ Error listing directory {directory}: {str(e)}"
+
     def search_files(self, query: str) -> str:
-        """Search across all files using FileAgent"""
+        """Search files by content - enhanced with full project access"""
         try:
-            result = file_agent.search_files(query)
-            if result.get("success"):
-                results = result.get("results", [])
-                if results:
-                    file_list = []
-                    for file in results:
-                        file_list.append(f"📄 {file['name']} ({file['matches']} matches)")
-                    return f"Files containing '{query}':\n" + "\n".join(file_list)
-                else:
-                    return f"No files found containing '{query}'"
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            
+            results = []
+            for root, dirs, files in os.walk(project_root):
+                # Skip certain directories
+                dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', 'node_modules']]
+                
+                for file in files:
+                    if file.endswith(('.py', '.js', '.html', '.css', '.json', '.txt', '.md')):
+                        file_path = os.path.join(root, file)
+                        try:
+                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                                content = f.read()
+                                if query.lower() in content.lower():
+                                    rel_path = os.path.relpath(file_path, project_root)
+                                    results.append(f"📄 {rel_path}")
+                        except:
+                            continue
+            
+            if results:
+                result = f"🔍 Search results for '{query}':\n" + "\n".join(results[:20])  # Limit to 20 results
+                if len(results) > 20:
+                    result += f"\n... and {len(results) - 20} more results"
             else:
-                return f"Error searching files: {result.get('error', 'Unknown error')}"
+                result = f"🔍 No files found containing '{query}'"
+            
+            logger.info(f"🔍 Searched for: {query} ({len(results)} results)")
+            return result
+            
         except Exception as e:
             logger.error(f"Error searching files: {e}")
-            return f"Error searching files: {str(e)}"
-    
+            return f"❌ Error searching files: {str(e)}"
+
     def get_file_info(self, path: str) -> str:
-        """Get file metadata using FileAgent"""
+        """Get detailed file information - enhanced with full project access"""
         try:
-            result = file_agent.get_file_info(path)
-            if result.get("success"):
-                info = result
-                return f"File info for {path}:\nSize: {info['size']} bytes\nModified: {datetime.fromtimestamp(info['modified'])}\nExtension: {info['extension']}\nReadable: {info['is_readable']}\nWritable: {info['is_writable']}"
-            else:
-                return f"Error getting file info for {path}: {result.get('error', 'Unknown error')}"
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                return f"❌ Access denied: Path {path} is outside project directory"
+            
+            if not os.path.exists(full_path):
+                return f"❌ File not found: {path}"
+            
+            stat = os.stat(full_path)
+            size = stat.st_size
+            modified = datetime.fromtimestamp(stat.st_mtime)
+            
+            info = f"📄 File: {path}\n"
+            info += f"📏 Size: {size} bytes\n"
+            info += f"📅 Modified: {modified.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            
+            if os.path.isfile(full_path):
+                info += f"📋 Type: File\n"
+                # Try to read first few lines for preview
+                try:
+                    with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        first_lines = [f.readline().strip() for _ in range(5)]
+                        preview = "\n".join([line for line in first_lines if line])
+                        if preview:
+                            info += f"👀 Preview:\n{preview}\n"
+                except:
+                    pass
+            elif os.path.isdir(full_path):
+                info += f"📋 Type: Directory\n"
+                items = os.listdir(full_path)
+                info += f"📁 Items: {len(items)}\n"
+            
+            logger.info(f"📄 Got file info: {path}")
+            return info
+            
         except Exception as e:
-            logger.error(f"Error getting file info for {path}: {e}")
-            return f"Error getting file info for {path}: {str(e)}"
-    
+            logger.error(f"Error getting file info {path}: {e}")
+            return f"❌ Error getting file info {path}: {str(e)}"
+
     def delete_file(self, path: str) -> bool:
-        """Delete file safely using FileAgent"""
+        """Delete file - enhanced with full project access"""
         try:
-            result = file_agent.delete_file(path)
-            if result.get("success"):
-                logger.info(f"🗑️ Model deleted file: {path}")
-                return True
-            else:
-                logger.error(f"❌ Failed to delete {path}: {result.get('error', 'Unknown error')}")
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
                 return False
+            
+            # Extra security: Don't allow deletion of critical files
+            critical_files = [
+                'web_app.py', 'ai_client.py', 'requirements.txt', 
+                '.env', 'config.py', '__init__.py'
+            ]
+            if os.path.basename(full_path) in critical_files:
+                logger.error(f"Access denied: Cannot delete critical file {path}")
+                return False
+            
+            if not os.path.exists(full_path):
+                logger.error(f"File not found: {path}")
+                return False
+            
+            # Create backup before deletion
+            backup_path = f"{full_path}.deleted_backup"
+            import shutil
+            shutil.copy2(full_path, backup_path)
+            logger.info(f"💾 Created backup before deletion: {backup_path}")
+            
+            os.remove(full_path)
+            logger.info(f"🗑️ Deleted file: {path}")
+            return True
+            
         except Exception as e:
             logger.error(f"Error deleting file {path}: {e}")
+            return False
+
+    def create_directory(self, path: str) -> bool:
+        """Create new directory - enhanced with full project access"""
+        try:
+            # Security: Only allow access to project directory
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            full_path = os.path.abspath(path)
+            
+            # Ensure path is within project directory
+            if not full_path.startswith(project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
+                return False
+            
+            if os.path.exists(full_path):
+                logger.warning(f"Directory already exists: {path}")
+                return False
+            
+            os.makedirs(full_path, exist_ok=True)
+            logger.info(f"📁 Created directory: {path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating directory {path}: {e}")
             return False
     
     def _extract_tool_calls(self, text: str) -> List[str]:
@@ -556,7 +973,6 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             logger.info(f"🔧 Executing tool call: {tool_call}")
             
             # Parse the tool call using regex for safety
-            import re
             
             # Extract function name and arguments
             func_match = re.match(r'(\w+)\s*\((.*)\)', tool_call.strip())
@@ -592,30 +1008,54 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         return f"Invalid arguments for update_relationship_status: {args_str}"
                 
                 elif func_name == "update_user_profile":
-                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*({[^}]+})', args_str)
-                    if arg_match:
-                        username = arg_match.group(1)
-                        profile_data_str = arg_match.group(2)
+                    # Поддержка как строки, так и JSON-объекта
+                    logger.info(f"TOOL_CALL: update_user_profile args: {args_str}")
+                    # Попытка как строка
+                    arg_match_str = re.match(r'"([^"]+)"\s*,\s*"([^"]+)"', args_str)
+                    if arg_match_str:
+                        username = arg_match_str.group(1)
+                        profile_text = arg_match_str.group(2)
+                        result = self.update_user_profile(username, profile_text)
+                        logger.info(f"TOOL_CALL: update_user_profile result: {result}")
+                        return f"Updated profile for {username} (as string)"
+                    # Попытка как JSON-объект
+                    arg_match_json = re.match(r'"([^"]+)"\s*,\s*({[^}]+})', args_str)
+                    if arg_match_json:
+                        username = arg_match_json.group(1)
+                        profile_data_str = arg_match_json.group(2)
                         try:
-                            import json
                             profile_data = json.loads(profile_data_str)
-                            result = self.update_user_profile(username, profile_data)
-                            return f"Updated profile for {username}"
+                            # Преобразуем dict в строку для профиля
+                            profile_text = str(profile_data)
+                            result = self.update_user_profile(username, profile_text)
+                            logger.info(f"TOOL_CALL: update_user_profile result: {result}")
+                            return f"Updated profile for {username} (from JSON)"
                         except json.JSONDecodeError:
                             return f"Invalid JSON in profile data: {profile_data_str}"
-                    else:
-                        return f"Invalid arguments for update_user_profile: {args_str}"
+                    return f"Invalid arguments for update_user_profile: {args_str}"
                 
 
                 
                 elif func_name == "add_relationship_insight":
-                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
-                    if arg_match:
-                        insight = arg_match.group(1)
+                    # Поддержка как с username, так и без
+                    arg_match_with_user = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match_with_user:
+                        username = arg_match_with_user.group(1)
+                        insight = arg_match_with_user.group(2)
                         result = self.add_relationship_insight(username, insight)
-                        return f"Added relationship insight: {insight[:50]}..."
+                        return f"Added relationship insight for {username}: {insight[:50]}..."
                     else:
-                        return f"Invalid arguments for add_relationship_insight: {args_str}"
+                        # Попытка без username (старый формат)
+                        arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                        if arg_match:
+                            insight = arg_match.group(1)
+                            # Используем текущего пользователя по умолчанию
+                            result = self.add_relationship_insight("meranda", insight)
+                            return f"Added relationship insight: {insight[:50]}..."
+                        else:
+                            return f"Invalid arguments for add_relationship_insight: {args_str}"
+                
+
                 
                 elif func_name == "read_user_profile":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
@@ -635,15 +1075,6 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     else:
                         return f"Invalid arguments for read_emotional_history: {args_str}"
                 
-                elif func_name == "read_diary_entries":
-                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
-                    if arg_match:
-                        username = arg_match.group(1)
-                        result = self.read_diary_entries(username)
-                        return f"Read diary entries for {username}: {result[:100]}..."
-                    else:
-                        return f"Invalid arguments for read_diary_entries: {args_str}"
-                
                 elif func_name == "search_user_data":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
                     if arg_match:
@@ -659,26 +1090,47 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         result = self.read_file(path)
-                        return f"Read file {path}: {result[:100]}..."
+                        return f"File content for {path}: {result[:200]}..." if len(result) > 200 else result
                     else:
                         return f"Invalid arguments for read_file: {args_str}"
                 
                 elif func_name == "write_file":
+                    # Handle both single and double quotes
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         path = arg_match.group(1)
                         content = arg_match.group(2)
                         result = self.write_file(path, content)
-                        return f"Wrote to file {path}: {result}"
+                        return f"File write {'successful' if result else 'failed'} for {path}"
                     else:
                         return f"Invalid arguments for write_file: {args_str}"
+                
+                elif func_name == "create_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        content = arg_match.group(2) if arg_match.group(2) else ""
+                        result = self.create_file(path, content)
+                        return f"File creation {'successful' if result else 'failed'} for {path}"
+                    else:
+                        return f"Invalid arguments for create_file: {args_str}"
+                
+                elif func_name == "edit_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        content = arg_match.group(2)
+                        result = self.edit_file(path, content)
+                        return f"File edit {'successful' if result else 'failed'} for {path}"
+                    else:
+                        return f"Invalid arguments for edit_file: {args_str}"
                 
                 elif func_name == "list_files":
                     arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
                     if arg_match:
                         directory = arg_match.group(1)
                         result = self.list_files(directory)
-                        return f"Listed files in {directory}: {result}"
+                        return result
                     else:
                         return f"Invalid arguments for list_files: {args_str}"
                 
@@ -687,7 +1139,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         query = arg_match.group(1)
                         result = self.search_files(query)
-                        return f"Searched files for '{query}': {result}"
+                        return result
                     else:
                         return f"Invalid arguments for search_files: {args_str}"
                 
@@ -696,7 +1148,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         result = self.get_file_info(path)
-                        return f"File info for {path}: {result}"
+                        return result
                     else:
                         return f"Invalid arguments for get_file_info: {args_str}"
                 
@@ -705,9 +1157,121 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         result = self.delete_file(path)
-                        return f"Deleted file {path}: {result}"
+                        return f"File deletion {'successful' if result else 'failed'} for {path}"
                     else:
                         return f"Invalid arguments for delete_file: {args_str}"
+                
+                elif func_name == "create_directory":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        result = self.create_directory(path)
+                        return f"Directory creation {'successful' if result else 'failed'} for {path}"
+                    else:
+                        return f"Invalid arguments for create_directory: {args_str}"
+                
+                elif func_name == "add_model_note":
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        note_text = arg_match.group(1)
+                        category = arg_match.group(2)
+                        result = self.add_model_note(note_text, category)
+                        return f"Added model note: {note_text[:50]}..."
+                    else:
+                        # Try without category
+                        arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                        if arg_match:
+                            note_text = arg_match.group(1)
+                            result = self.add_model_note(note_text, "general")
+                            return f"Added model note: {note_text[:50]}..."
+                        else:
+                            return f"Invalid arguments for add_model_note: {args_str}"
+                
+                elif func_name == "add_user_observation":
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        observation = arg_match.group(2)
+                        result = self.add_user_observation(username, observation)
+                        return f"Added user observation for {username}: {observation[:50]}..."
+                    else:
+                        return f"Invalid arguments for add_user_observation: {args_str}"
+                
+                elif func_name == "add_personal_thought":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        thought = arg_match.group(1)
+                        result = self.add_personal_thought(thought)
+                        return f"Added personal thought: {thought[:50]}..."
+                    else:
+                        return f"Invalid arguments for add_personal_thought: {args_str}"
+                
+                elif func_name == "add_system_insight":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        insight = arg_match.group(1)
+                        result = self.add_system_insight(insight)
+                        return f"Added system insight: {insight[:50]}..."
+                    else:
+                        return f"Invalid arguments for add_system_insight: {args_str}"
+                
+                elif func_name == "get_model_notes":
+                    arg_match = re.match(r'(\d+)', args_str)
+                    if arg_match:
+                        limit = int(arg_match.group(1))
+                        result = self.get_model_notes(limit)
+                        return f"Model notes: {result[:200]}..."
+                    else:
+                        result = self.get_model_notes(20)
+                        return f"Model notes: {result[:200]}..."
+                
+                # Sandbox file operations
+                elif func_name == "create_sandbox_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        content = arg_match.group(2) if arg_match.group(2) else ""
+                        result = self.create_sandbox_file(path, content)
+                        return f"✅ Created sandbox file: {path}" if result else f"❌ Failed to create sandbox file: {path}"
+                    else:
+                        return f"Invalid arguments for create_sandbox_file: {args_str}"
+                
+                elif func_name == "edit_sandbox_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        content = arg_match.group(2)
+                        result = self.edit_sandbox_file(path, content)
+                        return f"✅ Edited sandbox file: {path}" if result else f"❌ Failed to edit sandbox file: {path}"
+                    else:
+                        return f"Invalid arguments for edit_sandbox_file: {args_str}"
+                
+                elif func_name == "read_sandbox_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        result = self.read_sandbox_file(path)
+                        return result
+                    else:
+                        return f"Invalid arguments for read_sandbox_file: {args_str}"
+                
+                elif func_name == "list_sandbox_files":
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        directory = arg_match.group(1)
+                        result = self.list_sandbox_files(directory)
+                        return result
+                    else:
+                        return f"Invalid arguments for list_sandbox_files: {args_str}"
+                
+                elif func_name == "delete_sandbox_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        result = self.delete_sandbox_file(path)
+                        return f"✅ Deleted sandbox file: {path}" if result else f"❌ Failed to delete sandbox file: {path}"
+                    else:
+                        return f"Invalid arguments for delete_sandbox_file: {args_str}"
                 
                 else:
                     return f"Unknown tool: {func_name}"
@@ -718,4 +1282,220 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         except Exception as e:
             logger.error(f"❌ Tool call execution failed: {e}")
             return f"Tool execution failed: {str(e)}"
+ 
+    def _get_multi_user_context(self) -> str:
+        """Get context for both users - profiles and recent conversation history"""
+        try:
+            from memory.user_profiles import UserProfileManager
+            
+            # Get all user profiles
+            profile_manager = UserProfileManager()
+            all_profiles = profile_manager.get_all_profiles()
+            
+
+            
+            # Get conversation history for both users
+            from memory.conversation_history import ConversationHistory
+            conversation_history = ConversationHistory()
+            
+            context_parts = []
+            
+            # Add profiles section
+            context_parts.append("## ALL USER PROFILES")
+            for username, profile in all_profiles.items():
+                if isinstance(profile, dict):
+                    context_parts.append(f"""
+### {username.title()}
+- Current Feeling: {profile.get('current_feeling', 'Not specified')}
+- Relationship Status: {profile.get('relationship_status', 'Not specified')}
+- Profile: {profile.get('profile', 'Not specified')}
+- Last Updated: {profile.get('last_updated', 'Not specified')}
+""")
+            
+
+            
+            # Add recent conversation history for both users
+            context_parts.append("## RECENT CONVERSATION HISTORY")
+            
+            # Get history for each user
+            for username in all_profiles.keys():
+                try:
+                    user_history = conversation_history.get_user_history(username, limit=3)
+                    if user_history and isinstance(user_history, list):
+                        context_parts.append(f"\n### {username.title()}'s Recent Messages:")
+                        for entry in user_history:
+                            if isinstance(entry, dict) and 'message' in entry:
+                                context_parts.append(f"- User: {entry.get('message', '')}")
+                                if 'ai_response' in entry:
+                                    context_parts.append(f"- AI: {entry.get('ai_response', '')[:100]}...")
+                except Exception as e:
+                    logger.error(f"Error getting history for {username}: {e}")
+            
+            # Add emotional trends for both users
+            context_parts.append("## EMOTIONAL TRENDS")
+            for username in all_profiles.keys():
+                try:
+                    user_profile = UserProfile(username)
+                    trends = user_profile.get_emotional_trends()
+                    if trends and trends.get('trend') != 'No data':
+                        context_parts.append(f"""
+### {username.title()}'s Emotional Trends
+- Overall Trend: {trends.get('trend', 'Unknown')}
+- Most Common Feeling: {trends.get('most_common', 'Unknown')}
+""")
+                except Exception as e:
+                    logger.error(f"Error getting trends for {username}: {e}")
+            
+            # Add MODEL NOTES
+            try:
+                model_notes_text = self.get_model_notes(limit=10)
+                if model_notes_text and "Error loading model notes" not in model_notes_text:
+                    context_parts.append(model_notes_text)
+            except Exception as e:
+                logger.error(f"Error getting model notes: {e}")
+            
+            return "\n".join(context_parts)
+            
+        except Exception as e:
+            logger.error(f"Error building multi-user context: {e}")
+            return "Error loading multi-user context" 
+
+    def create_sandbox_file(self, path: str, content: str = "") -> bool:
+        """Create file in Guardian sandbox - safe zone for experiments"""
+        try:
+            sandbox_root = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'guardian_sandbox')
+            full_path = os.path.join(sandbox_root, path.lstrip('/'))
+            
+            # Ensure path is within sandbox
+            if not os.path.abspath(full_path).startswith(os.path.abspath(sandbox_root)):
+                logger.error(f"Access denied: Path {path} is outside sandbox")
+                return False
+            
+            # Create directories if needed
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            logger.info(f"✨ Created sandbox file: {path}")
+            return True
+        except Exception as e:
+            logger.error(f"Error creating sandbox file {path}: {e}")
+            return False
+    
+    def edit_sandbox_file(self, path: str, content: str) -> bool:
+        """Edit file in Guardian sandbox with backup"""
+        try:
+            sandbox_root = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'guardian_sandbox')
+            full_path = os.path.join(sandbox_root, path.lstrip('/'))
+            
+            # Ensure path is within sandbox
+            if not os.path.abspath(full_path).startswith(os.path.abspath(sandbox_root)):
+                logger.error(f"Access denied: Path {path} is outside sandbox")
+                return False
+            
+            if not os.path.exists(full_path):
+                logger.warning(f"File not found: {path}")
+                return False
+            
+            # Create backup
+            backup_path = f"{full_path}.backup.{int(time.time())}"
+            shutil.copy2(full_path, backup_path)
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            logger.info(f"✏️ Edited sandbox file: {path} (backup: {os.path.basename(backup_path)})")
+            return True
+        except Exception as e:
+            logger.error(f"Error editing sandbox file {path}: {e}")
+            return False
+    
+    def read_sandbox_file(self, path: str) -> str:
+        """Read file from Guardian sandbox"""
+        try:
+            sandbox_root = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'guardian_sandbox')
+            full_path = os.path.join(sandbox_root, path.lstrip('/'))
+            
+            # Ensure path is within sandbox
+            if not os.path.abspath(full_path).startswith(os.path.abspath(sandbox_root)):
+                return f"❌ Access denied: Path {path} is outside sandbox"
+            
+            if not os.path.exists(full_path):
+                return f"❌ File not found: {path}"
+            
+            if os.path.isdir(full_path):
+                return f"❌ Path is a directory: {path}"
+            
+            with open(full_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            logger.info(f"📖 Read sandbox file: {path} ({len(content)} chars)")
+            return content
+        except Exception as e:
+            logger.error(f"Error reading sandbox file {path}: {e}")
+            return f"❌ Error reading sandbox file {path}: {str(e)}"
+    
+    def list_sandbox_files(self, directory: str = "") -> str:
+        """List files in Guardian sandbox directory"""
+        try:
+            sandbox_root = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'guardian_sandbox')
+            full_path = os.path.join(sandbox_root, directory.lstrip('/'))
+            
+            # Ensure path is within sandbox
+            if not os.path.abspath(full_path).startswith(os.path.abspath(sandbox_root)):
+                return f"❌ Access denied: Path {directory} is outside sandbox"
+            
+            if not os.path.exists(full_path):
+                return f"❌ Directory not found: {directory}"
+            
+            if not os.path.isdir(full_path):
+                return f"❌ Path is not a directory: {directory}"
+            
+            files = []
+            for item in os.listdir(full_path):
+                item_path = os.path.join(full_path, item)
+                if os.path.isdir(item_path):
+                    files.append(f"📁 {item}/")
+                else:
+                    size = os.path.getsize(item_path)
+                    files.append(f"📄 {item} ({size} bytes)")
+            
+            result = f"📂 Sandbox directory: {directory or 'root'}\n\n"
+            if files:
+                result += "\n".join(sorted(files))
+            else:
+                result += "Empty directory"
+            
+            logger.info(f"📋 Listed sandbox files: {directory} ({len(files)} items)")
+            return result
+        except Exception as e:
+            logger.error(f"Error listing sandbox files {directory}: {e}")
+            return f"❌ Error listing sandbox files {directory}: {str(e)}"
+    
+    def delete_sandbox_file(self, path: str) -> bool:
+        """Delete file from Guardian sandbox with backup"""
+        try:
+            sandbox_root = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'guardian_sandbox')
+            full_path = os.path.join(sandbox_root, path.lstrip('/'))
+            
+            # Ensure path is within sandbox
+            if not os.path.abspath(full_path).startswith(os.path.abspath(sandbox_root)):
+                logger.error(f"Access denied: Path {path} is outside sandbox")
+                return False
+            
+            if not os.path.exists(full_path):
+                logger.warning(f"File not found: {path}")
+                return False
+            
+            # Create backup before deletion
+            backup_path = f"{full_path}.deleted.{int(time.time())}"
+            shutil.copy2(full_path, backup_path)
+            
+            os.remove(full_path)
+            logger.info(f"🗑️ Deleted sandbox file: {path} (backup: {os.path.basename(backup_path)})")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting sandbox file {path}: {e}")
+            return False
  

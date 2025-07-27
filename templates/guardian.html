@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ΔΣ Guardian - Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/guardian.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="guardian-header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="guardian-icon">👼</span>
+                <h1>ΔΣ Guardian Profile</h1>
+            </div>
+            <div class="user-info">
+                <span class="welcome-text">Welcome, {{ username.title() }}!</span>
+                <a href="/chat" class="chat-btn">💬 Chat</a>
+                <a href="/profile" class="profile-btn">👤 My Profile</a>
+                <form method="POST" action="/logout" style="display: inline;">
+                    <button type="submit" class="logout-btn">🚪 Logout</button>
+                </form>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="guardian-main">
+        <div class="guardian-container">
+            <!-- Guardian Avatar Section -->
+            <section class="avatar-section">
+                <div class="avatar-container">
+                    <div class="avatar" id="guardianAvatar">
+                        {% if guardian.avatar_url %}
+                            <img src="{{ guardian.avatar_url }}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                        {% else %}
+                            <i class="fas fa-user"></i>
+                        {% endif %}
+                    </div>
+                    <div class="avatar-upload">
+                        <input type="file" id="guardianAvatarInput" accept="image/*" style="display: none;">
+                        <button type="button" class="upload-btn" onclick="document.getElementById('guardianAvatarInput').click()">
+                            📷 Change Avatar
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Guardian Profile Form -->
+            <section class="profile-section">
+                <form id="guardianForm" class="guardian-form">
+                    <!-- Basic Information -->
+                    <div class="form-group">
+                        <h3>Basic Information</h3>
+                        <div class="input-group">
+                            <label for="guardianName">Name:</label>
+                            <input type="text" id="guardianName" name="name" value="{{ guardian.name or 'ΔΣ Guardian' }}" placeholder="Guardian Name">
+                        </div>
+                        <div class="input-group">
+                            <label for="guardianRole">Role:</label>
+                            <input type="text" id="guardianRole" name="role" value="{{ guardian.role or 'Family Guardian Angel' }}" placeholder="Guardian Role">
+                        </div>
+                    </div>
+
+                    <!-- Personality Settings -->
+                    <div class="form-group">
+                        <h3>Personality Settings</h3>
+                        <div class="input-group">
+                            <label for="communicationStyle">Communication Style:</label>
+                            <select id="communicationStyle" name="communication_style">
+                                <option value="empathetic" {% if guardian.personality.communication_style == 'empathetic' %}selected{% endif %}>Empathetic</option>
+                                <option value="direct" {% if guardian.personality.communication_style == 'direct' %}selected{% endif %}>Direct</option>
+                                <option value="gentle" {% if guardian.personality.communication_style == 'gentle' %}selected{% endif %}>Gentle</option>
+                                <option value="analytical" {% if guardian.personality.communication_style == 'analytical' %}selected{% endif %}>Analytical</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="specialization">Specialization:</label>
+                            <select id="specialization" name="specialization">
+                                <option value="communication" {% if guardian.personality.specialization == 'communication' %}selected{% endif %}>Communication</option>
+                                <option value="conflict_resolution" {% if guardian.personality.specialization == 'conflict_resolution' %}selected{% endif %}>Conflict Resolution</option>
+                                <option value="intimacy" {% if guardian.personality.specialization == 'intimacy' %}selected{% endif %}>Intimacy</option>
+                                <option value="life_transitions" {% if guardian.personality.specialization == 'life_transitions' %}selected{% endif %}>Life Transitions</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="relationshipPhase">Relationship Phase:</label>
+                            <select id="relationshipPhase" name="relationship_phase">
+                                <option value="new" {% if guardian.personality.relationship_phase == 'new' %}selected{% endif %}>New Relationship</option>
+                                <option value="established" {% if guardian.personality.relationship_phase == 'established' %}selected{% endif %}>Established</option>
+                                <option value="long_term" {% if guardian.personality.relationship_phase == 'long_term' %}selected{% endif %}>Long-term</option>
+                                <option value="crisis" {% if guardian.personality.relationship_phase == 'crisis' %}selected{% endif %}>Crisis</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- System Prompt -->
+                    <div class="form-group">
+                        <h3>System Prompt</h3>
+                        <div class="input-group">
+                            <label for="systemPrompt">Core System Prompt:</label>
+                            <textarea id="systemPrompt" name="system_prompt" rows="20" placeholder="Enter the system prompt that defines ΔΣ Guardian's behavior...">{{ guardian.system_prompt or '' }}</textarea>
+                            <div class="prompt-info">
+                                <p><strong>Note:</strong> This prompt defines how ΔΣ Guardian behaves, communicates, and responds. Changes will take effect immediately.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="submit" class="save-btn">💾 Save Changes</button>
+                        <button type="button" class="reset-btn" onclick="resetGuardianProfile()">🔄 Reset to Defaults</button>
+                        <button type="button" class="update-prompt-btn" onclick="updatePromptFromFile()">📝 Update Prompt from File</button>
+                        <button type="button" class="preview-btn" onclick="previewPrompt()">👁️ Preview Prompt</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Success!</h2>
+            <p id="success-message">Guardian profile updated successfully!</p>
+            <button onclick="closeModal()" class="modal-btn">OK</button>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Error</h2>
+            <p id="error-message">An error occurred while updating the profile.</p>
+            <button onclick="closeModal()" class="modal-btn">OK</button>
+        </div>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="modal">
+        <div class="modal-content preview-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>System Prompt Preview</h2>
+            <div class="prompt-preview" id="promptPreview"></div>
+            <button onclick="closeModal()" class="modal-btn">Close</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/guardian.js') }}"></script>
+</body>
+</html> 

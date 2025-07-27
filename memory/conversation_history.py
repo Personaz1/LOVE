@@ -11,6 +11,48 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Import AI client for generating summaries
+AI_AVAILABLE = False
+AIClient = None
+
+def _load_ai_client():
+    """Lazy load AI client to avoid circular imports"""
+    global AI_AVAILABLE, AIClient
+    
+    if AI_AVAILABLE:
+        return AIClient
+        
+    try:
+        import sys
+        import os
+        # Add parent directory to path to ensure ai_client can be found
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sys.path.append(parent_dir)
+        logger.info(f"🔍 Added {parent_dir} to Python path")
+        
+        # Check if ai_client.py exists
+        ai_client_path = os.path.join(parent_dir, 'ai_client.py')
+        if os.path.exists(ai_client_path):
+            logger.info(f"✅ Found ai_client.py at {ai_client_path}")
+        else:
+            logger.error(f"❌ ai_client.py not found at {ai_client_path}")
+            raise FileNotFoundError(f"ai_client.py not found at {ai_client_path}")
+        
+        from ai_client import AIClient as AIClientClass
+        AIClient = AIClientClass
+        AI_AVAILABLE = True
+        logger.info("✅ AI client successfully imported for summaries")
+        return AIClient
+        
+    except ImportError as e:
+        AI_AVAILABLE = False
+        logger.error(f"❌ AI client import failed - summaries will not work. Error: {e}")
+        raise
+    except Exception as e:
+        AI_AVAILABLE = False
+        logger.error(f"❌ AI client initialization failed - summaries will not work. Error: {e}")
+        raise
+
 class ConversationHistory:
     """Manages conversation history with archiving capabilities"""
     
@@ -122,10 +164,73 @@ class ConversationHistory:
         self._save_archive()
     
     def _generate_archive_summary(self, messages: List[Dict[str, Any]]) -> str:
-        """Generate a summary of archived messages"""
+        """Generate a summary of archived messages using AI model"""
         if not messages:
             return "No messages to summarize"
         
+        try:
+            # Check if AI client can be loaded
+            _load_ai_client()
+        except Exception as e:
+            logger.error(f"❌ AI client not available - cannot generate summaries: {e}")
+            return "AI summary generation unavailable"
+        
+        try:
+            return self._generate_ai_summary(messages)
+        except Exception as e:
+            logger.error(f"❌ Error generating AI summary: {e}")
+            return f"Summary generation failed: {str(e)}"
+    
+    def _generate_ai_summary(self, messages: List[Dict[str, Any]]) -> str:
+        """Generate summary using AI model"""
+        try:
+            # Lazy load AI client
+            ai_client_class = _load_ai_client()
+            if not ai_client_class:
+                logger.error("❌ AI client not available - cannot generate summaries")
+                raise Exception("AI client not available")
+            
+            ai_client = ai_client_class()
+            
+            # Prepare conversation data for AI
+            conversation_text = ""
+            for msg in messages:
+                conversation_text += f"User: {msg['message']}\n"
+                conversation_text += f"AI: {msg['ai_response']}\n\n"
+            
+            # Create prompt for summary generation
+            summary_prompt = f"""
+You are ΔΣ Guardian, a family guardian angel. You need to create a thoughtful summary of a conversation period.
+
+Please analyze this conversation and create a meaningful summary that captures:
+1. Key themes and topics discussed
+2. Emotional patterns and relationship dynamics
+3. Important insights about the family members
+4. Any significant developments or changes
+
+Conversation to summarize:
+{conversation_text}
+
+Please provide a concise but insightful summary (2-3 sentences) that captures the essence of this conversation period.
+Focus on relationship dynamics, emotional patterns, and meaningful insights rather than just listing topics.
+"""
+
+            # Generate summary using AI
+            summary = ai_client.chat(
+                message=summary_prompt,
+                user_profile={},  # Empty profile for summary generation
+                conversation_context=""
+            )
+            
+            logger.info("✅ Generated AI summary for conversation archive")
+            return summary.strip()
+            
+        except Exception as e:
+            logger.error(f"❌ Error in AI summary generation: {e}")
+            raise
+    
+    def _generate_simple_summary(self, messages: List[Dict[str, Any]]) -> str:
+        """Generate simple summary using basic algorithm (fallback)"""
         # Extract key information
         users = set(msg['user'] for msg in messages)
         total_messages = len(messages)
@@ -175,6 +280,11 @@ class ConversationHistory:
         """Get recent conversation history"""
         return self.history[-limit:] if self.history else []
     
+    def get_user_history(self, username: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get conversation history for specific user"""
+        user_messages = [msg for msg in self.history if msg.get('user') == username]
+        return user_messages[-limit:] if limit > 0 else user_messages
+    
     def get_full_history(self) -> List[Dict[str, Any]]:
         """Get full conversation history"""
         return self.history.copy()
@@ -206,7 +316,7 @@ class ConversationHistory:
             context_parts.append("RECENT CONVERSATION HISTORY:")
             for msg in recent:
                 context_parts.append(f"{msg['user']}: {msg['message']}")
-                context_parts.append(f"Dr. Harmony: {msg['ai_response']}")
+                context_parts.append(f"AI: {msg['ai_response']}")
         
         # Add archive summary if requested
         if include_archive and self.archive:

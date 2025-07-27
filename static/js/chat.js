@@ -1,11 +1,15 @@
 // Chat functionality JavaScript
-let currentUser = '{{ username }}';
+// Get username from URL parameters
+const urlParams = new URLSearchParams(window.location.search);
+let currentUser = urlParams.get('username') || 'meranda';
 // Map old username to new one
 if (currentUser === 'musser') {
     currentUser = 'meranda';
 }
 let messageHistory = [];
 let currentStreamingMessage = null;
+let userProfile = null;
+let guardianProfile = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     const messageForm = document.getElementById('messageForm');
@@ -16,11 +20,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Focus on input when page loads
     messageInput.focus();
     
+    // Load user profile for avatar
+    loadUserProfile();
+    
+    // Load guardian profile for avatar
+    loadGuardianProfile();
+    
     // Load conversation history
     loadConversationHistory();
-    
-    // Load current theme
-    loadCurrentTheme();
 
     // Handle message submission
     messageForm.addEventListener('submit', async function(e) {
@@ -56,27 +63,47 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = 'auto';
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
     });
+
+    // Load system analysis
+    loadSystemAnalysis();
 });
+
+// Load user profile for avatar
+async function loadUserProfile() {
+    try {
+        const response = await fetch('/api/profile');
+        const data = await response.json();
+        
+        if (data.success && data.profile) {
+            userProfile = data.profile;
+            // Update existing messages with user avatar
+            updateUserAvatars();
+        }
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+    }
+}
+
+// Load guardian profile for avatar
+async function loadGuardianProfile() {
+    try {
+        const response = await fetch('/api/guardian/profile');
+        const data = await response.json();
+        
+        if (data.success && data.profile) {
+            guardianProfile = data.profile;
+            // Update existing messages with guardian avatar
+            updateGuardianAvatars();
+        }
+    } catch (error) {
+        console.error('Error loading guardian profile:', error);
+    }
+}
 
 // Send streaming message to API
 async function sendStreamingMessage(message) {
     const formData = new FormData();
     formData.append('message', message);
-
-    // Get current credentials from URL or localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    const username = urlParams.get('username') || currentUser;
-    const password = urlParams.get('password') || '';
-
-    // Use the correct credentials based on username
-    let authUsername = username;
-    let authPassword = password;
-    
-    // Map old credentials to new ones
-    if (username === 'musser') {
-        authUsername = 'meranda';
-        authPassword = 'musser';
-    }
 
     // Create AI message container for streaming
     currentStreamingMessage = addStreamingMessage();
@@ -84,10 +111,7 @@ async function sendStreamingMessage(message) {
     try {
         const response = await fetch('/api/chat/stream', {
             method: 'POST',
-            body: formData,
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
+            body: formData
         });
 
         if (!response.ok) {
@@ -96,12 +120,10 @@ async function sendStreamingMessage(message) {
             const regularResponse = await sendMessage(message);
             
             if (regularResponse.error) {
-                currentStreamingMessage.textContent = 'Sorry, I encountered an error. Please try again.';
-            } else {
-                currentStreamingMessage.textContent = regularResponse.response;
-                finalizeStreamingMessage(currentStreamingMessage);
+                throw new Error(regularResponse.error);
             }
-            currentStreamingMessage = null;
+            
+            addMessage(regularResponse.response, 'ai');
             return;
         }
 
@@ -116,46 +138,36 @@ async function sendStreamingMessage(message) {
             
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // Keep incomplete line in buffer
-            
+            buffer = lines.pop() || '';
+
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     try {
                         const data = JSON.parse(line.slice(6));
                         await handleStreamData(data);
                     } catch (e) {
-                        console.error('Error parsing stream data:', e);
+                        console.log('Error parsing stream data:', e);
                     }
                 }
             }
         }
-        
+
         // Finalize the streaming message
         if (currentStreamingMessage) {
             finalizeStreamingMessage(currentStreamingMessage);
             currentStreamingMessage = null;
         }
-        
+
     } catch (error) {
-        console.error('Streaming error:', error);
+        console.error('Error in streaming:', error);
         
-        // Try fallback to regular API
-        try {
-            console.log('Trying fallback to regular API...');
-            const regularResponse = await sendMessage(message);
-            
-            if (regularResponse.error) {
-                currentStreamingMessage.textContent = 'Sorry, I encountered an error. Please try again.';
-            } else {
-                currentStreamingMessage.textContent = regularResponse.response;
-                finalizeStreamingMessage(currentStreamingMessage);
-            }
-        } catch (fallbackError) {
-            console.error('Fallback also failed:', fallbackError);
-            currentStreamingMessage.textContent = 'Sorry, I\'m having trouble connecting. Please try again.';
+        // Remove streaming message if there was an error
+        if (currentStreamingMessage) {
+            currentStreamingMessage.remove();
+            currentStreamingMessage = null;
         }
         
-        currentStreamingMessage = null;
+        addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'ai');
     }
 }
 
@@ -261,54 +273,47 @@ function finalizeStreamingMessage(messageElement) {
 //     scrollToBottom();
 // }
 
-// Send message to API (legacy function for fallback)
+// Send regular message to API (fallback)
 async function sendMessage(message) {
     const formData = new FormData();
     formData.append('message', message);
 
-    // Get current credentials from URL or localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    const username = urlParams.get('username') || currentUser;
-    const password = urlParams.get('password') || '';
+    try {
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            body: formData
+        });
 
-    // Use the correct credentials based on username
-    let authUsername = username;
-    let authPassword = password;
-    
-    // Map old credentials to new ones
-    if (username === 'musser') {
-        authUsername = 'meranda';
-        authPassword = 'musser';
-    }
-
-    const response = await fetch('/api/chat', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    });
 
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error sending message:', error);
+        return { error: error.message };
     }
-
-    return await response.json();
 }
 
 // Add message to chat
-function addMessage(text, sender) {
+function addMessage(text, sender, timestamp = null) {
     const messagesContainer = document.getElementById('messagesContainer');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
     
-    const time = new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-    });
+    const time = timestamp ? 
+        new Date(timestamp).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        }) :
+        new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
 
-    const avatar = sender === 'user' ? '👤' : '💕';
-    const senderName = sender === 'user' ? currentUser.charAt(0).toUpperCase() + currentUser.slice(1) : 'Dr. Harmony';
+    const avatar = getAvatar(sender);
+    const senderName = sender === 'user' ? currentUser.charAt(0).toUpperCase() + currentUser.slice(1) : 'ΔΣ Guardian';
 
     messageDiv.innerHTML = `
         <div class="message-avatar">${avatar}</div>
@@ -324,11 +329,52 @@ function addMessage(text, sender) {
     messagesContainer.appendChild(messageDiv);
     scrollToBottom();
     
-    // Add to history
-    messageHistory.push({
-        text: text,
-        sender: sender,
-        timestamp: new Date().toISOString()
+    // Add to history only for new messages
+    if (!timestamp) {
+        messageHistory.push({
+            text: text,
+            sender: sender,
+            timestamp: new Date().toISOString()
+        });
+    }
+}
+
+// Get avatar for sender
+function getAvatar(sender) {
+    if (sender === 'user') {
+        if (userProfile && userProfile.avatar_url) {
+            return `<img src="${userProfile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        }
+        return '👤';
+    } else {
+        if (guardianProfile && guardianProfile.avatar_url) {
+            return `<img src="${guardianProfile.avatar_url}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        }
+        return '💕';
+    }
+}
+
+// Update user avatars in existing messages
+function updateUserAvatars() {
+    if (!userProfile || !userProfile.avatar_url) return;
+    
+    const userMessages = document.querySelectorAll('.user-message .message-avatar');
+    userMessages.forEach(avatarDiv => {
+        if (!avatarDiv.querySelector('img')) {
+            avatarDiv.innerHTML = `<img src="${userProfile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        }
+    });
+}
+
+// Update guardian avatars in existing messages
+function updateGuardianAvatars() {
+    if (!guardianProfile || !guardianProfile.avatar_url) return;
+    
+    const guardianMessages = document.querySelectorAll('.ai-message .message-avatar');
+    guardianMessages.forEach(avatarDiv => {
+        if (!avatarDiv.querySelector('img')) {
+            avatarDiv.innerHTML = `<img src="${guardianProfile.avatar_url}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        }
     });
 }
 
@@ -369,229 +415,10 @@ function sendQuickMessage(message) {
 }
 
 // Modal functions
-function showProfile() {
-    const modal = document.getElementById('profileModal');
-    const content = document.getElementById('profileContent');
-    
-    // Load profile data
-    loadProfileData().then(profile => {
-        if (profile.error) {
-            content.innerHTML = '<p>Error loading profile data.</p>';
-        } else {
-            content.innerHTML = `
-                <div class="profile-details">
-                    <h3>${profile.username}</h3>
-                    <div class="profile-section">
-                        <h4>Your Profile</h4>
-                        <textarea id="profileText" class="profile-textarea">${profile.profile}</textarea>
-                        <button onclick="updateProfile()" class="update-btn">💾 Update Profile</button>
-                    </div>
-                    <div class="profile-section">
-                        <h4>Relationship Status</h4>
-                        <p>${profile.relationship_status}</p>
-                    </div>
-                    <div class="profile-section">
-                        <h4>Current Feeling</h4>
-                        <p>${profile.current_feeling}</p>
-                    </div>
-                    <div class="profile-section">
-                        <h4>Last Updated</h4>
-                        <p>${profile.last_updated}</p>
-                    </div>
-                    <div class="profile-section">
-                        <h4>Hidden Profile (Model's Notes)</h4>
-                        <button onclick="loadHiddenProfile()" class="view-btn">👁️ View Hidden Profile</button>
-                    </div>
-                </div>
-            `;
-        }
-    });
-    
-    modal.style.display = 'block';
-}
-
-
-
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     modal.style.display = 'none';
 }
-
-// Load profile data
-async function loadProfileData() {
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        // Use the correct credentials based on username
-        let authUsername = username;
-        let authPassword = password;
-        
-        // Map old credentials to new ones
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/profile', {
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Error loading profile:', error);
-        return { error: 'Failed to load profile' };
-    }
-}
-
-// Update profile
-async function updateProfile() {
-    try {
-        const profileText = document.getElementById('profileText').value;
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/profile', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            },
-            body: JSON.stringify({ profile: profileText })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-            alert('✅ Profile updated successfully!');
-            showProfile(); // Reload profile
-        } else {
-            alert('❌ Error updating profile: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error updating profile:', error);
-        alert('Error updating profile. Please try again.');
-    }
-}
-
-// Load hidden profile
-async function loadHiddenProfile() {
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/hidden-profile', {
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const hiddenProfile = await response.json();
-        if (hiddenProfile.error) {
-            alert('Error loading hidden profile: ' + hiddenProfile.error);
-        } else {
-            const content = document.getElementById('profileContent');
-            content.innerHTML = `
-                <div class="profile-details">
-                    <h3>Hidden Profile - ${hiddenProfile.username}</h3>
-                    <div class="profile-section">
-                        <h4>Model's Private Notes</h4>
-                        <textarea id="hiddenProfileText" class="profile-textarea">${hiddenProfile.hidden_profile}</textarea>
-                        <button onclick="updateHiddenProfile()" class="update-btn">💾 Update Hidden Profile</button>
-                    </div>
-                    <div class="profile-section">
-                        <h4>Last Updated</h4>
-                        <p>${hiddenProfile.last_updated}</p>
-                    </div>
-                    <div class="profile-section">
-                        <button onclick="showProfile()" class="back-btn">← Back to Profile</button>
-                    </div>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error loading hidden profile:', error);
-        alert('Error loading hidden profile. Please try again.');
-    }
-}
-
-// Update hidden profile
-async function updateHiddenProfile() {
-    try {
-        const hiddenProfileText = document.getElementById('hiddenProfileText').value;
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/hidden-profile', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            },
-            body: JSON.stringify({ hidden_profile: hiddenProfileText })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-            alert('✅ Hidden profile updated successfully!');
-            loadHiddenProfile(); // Reload hidden profile
-        } else {
-            alert('❌ Error updating hidden profile: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error updating hidden profile:', error);
-        alert('Error updating hidden profile. Please try again.');
-    }
-}
-
-
 
 // Utility functions
 function clearChat() {
@@ -626,23 +453,7 @@ function exportChat() {
 // Load conversation history
 async function loadConversationHistory() {
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/conversation-history', {
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
+        const response = await fetch('/api/conversation-history');
 
         if (response.ok) {
             const data = await response.json();
@@ -682,6 +493,10 @@ function displayConversationHistory(history) {
         }
     });
     
+    // Update avatars after loading history
+    updateUserAvatars();
+    updateGuardianAvatars();
+    
     // Scroll to bottom
     scrollToBottom();
 }
@@ -695,27 +510,13 @@ function updateConversationStats(stats) {
 // Load conversation archive
 async function loadConversationArchive() {
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/conversation-archive', {
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
+        const response = await fetch('/api/conversation-archive');
 
         if (response.ok) {
             const data = await response.json();
             displayConversationArchive(data);
+        } else {
+            console.error('Failed to load conversation archive');
         }
     } catch (error) {
         console.error('Error loading conversation archive:', error);
@@ -764,37 +565,23 @@ function displayConversationArchive(data) {
 
 // Edit archive entry
 async function editArchiveEntry(archiveId) {
-    const newSummary = prompt('Enter new summary for this archive entry:');
-    if (!newSummary) return;
-    
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
+    const summary = prompt('Enter new summary for this conversation:');
+    if (!summary) return;
 
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
+    try {
+        const formData = new FormData();
+        formData.append('summary', summary);
 
         const response = await fetch(`/api/conversation-archive/${archiveId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            },
-            body: JSON.stringify({ summary: newSummary })
+            body: formData
         });
 
         if (response.ok) {
             alert('Archive entry updated successfully!');
-            // Reload archive
-            loadConversationArchive();
+            loadConversationArchive(); // Reload the archive
         } else {
-            alert('Error updating archive entry');
+            alert('Failed to update archive entry');
         }
     } catch (error) {
         console.error('Error editing archive entry:', error);
@@ -804,46 +591,30 @@ async function editArchiveEntry(archiveId) {
 
 // Clear conversation history
 async function clearConversationHistory() {
-    if (!confirm('Are you sure you want to clear the conversation history? This will archive current messages.')) {
+    if (!confirm('Are you sure you want to clear all conversation history? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
-        
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
         const response = await fetch('/api/conversation-clear', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
+            method: 'POST'
         });
 
         if (response.ok) {
-            alert('Conversation history cleared and archived!');
-            // Reload page to show fresh chat
-            location.reload();
+            // Clear the chat display
+            const messagesContainer = document.getElementById('messagesContainer');
+            messagesContainer.innerHTML = '';
+            
+            // Add a system message
+            addMessage('Conversation history has been cleared.', 'system');
+            
+            alert('Conversation history cleared successfully!');
         } else {
-            alert('Error clearing conversation history');
+            alert('Failed to clear conversation history');
         }
     } catch (error) {
         console.error('Error clearing conversation history:', error);
         alert('Error clearing conversation history');
-    }
-}
-
-function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        window.location.href = '/';
     }
 }
 
@@ -921,91 +692,153 @@ function createChatHearts() {
 // Start floating hearts
 createChatHearts(); 
 
-// Load current theme
-async function loadCurrentTheme() {
+// Load system analysis
+async function loadSystemAnalysis() {
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
+        const response = await fetch('/api/system-analysis');
         
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/theme', {
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
-
         if (response.ok) {
             const data = await response.json();
-            if (data.success && data.theme) {
-                applyTheme(data.theme.theme);
+            
+            if (data.success && data.analysis) {
+                updateSystemPanel(data.analysis);
+                
+                // Apply theme automatically if provided
+                if (data.theme) {
+                    applyTheme(data.theme);
+                }
             }
+        } else {
+            showSystemError('Failed to load system analysis');
         }
     } catch (error) {
-        console.error('Error loading theme:', error);
+        console.error('Error loading system analysis:', error);
+        showSystemError('Error loading system analysis');
     }
 }
 
-// Apply theme to interface
+// Apply theme automatically
 function applyTheme(themeName) {
     // Remove existing theme classes
-    document.body.classList.remove('theme-romantic_pink', 'theme-test_blue', 'theme-custom_purple', 
-                                  'theme-test_black', 'theme-custom_red', 'theme-custom_black', 
-                                  'theme-melancholy', 'theme-default');
+    document.body.classList.remove('theme-romantic', 'theme-neutral', 'theme-melancholy');
     
     // Add new theme class
-    document.body.classList.add(`theme-${themeName}`);
-    
-    // Update theme indicator if it exists
-    const themeIndicator = document.getElementById('currentTheme');
-    if (themeIndicator) {
-        themeIndicator.textContent = themeName;
+    if (themeName && ['romantic', 'neutral', 'melancholy'].includes(themeName)) {
+        document.body.classList.add(`theme-${themeName}`);
+        console.log(`Applied theme: ${themeName}`);
     }
-    
-    console.log(`Applied theme: ${themeName}`);
 }
 
-// Change theme function
-async function changeTheme(themeName) {
+// Show model status
+async function showModelStatus() {
     try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        let authUsername = username;
-        let authPassword = password;
+        const response = await fetch('/api/model-status');
         
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const formData = new FormData();
-        formData.append('theme', themeName);
-
-        const response = await fetch('/api/theme', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
-
         if (response.ok) {
             const data = await response.json();
-            if (data.success) {
-                applyTheme(themeName);
-                console.log(`Theme changed to: ${themeName}`);
+            
+            if (data.success && data.status) {
+                const status = data.status;
+                
+                let statusHtml = `
+                    <div class="model-status-modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>🤖 AI Model Status</h2>
+                                <span class="close" onclick="closeModal('modelStatusModal')">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div class="current-model">
+                                    <h3>Current Model: ${status.current_model}</h3>
+                                    <p>Quota: ${status.current_quota} requests/day</p>
+                                    <p>Model ${status.model_index + 1} of ${status.total_models}</p>
+                                </div>
+                                
+                                <div class="model-list">
+                                    <h3>Available Models:</h3>
+                                    <div class="model-grid">
+                `;
+                
+                status.available_models.forEach((model, index) => {
+                    const isCurrent = index === status.model_index;
+                    const hasError = model.has_error;
+                    const statusClass = isCurrent ? 'current' : hasError ? 'error' : 'available';
+                    
+                    statusHtml += `
+                        <div class="model-item ${statusClass}">
+                            <div class="model-name">${model.name}</div>
+                            <div class="model-quota">${model.quota} req/day</div>
+                            ${isCurrent ? '<div class="model-status">🔄 Current</div>' : ''}
+                            ${hasError ? '<div class="model-status">⚠️ Quota Exceeded</div>' : ''}
+                        </div>
+                    `;
+                });
+                
+                statusHtml += `
+                                    </div>
+                                </div>
+                                
+                                <div class="model-info">
+                                    <p><strong>Auto-fallback:</strong> System automatically switches models when quota is exceeded</p>
+                                    <p><strong>Error count:</strong> ${status.model_errors} models with quota issues</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal to page
+                const modalContainer = document.createElement('div');
+                modalContainer.id = 'modelStatusModal';
+                modalContainer.className = 'modal';
+                modalContainer.innerHTML = statusHtml;
+                document.body.appendChild(modalContainer);
+                
+                // Show modal
+                modalContainer.style.display = 'block';
             }
+        } else {
+            console.error('Failed to load model status');
         }
     } catch (error) {
-        console.error('Error changing theme:', error);
+        console.error('Error loading model status:', error);
     }
-} 
+}
+
+function updateSystemPanel(analysis) {
+    // Update system status
+    const statusElement = document.getElementById('systemStatus');
+    if (statusElement && analysis.system_status) {
+        statusElement.innerHTML = `
+            <div class="status-text">
+                ${analysis.system_status.replace(/\n/g, '<br>')}
+            </div>
+        `;
+    }
+    
+    // Update tips
+    const tipsElement = document.getElementById('systemTips');
+    if (tipsElement && analysis.tips) {
+        tipsElement.innerHTML = analysis.tips.map(tip => `
+            <div class="tip-item">
+                 ${tip}
+            </div>
+        `).join('');
+    }
+}
+
+function showSystemError(message) {
+    const statusElement = document.getElementById('systemStatus');
+    const tipsElement = document.getElementById('systemTips');
+    
+    if (statusElement) {
+        statusElement.innerHTML = `<div class="error-message">${message}</div>`;
+    }
+    
+    if (tipsElement) {
+        tipsElement.innerHTML = `<div class="error-message">Failed to load tips</div>`;
+    }
+}
+
+// Auto-refresh system analysis every 5 minutes
+setInterval(loadSystemAnalysis, 5 * 60 * 1000);

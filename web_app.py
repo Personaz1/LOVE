@@ -7,12 +7,13 @@ import os
 import json
 import asyncio
 import logging
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Response
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -22,16 +23,17 @@ import uvicorn
 load_dotenv()
 
 from ai_client import AIClient
-from prompts.psychologist_prompt import AI_GUARDIAN_SYSTEM_PROMPT
+from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
 from memory.conversation_history import ConversationHistory
-from file_agent import file_agent
+from memory.guardian_profile import guardian_profile
+from memory.theme_manager import theme_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Family Psychologist Bot", version="1.0.0")
+app = FastAPI(title="ΔΣ Guardian - Family Guardian Angel", version="1.0.0")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -42,12 +44,50 @@ templates = Jinja2Templates(directory="templates")
 # Security
 security = HTTPBasic()
 
+# Session management
+SESSIONS = {}  # In production, use Redis or database
+SESSION_SECRET = secrets.token_urlsafe(32)
+
 # Initialize components
 ai_client = AIClient()
 conversation_history = ConversationHistory()
 
+def create_session(username: str) -> str:
+    """Create a new session for user"""
+    session_id = secrets.token_urlsafe(32)
+    SESSIONS[session_id] = {
+        "username": username,
+        "created_at": datetime.now(),
+        "expires_at": datetime.now() + timedelta(hours=24)
+    }
+    return session_id
+
+def get_session(session_id: str) -> Optional[Dict]:
+    """Get session data"""
+    if session_id not in SESSIONS:
+        return None
+    
+    session = SESSIONS[session_id]
+    if datetime.now() > session["expires_at"]:
+        del SESSIONS[session_id]
+        return None
+    
+    return session
+
+def verify_session(request: Request) -> Optional[str]:
+    """Verify session and return username"""
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        return None
+    
+    session = get_session(session_id)
+    if not session:
+        return None
+    
+    return session["username"]
+
 def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
-    """Verify user credentials"""
+    """Verify user credentials - fallback for API calls"""
     username = credentials.username
     password = credentials.password
     
@@ -61,29 +101,105 @@ def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
 
+def get_current_user(request: Request) -> Optional[str]:
+    """Get current user from session or query params"""
+    # Try session first
+    username = verify_session(request)
+    if username:
+        return username
+    
+    # Fallback to query params for backward compatibility
+    username = request.query_params.get("username")
+    password = request.query_params.get("password")
+    
+    if username == "meranda" and password == "musser":
+        return username
+    
+    return None
+
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     """Serve login page"""
     return templates.TemplateResponse("login.html", {"request": request})
 
+@app.post("/login")
+async def login(
+    request: Request,
+    response: Response,
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    """Handle login and create session"""
+    if username == "meranda" and password == "musser":
+        session_id = create_session(username)
+        response = RedirectResponse(url="/chat", status_code=302)
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=False,  # Set to True in production with HTTPS
+            samesite="lax",
+            max_age=86400  # 24 hours
+        )
+        return response
+    else:
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Invalid credentials"
+        })
+
 @app.get("/chat", response_class=HTMLResponse)
-async def chat_page(request: Request, username: str = Depends(verify_password)):
+async def chat_page(request: Request):
     """Serve chat page"""
-    return templates.TemplateResponse("chat.html", {"request": request, "username": username})
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/", status_code=302)
+    
+    # If user came via URL with credentials, create session
+    if not verify_session(request) and request.query_params.get("username"):
+        session_id = create_session(username)
+        response = templates.TemplateResponse("chat.html", {
+            "request": request, 
+            "username": username,
+            "moment_time": datetime.now().strftime("%I:%M %p")
+        })
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=86400
+        )
+        return response
+    
+    return templates.TemplateResponse("chat.html", {
+        "request": request, 
+        "username": username,
+        "moment_time": datetime.now().strftime("%I:%M %p")
+    })
 
 @app.post("/api/chat/stream")
 async def chat_stream_endpoint(
     request: Request,
-    message: str = Form(...),
-    username: str = Depends(verify_password)
+    message: str = Form(...)
 ):
     """Handle chat messages with streaming response"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Create session if user came via URL
+    if not verify_session(request) and request.query_params.get("username"):
+        session_id = create_session(username)
+        # Note: Can't set cookie in streaming response, but session is created
     
     async def generate_stream():
         try:
             # Get user profile
             user_profile = UserProfile(username)
             user_profile_dict = user_profile.get_profile()
+            user_profile_dict['username'] = username  # Add username to profile
             
             # Get conversation context
             recent_messages = conversation_history.get_recent_history(limit=5)
@@ -133,14 +249,18 @@ async def chat_stream_endpoint(
 @app.post("/api/chat")
 async def chat_endpoint(
     request: Request,
-    message: str = Form(...),
-    username: str = Depends(verify_password)
+    message: str = Form(...)
 ):
-    """Handle chat messages with regular response (fallback)"""
+    """Handle chat messages with regular response"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
         # Get user profile
         user_profile = UserProfile(username)
         user_profile_dict = user_profile.get_profile()
+        user_profile_dict['username'] = username
         
         # Get conversation context
         recent_messages = conversation_history.get_recent_history(limit=5)
@@ -153,231 +273,812 @@ async def chat_endpoint(
                 full_context += f"- User: {msg.get('message', '')}\n"
                 full_context += f"- AI: {msg.get('ai_response', '')}\n"
         
-        # Generate response
-        response = await ai_client._generate_gemini_response(
-            system_prompt=AI_GUARDIAN_SYSTEM_PROMPT,
-            user_message=message,
-            context=full_context,
-            user_profile=user_profile_dict
+        # Generate AI response
+        ai_response = ai_client.chat(
+            message=message,
+            user_profile=user_profile_dict,
+            conversation_context=full_context
         )
         
-        # Add to conversation history
-        conversation_history.add_message(username, message, response)
+        # Save to conversation history
+        conversation_history.add_message(username, message, ai_response)
         
-        return {"response": response}
+        return JSONResponse({
+            "success": True,
+            "response": ai_response,
+            "timestamp": datetime.now().isoformat()
+        })
         
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 @app.get("/api/profile")
-async def get_profile(username: str = Depends(verify_password)):
+async def get_profile(request: Request):
     """Get user profile"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
         user_profile = UserProfile(username)
         profile_data = user_profile.get_profile()
+        profile_data['username'] = username
         
-        # Add emotional history
-        emotional_history = user_profile.get_emotional_history(limit=10)
-        emotional_trends = user_profile.get_emotional_trends()
-        
-        profile_data["emotional_history"] = emotional_history
-        profile_data["emotional_trends"] = emotional_trends
-        
-        return profile_data
+        return JSONResponse({
+            "success": True,
+            "profile": profile_data
+        })
         
     except Exception as e:
         logger.error(f"Error getting profile: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/profile/update")
+async def update_profile_full(request: Request):
+    """Update user profile"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        form_data = await request.form()
+        
+        # Get current profile to preserve existing data
+        user_profile = UserProfile(username)
+        current_profile = user_profile.get_profile()
+        
+        # Extract profile data from form, preserving existing data
+        profile_data = {
+                       'full_name': form_data.get('full_name', current_profile.get('full_name', '')),
+                       'age': form_data.get('age', current_profile.get('age', '')),
+                       'location': form_data.get('location', current_profile.get('location', '')),
+                       'email': form_data.get('email', current_profile.get('email', '')),
+                       'current_feeling': form_data.get('current_feeling', current_profile.get('current_feeling', '')),
+                       'profile': form_data.get('bio', current_profile.get('profile', '')),  # bio field maps to profile
+                       'interests': form_data.get('interests', current_profile.get('interests', '')),
+                       'goals': form_data.get('goals', current_profile.get('goals', '')),
+                       'challenges': form_data.get('challenges', current_profile.get('challenges', '')),
+                       'preferences': form_data.get('preferences', current_profile.get('preferences', '')),
+                       'show_feelings': form_data.get('show_feelings') == 'on',
+                       'avatar_url': current_profile.get('avatar_url', ''),  # Preserve avatar URL
+                       'last_updated': datetime.now().isoformat()
+                   }
+        
+        # Handle password change if provided
+        new_password = form_data.get('new_password')
+        confirm_password = form_data.get('confirm_password')
+        current_password = form_data.get('current_password')
+        
+        if new_password and confirm_password:
+            if new_password != confirm_password:
+                return JSONResponse({
+                    "success": False,
+                    "error": "Passwords do not match"
+                }, status_code=400)
+            
+            # In production, validate current password and hash new password
+            if current_password == 'musser':  # Simple validation for demo
+                profile_data['password'] = new_password
+            else:
+                                        return JSONResponse({
+                            "success": False,
+                            "error": "Incorrect current password"
+                        }, status_code=400)
+        
+        # Update profile
+        user_profile._save_profile(profile_data)
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Profile updated successfully",
+            "profile": profile_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 @app.post("/api/profile/feeling")
 async def update_feeling(
+    request: Request,
     feeling: str = Form(...),
-    context: str = Form(""),
-    username: str = Depends(verify_password)
+    context: str = Form("")
 ):
     """Update user's current feeling"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
         user_profile = UserProfile(username)
-        result = user_profile.update_current_feeling(feeling, context)
-        return {"success": result, "feeling": feeling}
+        user_profile.update_current_feeling(feeling, context)
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Feeling updated to {feeling}",
+            "feeling": feeling
+        })
         
     except Exception as e:
         logger.error(f"Error updating feeling: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 @app.get("/api/conversation-history")
 async def get_conversation_history(
-    limit: int = 10,
-    username: str = Depends(verify_password)
+    request: Request,
+    limit: int = 10
 ):
-    """Get conversation history for the user"""
+    """Get conversation history"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Create session if user came via URL
+    if not verify_session(request) and request.query_params.get("username"):
+        session_id = create_session(username)
+        response = JSONResponse({
+            "success": True,
+            "history": conversation_history.get_recent_history(limit=limit),
+            "count": len(conversation_history.get_recent_history(limit=limit))
+        })
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=86400
+        )
+        return response
+    
     try:
-        # Get conversation history
         history = conversation_history.get_recent_history(limit=limit)
         
-        # Get statistics
-        stats = conversation_history.get_statistics()
-        
-        return {
+        return JSONResponse({
+            "success": True,
             "history": history,
-            "statistics": stats,
-            "success": True
-        }
+            "count": len(history)
+        })
+        
     except Exception as e:
         logger.error(f"Error getting conversation history: {e}")
-        return {
-            "history": [],
-            "statistics": {},
+        return JSONResponse({
             "success": False,
             "error": str(e)
-        }
+        }, status_code=500)
 
 @app.post("/api/conversation-clear")
-async def clear_conversation_history(
-    username: str = Depends(verify_password)
-):
-    """Clear and archive conversation history"""
+async def clear_conversation_history(request: Request):
+    """Clear conversation history"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
         conversation_history.clear_history()
-        return {"success": True, "message": "Conversation history cleared and archived"}
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Conversation history cleared"
+        })
+        
     except Exception as e:
         logger.error(f"Error clearing conversation history: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.get("/api/conversation-archive")
-async def get_conversation_archive(
-    username: str = Depends(verify_password)
-):
-    """Get conversation archive"""
-    try:
-        archive = conversation_history.get_archive_entries()
-        summary = conversation_history.get_archive_summary()
-        
-        return {
-            "archive": archive,
-            "summary": summary,
-            "success": True
-        }
-    except Exception as e:
-        logger.error(f"Error getting conversation archive: {e}")
-        return {
-            "archive": [],
-            "summary": "Error loading archive",
+        return JSONResponse({
             "success": False,
             "error": str(e)
-        }
+        }, status_code=500)
+
+@app.get("/api/conversation-archive")
+async def get_conversation_archive(request: Request):
+    """Get conversation archive"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Create session if user came via URL
+    if not verify_session(request) and request.query_params.get("username"):
+        session_id = create_session(username)
+        response = JSONResponse({
+            "success": True,
+            "archive": conversation_history.get_archive_entries(),
+            "count": len(conversation_history.get_archive_entries())
+        })
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=86400
+        )
+        return response
+    
+    try:
+        archive = conversation_history.get_archive_entries()
+        
+        return JSONResponse({
+            "success": True,
+            "archive": archive,
+            "count": len(archive)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting conversation archive: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 @app.put("/api/conversation-archive/{archive_id}")
 async def edit_conversation_archive(
+    request: Request,
     archive_id: str,
-    summary: str = Form(...),
-    username: str = Depends(verify_password)
+    summary: str = Form(...)
 ):
-    """Edit conversation archive entry"""
+    """Edit conversation archive summary"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
         success = conversation_history.edit_archive_entry(archive_id, summary)
-        return {"success": success}
+        
+        if success:
+            return JSONResponse({
+                "success": True,
+                "message": "Archive summary updated"
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "error": "Archive not found"
+            }, status_code=404)
+        
     except Exception as e:
-        logger.error(f"Error editing archive entry: {e}")
-        return {"success": False, "error": str(e)}
+        logger.error(f"Error editing conversation archive: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 
 
 @app.get("/api/files/list")
 async def list_files(
-    directory: str = "",
-    username: str = Depends(verify_password)
+    request: Request,
+    directory: str = ""
 ):
     """List files in directory"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
-        result = file_agent.list_files(directory)
-        if result.get("success"):
-            return result
-        else:
-            raise HTTPException(status_code=400, detail=result.get("error", "Unknown error"))
+        # Security: only allow listing files in safe directories
+        safe_directories = ["memory", "static", "templates"]
+        
+        if directory and directory not in safe_directories:
+            return JSONResponse({
+                "success": False,
+                "error": "Access denied to this directory"
+            }, status_code=403)
+        
+        target_dir = directory if directory else "."
+        files = []
+        
+        if os.path.exists(target_dir):
+            for item in os.listdir(target_dir):
+                item_path = os.path.join(target_dir, item)
+                files.append({
+                    "name": item,
+                    "type": "directory" if os.path.isdir(item_path) else "file",
+                    "size": os.path.getsize(item_path) if os.path.isfile(item_path) else None
+                })
+        
+        return JSONResponse({
+            "success": True,
+            "files": files,
+            "directory": directory
+        })
+        
     except Exception as e:
         logger.error(f"Error listing files: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 @app.get("/api/files/search")
 async def search_files(
-    query: str,
-    username: str = Depends(verify_password)
+    request: Request,
+    query: str
 ):
-    """Search files"""
+    """Search files by name"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
     try:
-        result = file_agent.search_files(query)
-        if result.get("success"):
-            return result
-        else:
-            raise HTTPException(status_code=400, detail=result.get("error", "Unknown error"))
+        # Security: only search in safe directories
+        safe_directories = ["memory", "static", "templates"]
+        results = []
+        
+        for directory in safe_directories:
+            if os.path.exists(directory):
+                for root, dirs, files in os.walk(directory):
+                    for file in files:
+                        if query.lower() in file.lower():
+                            file_path = os.path.join(root, file)
+                            results.append({
+                                "name": file,
+                                "path": file_path,
+                                "size": os.path.getsize(file_path)
+                            })
+        
+        return JSONResponse({
+            "success": True,
+            "results": results,
+            "query": query,
+            "count": len(results)
+        })
+        
     except Exception as e:
         logger.error(f"Error searching files: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
-@app.get("/api/theme")
-async def get_current_theme(username: str = Depends(verify_password)):
-    """Get current theme"""
-    try:
-        theme_file = "memory/current_theme.json"
-        if os.path.exists(theme_file):
-            with open(theme_file, 'r') as f:
-                theme_data = json.load(f)
-                return {"success": True, "theme": theme_data}
-        else:
-            return {"success": True, "theme": {"theme": "default"}}
-    except Exception as e:
-        logger.error(f"Error getting theme: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.post("/api/theme")
-async def update_theme(
-    theme: str = Form(...),
-    username: str = Depends(verify_password)
-):
-    """Update current theme"""
-    try:
-        theme_file = "memory/current_theme.json"
-        theme_data = {
-            "theme": theme,
-            "updated_at": datetime.now().isoformat()
-        }
-        
-        with open(theme_file, 'w') as f:
-            json.dump(theme_data, f, indent=2)
-        
-        return {"success": True, "theme": theme_data}
-    except Exception as e:
-        logger.error(f"Error updating theme: {e}")
-        return {"success": False, "error": str(e)}
-
+# Temporary endpoint to prevent 404 errors from cached frontend
 @app.get("/api/hidden-profile")
-async def get_hidden_profile(username: str = Depends(verify_password)):
-    """Get user's hidden profile (model's private notes)"""
-    try:
-        user_profile = UserProfile(username)
-        hidden_profile = user_profile.get_hidden_profile()
-        return {"success": True, "hidden_profile": hidden_profile}
-        
-    except Exception as e:
-        logger.error(f"Error getting hidden profile: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+async def get_hidden_profile_stub(request: Request):
+    """Temporary stub for hidden profile - returns empty data"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    return {"success": True, "hidden_profile": "", "username": username, "last_updated": ""}
 
 @app.put("/api/hidden-profile")
-async def update_hidden_profile(
-    hidden_profile_data: dict,
-    username: str = Depends(verify_password)
+async def update_hidden_profile_stub(
+    request: Request,
+    hidden_profile_text: str = Form(...)
 ):
-    """Update user's hidden profile"""
+    """Temporary stub for hidden profile update"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    return {"success": True, "message": "Hidden profile functionality removed"}
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    """Serve profile page"""
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/", status_code=302)
+    
+    # If user came via URL with credentials, create session
+    if not verify_session(request) and request.query_params.get("username"):
+        session_id = create_session(username)
+        response = templates.TemplateResponse("profile.html", {
+            "request": request, 
+            "username": username,
+            "profile": get_profile_data(username)
+        })
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=86400
+        )
+        return response
+    
     try:
-        user_profile = UserProfile(username)
-        result = user_profile.update_hidden_profile(hidden_profile_data)
-        return {"success": result, "message": "Hidden profile updated successfully"}
+        profile_data = get_profile_data(username)
+        return templates.TemplateResponse("profile.html", {
+            "request": request, 
+            "username": username,
+            "profile": profile_data
+        })
         
     except Exception as e:
-        logger.error(f"Error updating hidden profile: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error loading profile page: {e}")
+        raise HTTPException(status_code=500, detail="Error loading profile")
+
+def get_profile_data(username: str) -> Dict:
+    """Get profile data for user"""
+    user_profile = UserProfile(username)
+    profile_data = user_profile.get_profile()
+    
+    # Add default values for new fields
+    profile_data.setdefault('email', '')
+    profile_data.setdefault('full_name', '')
+    profile_data.setdefault('age', '')
+    profile_data.setdefault('location', '')
+
+    profile_data.setdefault('show_feelings', True)
+
+    return profile_data
+
+@app.post("/api/profile/avatar")
+async def upload_avatar(request: Request):
+    """Upload user avatar"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        form_data = await request.form()
+        avatar_file = form_data.get('avatar')
+        
+        if not avatar_file:
+            return JSONResponse({"success": False, "error": "No file provided"})
+        
+        # Create avatars directory if it doesn't exist
+        avatar_dir = "static/avatars"
+        os.makedirs(avatar_dir, exist_ok=True)
+        
+        # Save avatar file
+        avatar_path = f"{avatar_dir}/{username}_avatar.jpg"
+        
+        # Read file content properly
+        file_content = await avatar_file.read()
+        with open(avatar_path, "wb") as f:
+            f.write(file_content)
+        
+        # Update profile with avatar path
+        user_profile = UserProfile(username)
+        profile_data = user_profile.get_profile()
+        profile_data['avatar_url'] = f"/static/avatars/{username}_avatar.jpg"
+        user_profile._save_profile(profile_data)
+        
+        return JSONResponse({
+            "success": True, 
+            "avatar_url": profile_data['avatar_url'],
+            "message": "Avatar uploaded successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error uploading avatar: {e}")
+        return JSONResponse({"success": False, "error": str(e)})
+
+@app.delete("/api/profile/delete")
+async def delete_account(request: Request):
+    """Delete user account"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # In production, implement proper account deletion with data cleanup
+        # For now, just return success
+        return JSONResponse({"success": True, "message": "Account deleted successfully"})
+        
+    except Exception as e:
+        logger.error(f"Error deleting account: {e}")
+        return JSONResponse({"success": False, "error": str(e)})
+
+@app.post("/logout")
+async def logout(response: Response):
+    """Handle logout and clear session"""
+    response = RedirectResponse(url="/", status_code=302)
+    response.delete_cookie("session_id")
+    return response
+
+@app.get("/api/model-status")
+async def get_model_status(request: Request):
+    """Get AI model status and quota information"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        status = ai_client.get_model_status()
+        return JSONResponse({
+            "success": True,
+            "status": status,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error getting model status: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/system-analysis")
+async def get_system_analysis(request: Request):
+    """Get system analysis and relationship insights"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Get user profile and context
+        user_profile = UserProfile(username)
+        profile_data = user_profile.get_profile()
+        
+        # Get conversation history
+        recent_messages = conversation_history.get_recent_history(limit=10)
+        
+        # Get emotional history and trends
+        emotional_history = user_profile.get_emotional_history(limit=10)
+        emotional_trends = user_profile.get_emotional_trends()
+        
+        # Analyze and set theme automatically
+        current_theme = theme_manager.analyze_context_and_set_theme(
+            profile_data, recent_messages, emotional_history
+        )
+        
+        # Build context for LLM
+        context = f"""
+User Profile:
+- Name: {profile_data.get('full_name', username)}
+- Age: {profile_data.get('age', 'N/A')}
+- Location: {profile_data.get('location', 'N/A')}
+- Current Feeling: {profile_data.get('current_feeling', 'N/A')}
+- Bio: {profile_data.get('profile', 'N/A')}
+
+Recent Emotional History:
+{json.dumps(emotional_history, indent=2, ensure_ascii=False)}
+
+Emotional Trends & Patterns:
+{json.dumps(emotional_trends, indent=2, ensure_ascii=False)}
+
+Recent Conversation:
+{json.dumps(recent_messages, indent=2, ensure_ascii=False)}
+
+Current Theme: {current_theme}
+"""
+        
+        # Generate system analysis using AI
+        system_prompt = """You are ΔΣ Guardian, an AI family guardian angel. Analyze the user's current situation and provide:
+
+1. **System Status Report** (main block):
+- Recent events and their impact
+- Current emotional state and patterns
+- Mental health indicators (if any concerns detected)
+- Overall situation summary
+- Key insights about emotional trends
+
+2. **Actionable Tips** (3-5 tips):
+- Based on recent conversations and emotional patterns
+- Specific, actionable advice for emotional well-being
+- Mental health support recommendations (if needed)
+- Self-care and relationship improvement suggestions
+
+3. **System Capabilities** (if relevant):
+- Mention available tools and capabilities
+- File system access (with extreme caution warning)
+- Model switching and quota management
+- Profile and memory management
+
+Format as JSON:
+{
+  "system_status": "Detailed analysis...",
+  "tips": ["Tip 1", "Tip 2", "Tip 3"],
+  "capabilities": "Available system features..."
+}
+
+Be empathetic, professional, and insightful. Focus on emotional well-being and mental health awareness."""
+
+        # Generate analysis
+        analysis_response = ai_client.chat(
+            message="Generate system analysis based on this context",
+            user_profile=profile_data,
+            conversation_context=context,
+            system_prompt=system_prompt
+        )
+        
+        # Try to parse JSON response
+        try:
+            import re
+            # Extract JSON from response
+            json_match = re.search(r'\{.*\}', analysis_response, re.DOTALL)
+            if json_match:
+                analysis_data = json.loads(json_match.group())
+            else:
+                # Fallback if no JSON found
+                analysis_data = {
+                    "system_status": analysis_response,
+                    "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+                }
+        except:
+            # Fallback if JSON parsing fails
+            analysis_data = {
+                "system_status": analysis_response,
+                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+            }
+        
+        return JSONResponse({
+            "success": True,
+            "analysis": analysis_data,
+            "theme": current_theme,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating system analysis: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# Guardian Profile API endpoints
+@app.get("/api/guardian/profile")
+async def get_guardian_profile(request: Request):
+    """Get ΔΣ Guardian profile"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        profile = guardian_profile.get_profile()
+        return JSONResponse({"success": True, "profile": profile})
+    except Exception as e:
+        logger.error(f"Error getting guardian profile: {e}")
+        return JSONResponse({"success": False, "error": str(e)})
+
+@app.post("/api/guardian/profile/update")
+async def update_guardian_profile(request: Request):
+    """Update ΔΣ Guardian profile"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        form_data = await request.form()
+        
+        updates = {}
+        if "name" in form_data:
+            updates["name"] = form_data["name"]
+        if "role" in form_data:
+            updates["role"] = form_data["role"]
+        if "system_prompt" in form_data:
+            updates["system_prompt"] = form_data["system_prompt"]
+        if "communication_style" in form_data:
+            updates["personality"] = guardian_profile.get_personality_settings()
+            updates["personality"]["communication_style"] = form_data["communication_style"]
+        if "specialization" in form_data:
+            if "personality" not in updates:
+                updates["personality"] = guardian_profile.get_personality_settings()
+            updates["personality"]["specialization"] = form_data["specialization"]
+        if "relationship_phase" in form_data:
+            if "personality" not in updates:
+                updates["personality"] = guardian_profile.get_personality_settings()
+            updates["personality"]["relationship_phase"] = form_data["relationship_phase"]
+        
+        success = guardian_profile.update_profile(updates)
+        
+        if success:
+            profile = guardian_profile.get_profile()
+            return JSONResponse({
+                "success": True, 
+                "profile": profile,
+                "message": "Guardian profile updated successfully"
+            })
+        else:
+            return JSONResponse({"success": False, "error": "Failed to update profile"})
+            
+    except Exception as e:
+        logger.error(f"Error updating guardian profile: {e}")
+        return JSONResponse({"success": False, "error": str(e)})
+
+@app.post("/api/guardian/avatar")
+async def upload_guardian_avatar(request: Request):
+    """Upload ΔΣ Guardian avatar"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        form_data = await request.form()
+        avatar_file = form_data.get('avatar')
+        
+        if not avatar_file:
+            return JSONResponse({"success": False, "error": "No file provided"})
+        
+        # Create avatars directory if it doesn't exist
+        avatar_dir = "static/avatars"
+        os.makedirs(avatar_dir, exist_ok=True)
+        
+        # Save avatar file
+        avatar_path = f"{avatar_dir}/guardian_avatar.jpg"
+        
+        # Read file content properly
+        file_content = await avatar_file.read()
+        with open(avatar_path, "wb") as f:
+            f.write(file_content)
+        
+        # Update profile with avatar path
+        success = guardian_profile.update_avatar(f"/static/avatars/guardian_avatar.jpg")
+        
+        if success:
+            profile = guardian_profile.get_profile()
+            return JSONResponse({
+                "success": True, 
+                "avatar_url": profile["avatar_url"],
+                "message": "Guardian avatar uploaded successfully"
+            })
+        else:
+            return JSONResponse({"success": False, "error": "Failed to update avatar"})
+        
+    except Exception as e:
+        logger.error(f"Error uploading guardian avatar: {e}")
+        return JSONResponse({"success": False, "error": str(e)})
+
+@app.post("/api/guardian/reset")
+async def reset_guardian_profile(request: Request):
+    """Reset guardian profile to defaults"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        success = guardian_profile.reset_to_defaults()
+        if success:
+            return JSONResponse({"success": True, "message": "Guardian profile reset to defaults"})
+        else:
+            return JSONResponse({"success": False, "error": "Failed to reset profile"}, status_code=500)
+    except Exception as e:
+        logger.error(f"Error resetting guardian profile: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/guardian/update-prompt")
+async def update_guardian_prompt_from_file(request: Request):
+    """Update guardian prompt from the prompts file"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        success = guardian_profile.update_prompt_from_file()
+        if success:
+            return JSONResponse({"success": True, "message": "Guardian prompt updated from file"})
+        else:
+            return JSONResponse({"success": False, "error": "Failed to update prompt"}, status_code=500)
+    except Exception as e:
+        logger.error(f"Error updating guardian prompt: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.get("/guardian", response_class=HTMLResponse)
+async def guardian_profile_page(request: Request):
+    """Serve Guardian profile page"""
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/", status_code=302)
+    
+    try:
+        profile = guardian_profile.get_profile()
+        return templates.TemplateResponse("guardian.html", {
+            "request": request,
+            "username": username,
+            "guardian": profile
+        })
+    except Exception as e:
+        logger.error(f"Error loading guardian profile page: {e}")
+        return templates.TemplateResponse("guardian.html", {
+            "request": request,
+            "username": username,
+            "guardian": {}
+        })
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

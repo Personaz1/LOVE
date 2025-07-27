@@ -7,22 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
-<body class="theme-{{ theme }}">
-    <!-- Theme Switcher -->
-    <div class="theme-switcher">
-        <label for="themeSelect">Theme:</label>
-        <select id="themeSelect" onchange="changeTheme(this.value)">
-            <option value="default">Default</option>
-            <option value="romantic_pink">Romantic Pink</option>
-            <option value="test_blue">Blue</option>
-            <option value="custom_purple">Purple</option>
-            <option value="test_black">Dark</option>
-            <option value="custom_red">Red</option>
-            <option value="custom_black">Black</option>
-            <option value="melancholy">Melancholy</option>
-        </select>
-    </div>
-
+<body>
     <!-- Chat Container -->
     <div class="chat-container">
         <!-- Header -->
@@ -34,17 +19,42 @@
                 </div>
                 <div class="user-info">
                     <span class="welcome-text">Welcome, {{ username.title() }}!</span>
-                    <button class="profile-btn" onclick="showProfile()">👤 Profile</button>
-
+                    <a href="/profile" class="profile-btn">👤 Profile</a>
+                    <a href="/guardian" class="guardian-btn">👼 Guardian</a>
                     <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
-                    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+                    <button class="model-status-btn" onclick="showModelStatus()">🤖 Models</button>
+                    <form method="POST" action="/logout" style="display: inline;">
+                        <button type="submit" class="logout-btn">🚪 Logout</button>
+                    </form>
                 </div>
             </div>
         </header>
 
         <!-- Main chat area -->
         <main class="chat-main">
-
+            <!-- System Analysis Panel -->
+            <aside class="system-panel" id="systemPanel">
+                <div class="panel-header">
+                    <h3>System Analysis</h3>
+                    <button class="refresh-btn" onclick="loadSystemAnalysis()">🔄</button>
+                </div>
+                
+                <div class="panel-content">
+                    <div class="analysis-section">
+                        <h4>Current Status</h4>
+                        <div class="status-content" id="systemStatus">
+                            <div class="loading-spinner">Loading analysis...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="tips-section">
+                        <h4>Tips & Insights</h4>
+                        <div class="tips-content" id="systemTips">
+                            <div class="loading-spinner">Loading tips...</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
 
             <!-- Chat messages -->
             <section class="chat-messages">
@@ -58,7 +68,7 @@
                                 <span class="time">{{ moment_time }}</span>
                             </div>
                             <div class="message-text">
-                                Hello {{ username.title() }}! 👼 I'm so glad you're here. I'm ΔΣ Guardian, your AI family guardian angel, and I'm here to protect and guide your family's emotional and relational well-being. 
+                                Hello {{ username.title() }}! I'm so glad you're here. I'm ΔΣ Guardian, your AI family guardian angel, and I'm here to protect and guide your family's emotional and relational well-being. 
                                 <br><br>
                                 I understand relationships as complex adaptive systems and help families evolve beyond their current limitations. I can adapt our environment, provide evolutionary guidance, and help you transcend patterns that no longer serve you.
                                 <br><br>
@@ -87,31 +97,6 @@
         </main>
     </div>
 
-    <!-- Profile Modal -->
-    <div id="profileModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>👤 Your Profile</h2>
-                <span class="close" onclick="closeModal('profileModal')">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="profileContent">
-                    <!-- Profile content will be loaded here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-
-    <!-- Loading overlay - REMOVED for streaming -->
-    <!-- <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-content">
-            <div class="loading-heart">💕</div>
-            <p>Dr. Harmony is thinking...</p>
-        </div>
-    </div> -->
-
-    <script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.4"></script>
 </body>
 </html> 

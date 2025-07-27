@@ -27,7 +27,7 @@ class SimpleUserProfile:
             "created_at": datetime.now().isoformat(),
             "last_updated": datetime.now().isoformat(),
             "profile": "Tell me about yourself...",
-            "hidden_profile": "Model's private notes about this user...",
+            "notes": "User notes...",
             "relationship_status": "In a relationship",
             "current_feeling": "Happy and connected"
         }
@@ -55,14 +55,7 @@ class SimpleUserProfile:
         """Get user profile (visible to user)"""
         return self._load_profile()
     
-    def get_hidden_profile(self) -> Dict[str, Any]:
-        """Get hidden profile (model's private notes)"""
-        profile = self._load_profile()
-        return {
-            "username": profile.get("username", self.username),
-            "hidden_profile": profile.get("hidden_profile", ""),
-            "last_updated": profile.get("last_updated", "")
-        }
+
     
     def update_profile(self, new_profile: str) -> bool:
         """Update user profile"""
@@ -75,16 +68,7 @@ class SimpleUserProfile:
             print(f"Error updating profile for {self.username}: {e}")
             return False
     
-    def update_hidden_profile(self, new_hidden_profile: str) -> bool:
-        """Update hidden profile (model's private notes)"""
-        try:
-            profile = self._load_profile()
-            profile["hidden_profile"] = new_hidden_profile
-            self._save_profile(profile)
-            return True
-        except Exception as e:
-            print(f"Error updating hidden profile for {self.username}: {e}")
-            return False
+
     
     def update_relationship_status(self, status: str) -> bool:
         """Update relationship status"""
@@ -128,7 +112,6 @@ class UserProfile:
                 "created_at": datetime.now().isoformat(),
                 "last_updated": datetime.now().isoformat(),
                 "profile": "Tell me about yourself...",
-                "hidden_profile": "Model's private notes about this user...",
                 "relationship_status": "In a relationship",
                 "current_feeling": "Not specified"
             }
@@ -144,24 +127,6 @@ class UserProfile:
                 "emotional_history": []
             }
             self._save_emotional_history(default_history)
-        
-        # Initialize diary file with test entry
-        diary_file = f"memory/user_profiles/{self.username}_diary.json"
-        if not os.path.exists(diary_file):
-            test_entries = [
-                {
-                    "content": "Привет, дневник! Это моя первая запись.",
-                    "timestamp": datetime.now().isoformat(),
-                    "mood": "Curious"
-                },
-                {
-                    "content": "Сегодня я чувствую себя хорошо. Хочу записать свои мысли.",
-                    "timestamp": datetime.now().isoformat(),
-                    "mood": "Happy"
-                }
-            ]
-            with open(diary_file, 'w', encoding='utf-8') as f:
-                json.dump(test_entries, f, indent=2, ensure_ascii=False)
         
         # Initialize relationship insights file
         insights_file = f"memory/user_profiles/relationship_insights.json"
@@ -283,25 +248,29 @@ class UserProfile:
             logger.error(f"Error updating relationship status for {self.username}: {e}")
             return False
     
-    def update_user_profile(self, profile_data: Dict[str, Any]) -> bool:
-        """Update user profile with new data"""
+    def update_profile(self, new_profile_text: str) -> bool:
+        """Update user profile text - treat as simple text field"""
         try:
             profile = self._load_profile()
-            profile.update(profile_data)
+            profile["profile"] = new_profile_text
             self._save_profile(profile)
-            logger.info(f"👤 Updated profile for {self.username}")
+            logger.info(f"👤 Updated profile text for {self.username}")
             return True
         except Exception as e:
             logger.error(f"Error updating profile for {self.username}: {e}")
             return False
     
+
+    
+
+    
     def get_emotional_trends(self) -> Dict[str, Any]:
-        """Analyze emotional trends"""
+        """Analyze emotional trends and detect patterns"""
         try:
-            emotional_history = self.get_emotional_history(limit=30)  # Last 30 entries
+            emotional_history = self.get_emotional_history(limit=50)  # Last 50 entries
             
             if not emotional_history:
-                return {"trend": "No data", "most_common": "No data", "recent_changes": []}
+                return {"trend": "No data", "most_common": "No data", "recent_changes": [], "patterns": {}, "alerts": []}
             
             # Count feelings
             feeling_counts = {}
@@ -312,16 +281,17 @@ class UserProfile:
             # Find most common feeling
             most_common = max(feeling_counts.items(), key=lambda x: x[1])[0] if feeling_counts else "No data"
             
-            # Get recent changes (last 5)
-            recent_changes = emotional_history[-5:] if len(emotional_history) >= 5 else emotional_history
+            # Get recent changes (last 10)
+            recent_changes = emotional_history[-10:] if len(emotional_history) >= 10 else emotional_history
             
             # Determine trend
             if len(emotional_history) >= 2:
                 recent_feeling = emotional_history[-1].get("feeling", "")
                 previous_feeling = emotional_history[-2].get("feeling", "")
                 
-                positive_feelings = ["Happy", "Joyful", "Feeling great", "Content", "Calm"]
-                negative_feelings = ["Sad", "Feeling bad", "Angry", "Anxious", "Nervous"]
+                positive_feelings = ["Happy", "Energetic", "Excited", "Optimistic", "Calm"]
+                negative_feelings = ["Sad", "Anxious", "Stressed", "Pessimistic", "Angry"]
+                extreme_feelings = ["Energetic", "Excited", "Stressed", "Anxious", "Angry"]
                 
                 if recent_feeling in positive_feelings and previous_feeling in negative_feelings:
                     trend = "Improving"
@@ -332,18 +302,152 @@ class UserProfile:
             else:
                 trend = "New user"
             
+            # Analyze patterns for mental health indicators
+            patterns = self._analyze_mental_health_patterns(emotional_history)
+            alerts = self._generate_mental_health_alerts(emotional_history, patterns)
+            
             return {
                 "trend": trend,
                 "most_common": most_common,
                 "recent_changes": recent_changes,
-                "total_entries": len(emotional_history)
+                "total_entries": len(emotional_history),
+                "patterns": patterns,
+                "alerts": alerts
             }
             
         except Exception as e:
             logger.error(f"Error analyzing emotional trends for {self.username}: {e}")
-            return {"trend": "Error", "most_common": "Error", "recent_changes": []}
+            return {"trend": "Error", "most_common": "Error", "recent_changes": [], "patterns": {}, "alerts": []}
     
-
+    def _analyze_mental_health_patterns(self, emotional_history: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Analyze patterns that might indicate mental health issues"""
+        try:
+            if len(emotional_history) < 10:
+                return {"bipolar_risk": "Insufficient data", "depression_risk": "Insufficient data", "anxiety_risk": "Insufficient data"}
+            
+            # Define feeling categories
+            elevated_feelings = ["Energetic", "Excited", "Optimistic"]
+            depressed_feelings = ["Sad", "Pessimistic", "Tired"]
+            anxious_feelings = ["Anxious", "Stressed", "Confused"]
+            stable_feelings = ["Happy", "Calm", "Neutral"]
+            
+            # Analyze mood swings (potential bipolar indicators)
+            mood_swings = 0
+            rapid_changes = 0
+            
+            for i in range(1, len(emotional_history)):
+                prev_feeling = emotional_history[i-1].get("feeling", "")
+                curr_feeling = emotional_history[i].get("feeling", "")
+                
+                # Count extreme mood changes
+                if (prev_feeling in elevated_feelings and curr_feeling in depressed_feelings) or \
+                   (prev_feeling in depressed_feelings and curr_feeling in elevated_feelings):
+                    mood_swings += 1
+                
+                # Count rapid changes (within short time periods)
+                prev_time = emotional_history[i-1].get("timestamp", "")
+                curr_time = emotional_history[i].get("timestamp", "")
+                if self._is_rapid_change(prev_time, curr_time):
+                    rapid_changes += 1
+            
+            # Calculate risks
+            total_entries = len(emotional_history)
+            bipolar_risk = "Low"
+            if mood_swings > total_entries * 0.3:  # More than 30% are mood swings
+                bipolar_risk = "High"
+            elif mood_swings > total_entries * 0.15:  # More than 15% are mood swings
+                bipolar_risk = "Medium"
+            
+            # Analyze depression patterns
+            depressed_count = sum(1 for entry in emotional_history if entry.get("feeling", "") in depressed_feelings)
+            depression_ratio = depressed_count / total_entries
+            depression_risk = "Low"
+            if depression_ratio > 0.6:  # More than 60% depressed feelings
+                depression_risk = "High"
+            elif depression_ratio > 0.4:  # More than 40% depressed feelings
+                depression_risk = "Medium"
+            
+            # Analyze anxiety patterns
+            anxious_count = sum(1 for entry in emotional_history if entry.get("feeling", "") in anxious_feelings)
+            anxiety_ratio = anxious_count / total_entries
+            anxiety_risk = "Low"
+            if anxiety_ratio > 0.5:  # More than 50% anxious feelings
+                anxiety_risk = "High"
+            elif anxiety_ratio > 0.3:  # More than 30% anxious feelings
+                anxiety_risk = "Medium"
+            
+            return {
+                "bipolar_risk": bipolar_risk,
+                "depression_risk": depression_risk,
+                "anxiety_risk": anxiety_risk,
+                "mood_swings_count": mood_swings,
+                "rapid_changes_count": rapid_changes,
+                "depression_ratio": round(depression_ratio, 2),
+                "anxiety_ratio": round(anxiety_ratio, 2)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error analyzing mental health patterns for {self.username}: {e}")
+            return {"bipolar_risk": "Error", "depression_risk": "Error", "anxiety_risk": "Error"}
+    
+    def _is_rapid_change(self, prev_time: str, curr_time: str) -> bool:
+        """Check if mood change happened within a short time period (e.g., 2 hours)"""
+        try:
+            from datetime import datetime, timedelta
+            
+            prev_dt = datetime.fromisoformat(prev_time.replace('Z', '+00:00'))
+            curr_dt = datetime.fromisoformat(curr_time.replace('Z', '+00:00'))
+            
+            time_diff = abs((curr_dt - prev_dt).total_seconds() / 3600)  # hours
+            return time_diff <= 2  # Rapid change if within 2 hours
+        except:
+            return False
+    
+    def _generate_mental_health_alerts(self, emotional_history: List[Dict[str, Any]], patterns: Dict[str, Any]) -> List[str]:
+        """Generate alerts based on mental health patterns"""
+        alerts = []
+        
+        try:
+            # High risk alerts
+            if patterns.get("bipolar_risk") == "High":
+                alerts.append("⚠️ High risk of bipolar disorder: frequent mood swings")
+            
+            if patterns.get("depression_risk") == "High":
+                alerts.append("⚠️ High risk of depression: predominance of negative emotions")
+            
+            if patterns.get("anxiety_risk") == "High":
+                alerts.append("⚠️ High risk of anxiety: frequent stress and anxiety states")
+            
+            # Medium risk alerts
+            if patterns.get("bipolar_risk") == "Medium":
+                alerts.append("⚠️ Medium risk of bipolar disorder: mood swings observed")
+            
+            if patterns.get("depression_risk") == "Medium":
+                alerts.append("⚠️ Medium risk of depression: signs of depression noticeable")
+            
+            if patterns.get("anxiety_risk") == "Medium":
+                alerts.append("⚠️ Medium risk of anxiety: periodic stress states")
+            
+            # Pattern alerts
+            if patterns.get("rapid_changes_count", 0) > 5:
+                alerts.append("⚠️ Frequent rapid mood changes")
+            
+            # Positive patterns
+            if patterns.get("depression_risk") == "Low" and patterns.get("anxiety_risk") == "Low":
+                alerts.append("✅ Stable emotional state")
+            
+        except Exception as e:
+            logger.error(f"Error generating mental health alerts for {self.username}: {e}")
+        
+        return alerts
+    
+    def delete_diary_entry(self, index: int) -> bool:
+        """Delete a diary entry by index"""
+        try:
+            file_path = f"memory/user_profiles/{self.username}_diary.json"
+            
+            if not os.path.exists(file_path):
+                return False
             
             # Load existing entries
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -444,13 +548,13 @@ class UserProfileManager:
         stepan_profile = SimpleUserProfile("stepan", self.profile_dir)
         if not stepan_profile.profile_file.exists():
             stepan_profile.update_profile("Stepan Egoshin - passionate about technology, AI, and innovation. Loves deep conversations and building meaningful connections.")
-            stepan_profile.update_hidden_profile("Stepan shows strong analytical thinking and prefers direct communication. He values intellectual growth and meaningful relationships.")
+
         
         # Create Meranda profile
         meranda_profile = SimpleUserProfile("meranda", self.profile_dir)
         if not meranda_profile.profile_file.exists():
             meranda_profile.update_profile("Meranda - creative and empathetic soul who loves art, music, and deep emotional connections. Values authenticity and open communication.")
-            meranda_profile.update_hidden_profile("Meranda is highly intuitive and emotionally intelligent. She needs reassurance and values quality time in relationships.")
+
     
     def get_user_profile(self, username: str) -> Optional[SimpleUserProfile]:
         """Get user profile by username"""
@@ -468,7 +572,9 @@ class UserProfileManager:
         profiles = {}
         try:
             for profile_file in self.profile_dir.glob("*.json"):
-                if not profile_file.name.endswith(("_emotions.json", "_insights.json")):
+                # Only process main profile files, skip emotions, insights, etc.
+                if (not profile_file.name.endswith(("_emotions.json", "_insights.json", "relationship_insights.json")) and 
+                    not profile_file.name.startswith("relationship_")):
                     username = profile_file.stem
                     profile = self.get_user_profile(username)
                     if profile:
@@ -477,19 +583,7 @@ class UserProfileManager:
             print(f"Error getting all profiles: {e}")
         return profiles
     
-    def get_all_hidden_profiles(self) -> Dict[str, Dict[str, Any]]:
-        """Get all hidden profiles (model's private notes)"""
-        hidden_profiles = {}
-        try:
-            for profile_file in self.profile_dir.glob("*.json"):
-                if not profile_file.name.endswith(("_emotions.json", "_insights.json")):
-                    username = profile_file.stem
-                    profile = self.get_user_profile(username)
-                    if profile:
-                        hidden_profiles[username] = profile.get_hidden_profile()
-        except Exception as e:
-            print(f"Error getting all hidden profiles: {e}")
-        return hidden_profiles
+
     
     def create_user(self, username: str, initial_profile: str = "") -> bool:
         """Create new user profile"""
@@ -536,27 +630,7 @@ class UserProfileManager:
     
 
 
-    def update_hidden_profile(self, username: str, hidden_profile_data: Dict[str, Any]) -> bool:
-        """Update user's hidden profile (model's private notes)"""
-        try:
-            profile = self.get_user_profile(username)
-            if profile:
-                return profile.update_hidden_profile(hidden_profile_data)
-            return False
-        except Exception as e:
-            logger.error(f"Error updating hidden profile for {username}: {e}")
-            return False
-    
-    def read_hidden_profile(self, username: str) -> str:
-        """Read user's hidden profile"""
-        try:
-            profile = self.get_user_profile(username)
-            if profile:
-                return json.dumps(profile.get_hidden_profile(), indent=2, ensure_ascii=False)
-            return "Profile not found"
-        except Exception as e:
-            logger.error(f"Error reading hidden profile for {username}: {e}")
-            return f"Error reading hidden profile: {str(e)}"
+
 
 # Global instance
 profile_manager = UserProfileManager() 

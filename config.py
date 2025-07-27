@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     GEMINI_TEMPERATURE: float = 0.7
     
     # Database Configuration
-    DATABASE_URL: str = "sqlite:///./family_psychologist.db"
+    DATABASE_URL: str = "sqlite:///./family_guardian.db"
     
     # Redis Configuration (for caching and sessions)
     REDIS_URL: str = "redis://localhost:6379"
