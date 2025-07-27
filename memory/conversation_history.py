@@ -357,6 +357,80 @@ Focus on relationship dynamics, emotional patterns, and meaningful insights rath
             'last_activity': self.history[-1]['timestamp'] if self.history else None,
             'users': list(set(msg['user'] for msg in self.history))
         }
+    
+    def edit_message(self, message_id: str, new_content: str) -> bool:
+        """Edit a message in conversation history"""
+        try:
+            for entry in self.history:
+                if entry.get('id') == message_id:
+                    entry['message'] = new_content
+                    entry['edited'] = True
+                    entry['edit_timestamp'] = datetime.now().isoformat()
+                    self._save_history()
+                    logger.info(f"✅ Edited message {message_id}")
+                    return True
+            
+            # Also check archive
+            for entry in self.archive:
+                if entry.get('id') == message_id:
+                    entry['message'] = new_content
+                    entry['edited'] = True
+                    entry['edit_timestamp'] = datetime.now().isoformat()
+                    self._save_archive()
+                    logger.info(f"✅ Edited archived message {message_id}")
+                    return True
+            
+            logger.warning(f"❌ Message {message_id} not found for editing")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error editing message {message_id}: {e}")
+            return False
+    
+    def delete_message(self, message_id: str) -> bool:
+        """Delete a message from conversation history"""
+        try:
+            # Check current history
+            for i, entry in enumerate(self.history):
+                if entry.get('id') == message_id:
+                    del self.history[i]
+                    self._save_history()
+                    logger.info(f"✅ Deleted message {message_id}")
+                    return True
+            
+            # Check archive
+            for i, entry in enumerate(self.archive):
+                if entry.get('id') == message_id:
+                    del self.archive[i]
+                    self._save_archive()
+                    logger.info(f"✅ Deleted archived message {message_id}")
+                    return True
+            
+            logger.warning(f"❌ Message {message_id} not found for deletion")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error deleting message {message_id}: {e}")
+            return False
+    
+    def get_message_by_id(self, message_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific message by ID"""
+        try:
+            # Check current history
+            for entry in self.history:
+                if entry.get('id') == message_id:
+                    return entry
+            
+            # Check archive
+            for entry in self.archive:
+                if entry.get('id') == message_id:
+                    return entry
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting message {message_id}: {e}")
+            return None
 
 # Global instance
 conversation_history = ConversationHistory() 

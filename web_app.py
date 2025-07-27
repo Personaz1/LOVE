@@ -12,8 +12,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Response
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Response, UploadFile, File
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -91,8 +91,14 @@ def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
     password = credentials.password
     
+    # Valid credentials
+    valid_credentials = {
+        "meranda": "musser",
+        "stepan": "stepan"
+    }
+    
     # Simple authentication - in production, use proper password hashing
-    if username == "meranda" and password == "musser":
+    if username in valid_credentials and password == valid_credentials[username]:
         return username
     else:
         raise HTTPException(
@@ -112,7 +118,13 @@ def get_current_user(request: Request) -> Optional[str]:
     username = request.query_params.get("username")
     password = request.query_params.get("password")
     
-    if username == "meranda" and password == "musser":
+    # Valid credentials
+    valid_credentials = {
+        "meranda": "musser",
+        "stepan": "stepan"
+    }
+    
+    if username in valid_credentials and password == valid_credentials[username]:
         return username
     
     return None
@@ -130,7 +142,21 @@ async def login(
     password: str = Form(...)
 ):
     """Handle login and create session"""
-    if username == "meranda" and password == "musser":
+    # Valid credentials
+    valid_credentials = {
+        "meranda": "musser",
+        "stepan": "stepan"  # Add stepan user
+    }
+    
+    # Debug logging
+    logger.info(f"Login attempt - Username: '{username}', Password: '{password}'")
+    logger.info(f"Valid credentials: {valid_credentials}")
+    logger.info(f"Username in valid_credentials: {username in valid_credentials}")
+    if username in valid_credentials:
+        logger.info(f"Password matches: {password == valid_credentials[username]}")
+    
+    if username in valid_credentials and password == valid_credentials[username]:
+        logger.info(f"Login successful for user: {username}")
         session_id = create_session(username)
         response = RedirectResponse(url="/chat", status_code=302)
         response.set_cookie(
@@ -143,6 +169,7 @@ async def login(
         )
         return response
     else:
+        logger.info(f"Login failed for user: {username}")
         return templates.TemplateResponse("login.html", {
             "request": request,
             "error": "Invalid credentials"
@@ -298,7 +325,7 @@ async def chat_endpoint(
 
 @app.get("/api/profile")
 async def get_profile(request: Request):
-    """Get user profile"""
+    """Get current user's profile"""
     username = get_current_user(request)
     if not username:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -306,7 +333,6 @@ async def get_profile(request: Request):
     try:
         user_profile = UserProfile(username)
         profile_data = user_profile.get_profile()
-        profile_data['username'] = username
         
         return JSONResponse({
             "success": True,
@@ -315,6 +341,53 @@ async def get_profile(request: Request):
         
     except Exception as e:
         logger.error(f"Error getting profile: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/profile/{username}")
+async def get_profile_by_username(request: Request, username: str):
+    """Get profile by username (for avatar loading)"""
+    # Only allow getting profiles for meranda and stepan
+    if username not in ["meranda", "stepan"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    try:
+        user_profile = UserProfile(username)
+        profile_data = user_profile.get_profile()
+        
+        return JSONResponse({
+            "success": True,
+            "profile": profile_data
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting profile for {username}: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/avatar/{username}")
+async def get_user_avatar(request: Request, username: str):
+    """Get user avatar URL without authentication (for display purposes)"""
+    # Only allow getting avatars for meranda and stepan
+    if username not in ["meranda", "stepan"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    try:
+        user_profile = UserProfile(username)
+        profile_data = user_profile.get_profile()
+        
+        return JSONResponse({
+            "success": True,
+            "avatar_url": profile_data.get('avatar_url', ''),
+            "username": username
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting avatar for {username}: {e}")
         return JSONResponse({
             "success": False,
             "error": str(e)
@@ -419,9 +492,9 @@ async def update_feeling(
 @app.get("/api/conversation-history")
 async def get_conversation_history(
     request: Request,
-    limit: int = 10
+    limit: int = 20
 ):
-    """Get conversation history"""
+    """Get conversation history - optimized for speed"""
     username = get_current_user(request)
     if not username:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -431,8 +504,8 @@ async def get_conversation_history(
         session_id = create_session(username)
         response = JSONResponse({
             "success": True,
-            "history": conversation_history.get_recent_history(limit=limit),
-            "count": len(conversation_history.get_recent_history(limit=limit))
+            "history": conversation_history.get_recent_history(limit=min(limit, 50)),
+            "count": len(conversation_history.get_recent_history(limit=min(limit, 50)))
         })
         response.set_cookie(
             key="session_id",
@@ -445,7 +518,9 @@ async def get_conversation_history(
         return response
     
     try:
-        history = conversation_history.get_recent_history(limit=limit)
+        # Optimize limit for faster loading
+        optimized_limit = min(limit, 50)
+        history = conversation_history.get_recent_history(limit=optimized_limit)
         
         return JSONResponse({
             "success": True,
@@ -457,7 +532,9 @@ async def get_conversation_history(
         logger.error(f"Error getting conversation history: {e}")
         return JSONResponse({
             "success": False,
-            "error": str(e)
+            "error": str(e),
+            "history": [],
+            "count": 0
         }, status_code=500)
 
 @app.post("/api/conversation-clear")
@@ -1079,6 +1156,274 @@ async def guardian_profile_page(request: Request):
             "username": username,
             "guardian": {}
         })
+
+# File upload and management endpoints
+@app.post("/api/upload-file")
+async def upload_file(
+    request: Request,
+    file: UploadFile = File(...)
+):
+    """Upload file to sandbox or images directory"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Determine upload directory based on file type
+        if file.content_type and file.content_type.startswith('image/'):
+            # Images go to static/images for analysis
+            upload_dir = "static/images"
+            file_path = f"/static/images/{file.filename}"
+        else:
+            # Other files go to sandbox
+            upload_dir = "guardian_sandbox/uploads"
+            file_path = f"/guardian_sandbox/uploads/{file.filename}"
+        
+        # Create directory if it doesn't exist
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Save file
+        file_location = os.path.join(upload_dir, file.filename)
+        with open(file_location, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        
+        return JSONResponse({
+            "success": True,
+            "file_path": file_path,
+            "file_name": file.filename,
+            "file_type": file.content_type,
+            "file_size": len(content)
+        })
+        
+    except Exception as e:
+        logger.error(f"File upload error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/analyze-image")
+async def analyze_image(request: Request):
+    """Analyze uploaded image using AI"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        data = await request.json()
+        file_path = data.get("file_path")
+        file_name = data.get("file_name")
+        
+        if not file_path or not file_name:
+            return JSONResponse({
+                "success": False,
+                "error": "Missing file path or name"
+            })
+        
+        # Remove leading slash for file system path
+        fs_path = file_path.lstrip('/')
+        
+        if not os.path.exists(fs_path):
+            return JSONResponse({
+                "success": False,
+                "error": "File not found"
+            })
+        
+        # Generate analysis using AI
+        analysis_prompt = f"""
+        Analyze this image: {file_name}
+        File path: {file_path}
+        
+        Please provide a detailed analysis including:
+        1. What you see in the image
+        2. Any emotions or feelings it conveys
+        3. How it might relate to Meranda and Stepan's relationship
+        4. Any insights or observations that could be helpful
+        
+        Be thoughtful and considerate in your analysis.
+        """
+        
+        analysis = ai_client.chat(analysis_prompt)
+        
+        return JSONResponse({
+            "success": True,
+            "analysis": analysis
+        })
+        
+    except Exception as e:
+        logger.error(f"Image analysis error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/delete-file")
+async def delete_file(request: Request):
+    """Delete uploaded file"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        data = await request.json()
+        file_path = data.get("file_path")
+        
+        if not file_path:
+            return JSONResponse({
+                "success": False,
+                "error": "Missing file path"
+            })
+        
+        # Remove leading slash for file system path
+        fs_path = file_path.lstrip('/')
+        
+        if not os.path.exists(fs_path):
+            return JSONResponse({
+                "success": False,
+                "error": "File not found"
+            })
+        
+        # Delete file
+        os.remove(fs_path)
+        
+        return JSONResponse({
+            "success": True,
+            "message": "File deleted successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"File deletion error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/download/{file_path:path}")
+async def download_file(request: Request, file_path: str):
+    """Download file from sandbox"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Construct full path
+        full_path = os.path.join("guardian_sandbox", file_path)
+        
+        if not os.path.exists(full_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Return file for download
+        return FileResponse(
+            path=full_path,
+            filename=os.path.basename(full_path),
+            media_type='application/octet-stream'
+        )
+        
+    except Exception as e:
+        logger.error(f"File download error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Message editing endpoints
+@app.post("/api/message/edit")
+async def edit_message(request: Request):
+    """Edit a message in conversation history"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        data = await request.json()
+        message_id = data.get("message_id")
+        new_content = data.get("new_content")
+        
+        if not message_id or new_content is None:
+            return JSONResponse({
+                "success": False,
+                "error": "Missing message_id or new_content"
+            })
+        
+        # Edit message in conversation history
+        success = conversation_history.edit_message(message_id, new_content)
+        
+        if success:
+            return JSONResponse({
+                "success": True,
+                "message": "Message edited successfully"
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "error": "Failed to edit message"
+            })
+        
+    except Exception as e:
+        logger.error(f"Message edit error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/message/delete")
+async def delete_message(request: Request):
+    """Delete a message from conversation history"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        data = await request.json()
+        message_id = data.get("message_id")
+        
+        if not message_id:
+            return JSONResponse({
+                "success": False,
+                "error": "Missing message_id"
+            })
+        
+        # Delete message from conversation history
+        success = conversation_history.delete_message(message_id)
+        
+        if success:
+            return JSONResponse({
+                "success": True,
+                "message": "Message deleted successfully"
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "error": "Failed to delete message"
+            })
+        
+    except Exception as e:
+        logger.error(f"Message deletion error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/conversation/archive")
+async def archive_conversation(request: Request):
+    """Manually archive current conversation"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Archive current conversation
+        conversation_history._archive_old_messages()
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Conversation archived successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Conversation archive error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

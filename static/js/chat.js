@@ -10,40 +10,64 @@ let messageHistory = [];
 let currentStreamingMessage = null;
 let userProfile = null;
 let guardianProfile = null;
+let attachedFiles = []; // Track attached files for current message
+
+// Global variables for user avatars
+let userAvatars = {};
 
 document.addEventListener('DOMContentLoaded', function() {
     const messageForm = document.getElementById('messageForm');
     const messageInput = document.getElementById('messageInput');
     const messagesContainer = document.getElementById('messagesContainer');
-    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingBanner = document.getElementById('loadingBanner');
 
-    // Focus on input when page loads
-    messageInput.focus();
+    // Show loading banner immediately
+    showLoadingBanner();
     
-    // Load user profile for avatar
-    loadUserProfile();
-    
-    // Load guardian profile for avatar
-    loadGuardianProfile();
-    
-    // Load conversation history
-    loadConversationHistory();
+    // Load everything in parallel for speed
+    Promise.all([
+        loadUserProfile(),
+        loadGuardianProfile(),
+        loadConversationHistory(),
+        loadSystemAnalysis()
+    ]).then(() => {
+        // Hide loading banner when everything is loaded
+        hideLoadingBanner();
+        
+        // Focus on input after loading
+        messageInput.focus();
+    }).catch((error) => {
+        console.error('Error during initialization:', error);
+        hideLoadingBanner();
+        messageInput.focus();
+    });
 
     // Handle message submission
     messageForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const message = messageInput.value.trim();
-        if (!message) return;
+        if (!message && attachedFiles.length === 0) return;
 
-        // Add user message to chat
-        addMessage(message, 'user');
+        // Add user message to chat with attached files
+        addMessage(message, 'user', null, null, attachedFiles);
         messageInput.value = '';
+        
+        // Clear attached files
+        attachedFiles = [];
+        updateAttachedFilesDisplay();
 
         // Immediately start streaming - no loading screen
         try {
-            // Send message to streaming API
+            // Send message to streaming API with attached files
             await sendStreamingMessage(message);
+            
+            // If there are attached images, analyze them
+            for (const file of attachedFiles) {
+                if (file.type && file.type.startsWith('image/')) {
+                    await sendImageForAnalysis(file.path, file.name);
+                }
+            }
         } catch (error) {
             console.error('Error sending message:', error);
             addMessage('Sorry, I\'m having trouble connecting. Please try again.', 'ai');
@@ -63,9 +87,9 @@ document.addEventListener('DOMContentLoaded', function() {
         this.style.height = 'auto';
         this.style.height = Math.min(this.scrollHeight, 120) + 'px';
     });
-
-    // Load system analysis
-    loadSystemAnalysis();
+    
+    // Initialize file upload functionality
+    initializeFileUpload();
 });
 
 // Load user profile for avatar
@@ -98,6 +122,59 @@ async function loadGuardianProfile() {
     } catch (error) {
         console.error('Error loading guardian profile:', error);
     }
+}
+
+// Load avatar for specific user
+async function loadUserAvatar(username) {
+    if (userAvatars[username]) {
+        return userAvatars[username];
+    }
+    
+    try {
+        // Try different possible avatar file names
+        const possibleNames = [
+            `${username}_avatar.jpg`,
+            `${username}_avatar.png`,
+            `${username}.jpg`,
+            `${username}.png`,
+            `avatar_${username}.jpg`,
+            `avatar_${username}.png`
+        ];
+        
+        // Check each possible filename
+        for (const filename of possibleNames) {
+            const avatarUrl = `/static/avatars/${filename}`;
+            
+            // Check if avatar exists by trying to load it
+            const exists = await checkImageExists(avatarUrl);
+            if (exists) {
+                userAvatars[username] = avatarUrl;
+                return avatarUrl;
+            }
+        }
+        
+        // No avatar found
+        userAvatars[username] = null;
+        return null;
+        
+    } catch (error) {
+        console.error(`Error loading avatar for ${username}:`, error);
+        return null;
+    }
+}
+
+// Check if image exists
+function checkImageExists(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = function() {
+            resolve(true);
+        };
+        img.onerror = function() {
+            resolve(false);
+        };
+        img.src = url;
+    });
 }
 
 // Send streaming message to API
@@ -139,7 +216,7 @@ async function sendStreamingMessage(message) {
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
-
+            
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     try {
@@ -151,13 +228,13 @@ async function sendStreamingMessage(message) {
                 }
             }
         }
-
+        
         // Finalize the streaming message
         if (currentStreamingMessage) {
             finalizeStreamingMessage(currentStreamingMessage);
             currentStreamingMessage = null;
         }
-
+        
     } catch (error) {
         console.error('Error in streaming:', error);
         
@@ -279,14 +356,14 @@ async function sendMessage(message) {
     formData.append('message', message);
 
     try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
+    const response = await fetch('/api/chat', {
+        method: 'POST',
             body: formData
-        });
+    });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
         const data = await response.json();
         return data;
@@ -297,10 +374,14 @@ async function sendMessage(message) {
 }
 
 // Add message to chat
-function addMessage(text, sender, timestamp = null) {
+function addMessage(text, sender, timestamp = null, messageId = null, attachedFiles = []) {
     const messagesContainer = document.getElementById('messagesContainer');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${sender}-message`;
+    
+    if (messageId) {
+        messageDiv.setAttribute('data-message-id', messageId);
+    }
     
     const time = timestamp ? 
         new Date(timestamp).toLocaleTimeString('en-US', { 
@@ -308,12 +389,58 @@ function addMessage(text, sender, timestamp = null) {
             minute: '2-digit' 
         }) :
         new Date().toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
 
     const avatar = getAvatar(sender);
-    const senderName = sender === 'user' ? currentUser.charAt(0).toUpperCase() + currentUser.slice(1) : 'ΔΣ Guardian';
+    // Handle different senders: 'ai', 'user' (current user), or specific usernames
+    let senderName;
+    if (sender === 'ai') {
+        senderName = 'ΔΣ Guardian';
+    } else if (sender === 'user') {
+        senderName = currentUser.charAt(0).toUpperCase() + currentUser.slice(1);
+    } else {
+        // Specific username from history (meranda, stepan, etc.)
+        senderName = sender.charAt(0).toUpperCase() + sender.slice(1);
+    }
+
+    // Add edit/delete buttons for current user's messages only
+    const actionsHtml = (sender === 'user' || sender === currentUser) ? `
+        <div class="message-actions">
+            <button class="message-action-btn" onclick="editMessage('${messageId || ''}')" title="Edit">✏️</button>
+            <button class="message-action-btn" onclick="deleteMessage('${messageId || ''}')" title="Delete">🗑️</button>
+        </div>
+    ` : '';
+
+    // Add attached files display
+    let attachedFilesHtml = '';
+    if (attachedFiles && attachedFiles.length > 0) {
+        attachedFilesHtml = '<div class="attached-files">';
+        attachedFiles.forEach(file => {
+            if (file.type && file.type.startsWith('image/')) {
+                attachedFilesHtml += `
+                    <div class="attached-file">
+                        <img src="${file.url}" alt="${file.name}" class="attached-image">
+                        <div class="file-info">
+                            <span class="file-name">${file.name}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                attachedFilesHtml += `
+                    <div class="attached-file">
+                        <div class="file-icon">📁</div>
+                        <div class="file-info">
+                            <span class="file-name">${file.name}</span>
+                            <span class="file-size">${formatFileSize(file.size)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        attachedFilesHtml += '</div>';
+    }
 
     messageDiv.innerHTML = `
         <div class="message-avatar">${avatar}</div>
@@ -323,6 +450,8 @@ function addMessage(text, sender, timestamp = null) {
                 <span class="time">${time}</span>
             </div>
             <div class="message-text">${formatMessage(text)}</div>
+            ${attachedFilesHtml}
+            ${actionsHtml}
         </div>
     `;
 
@@ -331,26 +460,40 @@ function addMessage(text, sender, timestamp = null) {
     
     // Add to history only for new messages
     if (!timestamp) {
-        messageHistory.push({
-            text: text,
-            sender: sender,
-            timestamp: new Date().toISOString()
+    messageHistory.push({
+        text: text,
+        sender: sender,
+        timestamp: new Date().toISOString()
         });
     }
 }
 
 // Get avatar for sender
 function getAvatar(sender) {
-    if (sender === 'user') {
+    if (sender === 'ai') {
+        if (guardianProfile && guardianProfile.avatar_url) {
+            return `<img src="${guardianProfile.avatar_url}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        }
+        return '💕';
+    } else if (sender === 'user') {
+        // Current user
         if (userProfile && userProfile.avatar_url) {
             return `<img src="${userProfile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
         }
         return '👤';
     } else {
-        if (guardianProfile && guardianProfile.avatar_url) {
-            return `<img src="${guardianProfile.avatar_url}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        // Specific username from history (meranda, stepan, etc.)
+        const avatarUrl = userAvatars[sender];
+        if (avatarUrl) {
+            return `<img src="${avatarUrl}" alt="${sender} Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
         }
-        return '💕';
+        // Fallback to emoji based on username
+        if (sender === 'meranda') {
+            return '👩';
+        } else if (sender === 'stepan') {
+            return '👨';
+        }
+        return '👤';
     }
 }
 
@@ -393,6 +536,29 @@ function formatMessage(text) {
 function scrollToBottom() {
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Loading banner functions
+function showLoadingBanner() {
+    const loadingBanner = document.getElementById('loadingBanner');
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (loadingBanner) {
+        loadingBanner.classList.remove('hidden');
+    }
+    if (messagesContainer) {
+        messagesContainer.classList.add('loading');
+    }
+}
+
+function hideLoadingBanner() {
+    const loadingBanner = document.getElementById('loadingBanner');
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (loadingBanner) {
+        loadingBanner.classList.add('hidden');
+    }
+    if (messagesContainer) {
+        messagesContainer.classList.remove('loading');
+    }
 }
 
 // Show loading overlay - DISABLED for streaming
@@ -453,7 +619,7 @@ function exportChat() {
 // Load conversation history
 async function loadConversationHistory() {
     try {
-        const response = await fetch('/api/conversation-history');
+        const response = await fetch('/api/conversation-history?limit=20');
 
         if (response.ok) {
             const data = await response.json();
@@ -461,16 +627,47 @@ async function loadConversationHistory() {
             // Display conversation history
             if (data.history && data.history.length > 0) {
                 displayConversationHistory(data.history);
+            } else {
+                // Show welcome message if no history
+                showWelcomeMessage();
             }
             
             // Update statistics if needed
             if (data.statistics) {
                 updateConversationStats(data.statistics);
             }
+        } else {
+            console.error('Failed to load conversation history');
+            showWelcomeMessage();
         }
     } catch (error) {
         console.error('Error loading conversation history:', error);
+        showWelcomeMessage();
     }
+}
+
+// Show welcome message when no history exists
+function showWelcomeMessage() {
+    const messagesContainer = document.getElementById('messagesContainer');
+    const welcomeMessage = `
+        <div class="message ai-message">
+            <div class="message-avatar">👼</div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="sender">ΔΣ Guardian</span>
+                    <span class="time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                </div>
+                <div class="message-text">
+                    Hello ${currentUser.charAt(0).toUpperCase() + currentUser.slice(1)}! I'm so glad you're here. I'm ΔΣ Guardian, your AI family guardian angel, and I'm here to protect and guide your family's emotional and relational well-being. 
+                    <br><br>
+                    I understand relationships as complex adaptive systems and help families evolve beyond their current limitations. I can adapt our environment, provide evolutionary guidance, and help you transcend patterns that no longer serve you.
+                    <br><br>
+                    What would you like to explore today? 🌟
+                </div>
+            </div>
+        </div>
+    `;
+    messagesContainer.innerHTML = welcomeMessage;
 }
 
 // Display conversation history in chat
@@ -480,25 +677,72 @@ function displayConversationHistory(history) {
     // Clear existing messages
     messagesContainer.innerHTML = '';
     
-    // Add each message from history
+    // Collect unique usernames from history
+    const usernames = new Set();
     history.forEach(entry => {
-        // Add user message
-        if (entry.message) {
-            addMessage(entry.message, 'user', entry.timestamp);
-        }
-        
-        // Add AI response
-        if (entry.ai_response) {
-            addMessage(entry.ai_response, 'ai', entry.timestamp);
+        if (entry.user) {
+            usernames.add(entry.user);
         }
     });
     
-    // Update avatars after loading history
-    updateUserAvatars();
-    updateGuardianAvatars();
+    // Load avatars for all users in history
+    const avatarPromises = Array.from(usernames).map(username => loadUserAvatar(username));
     
-    // Scroll to bottom
-    scrollToBottom();
+    // Wait for avatars to load, then display messages
+    Promise.all(avatarPromises).then(() => {
+        // Add each message from history
+        history.forEach(entry => {
+            // Add user message with correct username
+            if (entry.message) {
+                const sender = entry.user || 'user'; // Use actual username from history
+                addMessage(entry.message, sender, entry.timestamp, entry.id);
+            }
+            
+            // Add AI response
+            if (entry.ai_response) {
+                addMessage(entry.ai_response, 'ai', entry.timestamp, entry.id);
+            }
+        });
+        
+        // Update avatars after loading history
+        updateUserAvatars();
+        updateGuardianAvatars();
+        
+        // Update avatars for specific users
+        updateSpecificUserAvatars();
+        
+        // Scroll to bottom
+        scrollToBottom();
+    });
+}
+
+// Update avatars for specific users in history
+function updateSpecificUserAvatars() {
+    const messages = document.querySelectorAll('.message');
+    messages.forEach(message => {
+        // Determine sender from message classes
+        let sender = null;
+        if (message.classList.contains('meranda-message')) {
+            sender = 'meranda';
+        } else if (message.classList.contains('stepan-message')) {
+            sender = 'stepan';
+        } else if (message.classList.contains('ai-message')) {
+            sender = 'ai';
+        }
+        
+        if (sender && sender !== 'ai') {
+            const avatarElement = message.querySelector('.message-avatar');
+            if (avatarElement) {
+                const avatarUrl = userAvatars[sender];
+                if (avatarUrl) {
+                    avatarElement.innerHTML = `<img src="${avatarUrl}" alt="${sender} Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                } else {
+                    // Use fallback emoji
+                    avatarElement.innerHTML = sender === 'meranda' ? '👩' : '👨';
+                }
+            }
+        }
+    });
 }
 
 // Update conversation statistics
@@ -594,7 +838,7 @@ async function clearConversationHistory() {
     if (!confirm('Are you sure you want to clear all conversation history? This action cannot be undone.')) {
         return;
     }
-
+    
     try {
         const response = await fetch('/api/conversation-clear', {
             method: 'POST'
@@ -724,7 +968,7 @@ function applyTheme(themeName) {
     
     // Add new theme class
     if (themeName && ['romantic', 'neutral', 'melancholy'].includes(themeName)) {
-        document.body.classList.add(`theme-${themeName}`);
+    document.body.classList.add(`theme-${themeName}`);
         console.log(`Applied theme: ${themeName}`);
     }
 }
@@ -842,3 +1086,479 @@ function showSystemError(message) {
 
 // Auto-refresh system analysis every 5 minutes
 setInterval(loadSystemAnalysis, 5 * 60 * 1000);
+
+// File upload functionality
+function initializeFileUpload() {
+    const fileInput = document.getElementById('fileInput');
+    const fileDropZone = document.getElementById('fileDropZone');
+    const messageInput = document.getElementById('messageInput');
+    
+    // File input change handler
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    // Drag and drop handlers
+    messageInput.addEventListener('dragenter', showDropZone);
+    messageInput.addEventListener('dragover', handleDragOver);
+    messageInput.addEventListener('dragleave', handleDragLeave);
+    messageInput.addEventListener('drop', handleDrop);
+    
+    // Drop zone handlers
+    fileDropZone.addEventListener('dragenter', handleDragOver);
+    fileDropZone.addEventListener('dragover', handleDragOver);
+    fileDropZone.addEventListener('dragleave', handleDragLeave);
+    fileDropZone.addEventListener('drop', handleDrop);
+    
+    // Click to upload
+    fileDropZone.addEventListener('click', () => fileInput.click());
+}
+
+function showDropZone() {
+    const fileDropZone = document.getElementById('fileDropZone');
+    fileDropZone.style.display = 'block';
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const fileDropZone = document.getElementById('fileDropZone');
+    fileDropZone.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const fileDropZone = document.getElementById('fileDropZone');
+    fileDropZone.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const fileDropZone = document.getElementById('fileDropZone');
+    fileDropZone.classList.remove('drag-over');
+    fileDropZone.style.display = 'none';
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        handleFiles(files);
+    }
+}
+
+function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files.length > 0) {
+        handleFiles(files);
+    }
+    // Reset input
+    e.target.value = '';
+}
+
+async function handleFiles(files) {
+    for (const file of files) {
+        await uploadFile(file);
+    }
+}
+
+async function uploadFile(file) {
+        const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/upload-file', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Add file to attached files list
+            attachedFiles.push({
+                name: file.name,
+                path: data.file_path,
+                url: data.file_path,
+                size: file.size,
+                type: file.type
+            });
+            
+            // Update display
+            updateAttachedFilesDisplay();
+            
+            // Remove the temporary upload message
+            const tempMessage = document.querySelector('.file-upload-message');
+            if (tempMessage) {
+                tempMessage.remove();
+            }
+        } else {
+            showStatusMessage('Upload failed: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showStatusMessage('Upload failed', 'error');
+    }
+}
+
+function addFileUploadMessage(file) {
+    const messageId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const messagesContainer = document.getElementById('messagesContainer');
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message user-message';
+    messageDiv.id = messageId;
+    
+    const avatar = getAvatar('user');
+    const timestamp = new Date().toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    messageDiv.innerHTML = `
+        <div class="message-avatar">${avatar}</div>
+        <div class="message-content">
+            <div class="message-header">
+                <span class="sender">${currentUser.charAt(0).toUpperCase() + currentUser.slice(1)}</span>
+                <span class="time">${timestamp}</span>
+            </div>
+            <div class="message-text">
+                <div class="file-message">
+                    <div class="file-icon">📁</div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                        <div class="upload-progress">
+                            <div class="upload-progress-bar"></div>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="file-btn" disabled>Uploading...</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(messageDiv);
+    scrollToBottom();
+    
+    // Simulate upload progress
+    const progressBar = messageDiv.querySelector('.upload-progress-bar');
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+        }
+        progressBar.style.width = progress + '%';
+    }, 100);
+    
+    return messageId;
+}
+
+function updateFileMessage(messageId, data) {
+    const messageDiv = document.getElementById(messageId);
+    if (!messageDiv) return;
+    
+    const fileActions = messageDiv.querySelector('.file-actions');
+    const progressBar = messageDiv.querySelector('.upload-progress-bar');
+    
+    if (data.error) {
+        fileActions.innerHTML = `<button class="file-btn" style="background: #f44336;">Error: ${data.error}</button>`;
+        progressBar.style.background = '#f44336';
+    } else {
+        fileActions.innerHTML = `
+            <button class="file-btn" onclick="downloadFile('${data.file_path}')">Download</button>
+            <button class="file-btn" onclick="deleteFile('${data.file_path}')">Delete</button>
+        `;
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#4CAF50';
+        
+        // Show image preview if it's an image
+        if (data.file_type && data.file_type.startsWith('image/')) {
+            const fileInfo = messageDiv.querySelector('.file-info');
+            const img = document.createElement('img');
+            img.src = data.file_path;
+            img.className = 'image-preview';
+            img.alt = data.file_name;
+            fileInfo.appendChild(img);
+        }
+    }
+}
+
+async function sendImageForAnalysis(filePath, fileName) {
+    try {
+        const response = await fetch('/api/analyze-image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                file_path: filePath,
+                file_name: fileName
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            addMessage(data.analysis, 'ai');
+        } else {
+            addMessage('Sorry, I couldn\'t analyze the image. ' + data.error, 'ai');
+        }
+    } catch (error) {
+        console.error('Image analysis error:', error);
+        addMessage('Sorry, I couldn\'t analyze the image due to a technical error.', 'ai');
+    }
+}
+
+function downloadFile(filePath) {
+    const link = document.createElement('a');
+    link.href = filePath;
+    link.download = filePath.split('/').pop();
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+async function deleteFile(filePath) {
+    if (!confirm('Are you sure you want to delete this file?')) return;
+    
+    try {
+        const response = await fetch('/api/delete-file', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ file_path: filePath })
+        });
+        
+            const data = await response.json();
+        
+            if (data.success) {
+            // Remove the message from chat
+            const messages = document.querySelectorAll('.message');
+            for (const message of messages) {
+                if (message.querySelector(`[onclick*="${filePath}"]`)) {
+                    message.remove();
+                    break;
+                }
+            }
+        } else {
+            alert('Error deleting file: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Error deleting file');
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Update attached files display
+function updateAttachedFilesDisplay() {
+    const attachedFilesContainer = document.getElementById('attachedFilesContainer');
+    if (!attachedFilesContainer) return;
+    
+    if (attachedFiles.length === 0) {
+        attachedFilesContainer.style.display = 'none';
+        return;
+    }
+    
+    attachedFilesContainer.style.display = 'block';
+    let html = '<div class="attached-files-preview">';
+    
+    attachedFiles.forEach((file, index) => {
+        if (file.type && file.type.startsWith('image/')) {
+            html += `
+                <div class="attached-file-preview">
+                    <img src="${file.url}" alt="${file.name}" class="preview-image">
+                    <div class="file-info">
+                        <span class="file-name">${file.name}</span>
+                        <button class="remove-btn" onclick="removeAttachedFile(${index})">×</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="attached-file-preview">
+                    <div class="file-icon">📁</div>
+                    <div class="file-info">
+                        <span class="file-name">${file.name}</span>
+                        <span class="file-size">${formatFileSize(file.size)}</span>
+                        <button class="remove-btn" onclick="removeAttachedFile(${index})">×</button>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    html += '</div>';
+    attachedFilesContainer.innerHTML = html;
+}
+
+// Remove attached file
+function removeAttachedFile(index) {
+    attachedFiles.splice(index, 1);
+    updateAttachedFilesDisplay();
+}
+
+
+
+// Message editing functions
+async function editMessage(messageId) {
+    if (!messageId) {
+        console.error('No message ID provided for editing');
+        return;
+    }
+    
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageDiv) {
+        console.error('Message element not found');
+        return;
+    }
+    
+    const messageTextDiv = messageDiv.querySelector('.message-text');
+    const originalText = messageTextDiv.textContent || messageTextDiv.innerText;
+    
+    // Create edit input
+    const editInput = document.createElement('textarea');
+    editInput.className = 'edit-input';
+    editInput.value = originalText;
+    editInput.rows = Math.max(3, originalText.split('\n').length);
+    
+    // Create edit actions
+    const editActions = document.createElement('div');
+    editActions.className = 'edit-actions';
+    editActions.innerHTML = `
+        <button class="edit-btn" onclick="saveMessageEdit('${messageId}')">Save</button>
+        <button class="cancel-btn" onclick="cancelMessageEdit('${messageId}')">Cancel</button>
+    `;
+    
+    // Replace content with edit form
+    messageTextDiv.innerHTML = '';
+    messageTextDiv.appendChild(editInput);
+    messageTextDiv.appendChild(editActions);
+    
+    // Add edit mode class
+    messageDiv.classList.add('edit-mode');
+    
+    // Focus on input
+    editInput.focus();
+    editInput.select();
+}
+
+async function saveMessageEdit(messageId) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageDiv) return;
+    
+    const editInput = messageDiv.querySelector('.edit-input');
+    const newContent = editInput.value.trim();
+    
+    if (!newContent) {
+        alert('Message cannot be empty');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/message/edit', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message_id: messageId,
+                new_content: newContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Update message display
+            const messageTextDiv = messageDiv.querySelector('.message-text');
+            messageTextDiv.innerHTML = formatMessage(newContent);
+            messageDiv.classList.remove('edit-mode');
+            messageDiv.classList.add('edited');
+            
+            // Show success indicator
+            showStatusMessage('Message edited successfully', 'success');
+        } else {
+            alert('Error editing message: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error editing message:', error);
+        alert('Error editing message');
+    }
+}
+
+function cancelMessageEdit(messageId) {
+    const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageDiv) return;
+    
+    // Reload the message from history to restore original content
+    loadConversationHistory();
+    messageDiv.classList.remove('edit-mode');
+}
+
+async function deleteMessage(messageId) {
+    if (!messageId) {
+        console.error('No message ID provided for deletion');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this message?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/message/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message_id: messageId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Remove message from DOM
+            const messageDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (messageDiv) {
+                messageDiv.remove();
+            }
+            
+            showStatusMessage('Message deleted successfully', 'success');
+        } else {
+            alert('Error deleting message: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        alert('Error deleting message');
+    }
+}
+
+function showStatusMessage(message, type = 'info') {
+    const statusDiv = document.createElement('div');
+    statusDiv.className = `status-message ${type}`;
+    statusDiv.textContent = message;
+    
+    document.body.appendChild(statusDiv);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (statusDiv.parentNode) {
+            statusDiv.parentNode.removeChild(statusDiv);
+        }
+    }, 3000);
+}

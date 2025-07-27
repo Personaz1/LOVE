@@ -58,24 +58,16 @@
 
             <!-- Chat messages -->
             <section class="chat-messages">
-                <div class="messages-container" id="messagesContainer">
-                    <!-- Welcome message -->
-                    <div class="message ai-message">
-                        <div class="message-avatar">👼</div>
-                        <div class="message-content">
-                            <div class="message-header">
-                                <span class="sender">ΔΣ Guardian</span>
-                                <span class="time">{{ moment_time }}</span>
-                            </div>
-                            <div class="message-text">
-                                Hello {{ username.title() }}! I'm so glad you're here. I'm ΔΣ Guardian, your AI family guardian angel, and I'm here to protect and guide your family's emotional and relational well-being. 
-                                <br><br>
-                                I understand relationships as complex adaptive systems and help families evolve beyond their current limitations. I can adapt our environment, provide evolutionary guidance, and help you transcend patterns that no longer serve you.
-                                <br><br>
-                                What would you like to explore today? 🌟
-                            </div>
-                        </div>
+                <!-- Loading banner -->
+                <div class="loading-banner" id="loadingBanner">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <p>Loading conversation history...</p>
                     </div>
+                </div>
+                
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Messages will be loaded here -->
                 </div>
 
                 <!-- Message input -->
@@ -87,11 +79,26 @@
                                 <span class="send-icon">💕</span>
                             </button>
                         </div>
+                        
+                        <!-- Attached files preview -->
+                        <div id="attachedFilesContainer" class="attached-files-container" style="display: none;"></div>
+                        
                         <div class="input-actions">
                             <button type="button" class="action-btn-small" onclick="clearConversationHistory()">🗑️ Clear History</button>
                             <button type="button" class="action-btn-small" onclick="exportChat()">📤 Export</button>
+                            <button type="button" class="action-btn-small" onclick="document.getElementById('fileInput').click()">📎 Attach</button>
                         </div>
+                        <input type="file" id="fileInput" style="display: none;" accept="image/*,.txt,.pdf,.doc,.docx,.xls,.xlsx,.json,.csv">
                     </form>
+                    
+                    <!-- File drop zone -->
+                    <div class="file-drop-zone" id="fileDropZone">
+                        <div class="drop-zone-content">
+                            <span class="drop-icon">📁</span>
+                            <p>Drop files here or click to upload</p>
+                            <p class="drop-hint">Images will be analyzed, other files go to sandbox</p>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

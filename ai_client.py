@@ -54,6 +54,18 @@ class AIClient:
                 'name': 'gemini-2.5-pro',
                 'quota': 100,
                 'model': None
+            },
+            {
+                'name': 'gemini-1.5-pro',
+                'quota': 150,
+                'model': None,
+                'vision': True  # This model has vision capabilities
+            },
+            {
+                'name': 'gemini-1.5-flash',
+                'quota': 500,
+                'model': None,
+                'vision': True  # This model has vision capabilities
             }
         ]
         
@@ -144,47 +156,92 @@ class AIClient:
         context: Optional[str] = None,
         user_profile: Optional[Dict[str, Any]] = None
     ):
-        """Generate streaming response using Gemini 2.0 Flash with proper multi-step reasoning"""
+        """Generate streaming response using Gemini 2.0 Flash with multi-step reasoning and tool execution"""
         api_start_time = time.time()
         current_model_name = self.models[self.current_model_index]['name']
         logger.info(f"🚀 Using model: {current_model_name}")
         
-        # Step 1: Generate initial response with tool calls
-        thinking_prompt = self._build_thinking_prompt(system_prompt, user_message, context, user_profile)
-        
         try:
-            logger.info("🧠 Step 1: Generating thinking response...")
+            # Multi-step execution loop
+            max_steps = 5  # Maximum number of thinking-execution cycles
+            all_tool_results = []
+            current_context = context or ""
             
-            # Get initial response that may contain tool calls
-            initial_response = self._get_current_model().generate_content(thinking_prompt)
-            initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
-            
-            # Extract and execute tool calls
-            tool_calls = self._extract_tool_calls(initial_text)
-            tool_results = []
-            
-            for tool_call in tool_calls:
-                logger.info(f"🔧 Executing tool call: {tool_call}")
+            for step in range(max_steps):
+                logger.info(f"🔄 Step {step + 1}: Thinking and tool execution...")
+                
+                # Build prompt with current context and tool results
+                thinking_prompt = self._build_thinking_prompt(
+                    system_prompt, user_message, current_context, user_profile, all_tool_results
+                )
+                
+                # Get thinking response that may contain tool calls
                 try:
-                    result = self._execute_tool_call(tool_call)
-                    tool_results.append(f"Tool {tool_call} returned: {result}")
+                    initial_response = self._get_current_model().generate_content(thinking_prompt)
+                    initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
                 except Exception as e:
-                    logger.error(f"❌ Tool call failed: {e}")
-                    tool_results.append(f"Tool {tool_call} failed: {str(e)}")
+                    error_msg = str(e)
+                    if self._handle_quota_error(error_msg):
+                        logger.info(f"Retrying Step {step + 1} with new model after quota error: {error_msg}")
+                        async for chunk in self._generate_gemini_streaming_response(
+                            system_prompt, user_message, context, user_profile
+                        ):
+                            yield chunk
+                        return
+                    else:
+                        raise e
+                
+                # Extract and execute tool calls
+                tool_calls = self._extract_tool_calls(initial_text)
+                step_tool_results = []
+                
+                for tool_call in tool_calls:
+                    logger.info(f"🔧 Executing tool call: {tool_call}")
+                    try:
+                        result = self._execute_tool_call(tool_call)
+                        step_tool_results.append(f"Tool {tool_call} returned: {result}")
+                        logger.info(f"✅ Tool result: {result}")
+                    except Exception as e:
+                        logger.error(f"❌ Tool call failed: {e}")
+                        step_tool_results.append(f"Tool {tool_call} failed: {str(e)}")
+                
+                all_tool_results.extend(step_tool_results)
+                
+                # Check if Guardian wants to continue with more tools or give final response
+                if "FINAL_RESPONSE" in initial_text or "RESPOND_TO_USER" in initial_text:
+                    logger.info(f"🎯 Guardian ready for final response after {step + 1} steps")
+                    break
+                
+                # If no tools were called, assume Guardian is ready to respond
+                if not tool_calls:
+                    logger.info(f"🎯 No more tools needed after {step + 1} steps")
+                    break
             
-            # Step 2: Generate final response with tool results
+            # Generate final response with all tool results
             final_prompt = self._build_final_prompt(
-                system_prompt, user_message, context, user_profile, 
-                initial_text, tool_results
+                system_prompt, user_message, current_context, user_profile, 
+                initial_text, all_tool_results
             )
             
-            logger.info("💬 Step 2: Generating final response...")
+            logger.info("💬 Generating final response...")
             
             # Stream the final response
-            response_stream = self._get_current_model().generate_content(
-                final_prompt,
-                stream=True
-            )
+            try:
+                response_stream = self._get_current_model().generate_content(
+                    final_prompt,
+                    stream=True
+                )
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    logger.info(f"Retrying final response with new model after quota error: {error_msg}")
+                    async for chunk in self._generate_gemini_streaming_response(
+                        system_prompt, user_message, context, user_profile
+                    ):
+                        yield chunk
+                    return
+                else:
+                    raise e
             
             chunk_count = 0
             for chunk in response_stream:
@@ -203,7 +260,7 @@ class AIClient:
             api_time = time.time() - api_start_time
             logger.info(f"🌐 Multi-step streaming completed in {api_time:.2f}s")
             logger.info(f"📊 Total chunks received: {chunk_count}")
-            logger.info(f"🔧 Tool calls executed: {len(tool_calls)}")
+            logger.info(f"🔧 Total tool calls executed: {len(all_tool_results)}")
             
             if chunk_count == 0:
                 logger.warning("⚠️ No chunks received from final response")
@@ -240,8 +297,19 @@ class AIClient:
         
         try:
             # Step 1: Get thinking response
-            initial_response = self._get_current_model().generate_content(thinking_prompt)
-            initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
+            try:
+                initial_response = self._get_current_model().generate_content(thinking_prompt)
+                initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying Step 1 with new model after quota error: {error_msg}")
+                    return await self._generate_gemini_response(
+                        system_prompt, user_message, context, user_profile
+                    )
+                else:
+                    raise e
             
             # Extract and execute tool calls
             tool_calls = self._extract_tool_calls(initial_text)
@@ -260,8 +328,19 @@ class AIClient:
                 initial_text, tool_results
             )
             
-            response = self._get_current_model().generate_content(final_prompt)
-            return response.text
+            try:
+                response = self._get_current_model().generate_content(final_prompt)
+                return response.text
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying Step 2 with new model after quota error: {error_msg}")
+                    return await self._generate_gemini_response(
+                        system_prompt, user_message, context, user_profile
+                    )
+                else:
+                    raise e
             
         except Exception as e:
             error_msg = str(e)
@@ -313,7 +392,8 @@ class AIClient:
         system_prompt: str, 
         user_message: str, 
         context: Optional[str] = None,
-        user_profile: Optional[Dict[str, Any]] = None
+        user_profile: Optional[Dict[str, Any]] = None,
+        previous_tool_results: Optional[List[str]] = None
     ) -> str:
         """Build comprehensive prompt with context and profile"""
         prompt_parts = []
@@ -359,10 +439,24 @@ class AIClient:
         # Add user message
         prompt_parts.append(f"\n## USER MESSAGE\n{user_message}")
         
+        # Add previous tool results if available
+        if previous_tool_results:
+            prompt_parts.append("## PREVIOUS TOOL RESULTS")
+            for i, result in enumerate(previous_tool_results, 1):
+                prompt_parts.append(f"{i}. {result}")
+            prompt_parts.append("")
+        
         # Add instructions for thinking and tool calling
         prompt_parts.append("""
 ## THINKING PHASE INSTRUCTIONS
-You are in the THINKING phase. Analyze the user's message and determine what actions to take.
+You are in the THINKING phase. Analyze the user's message and previous tool results to determine what actions to take.
+
+**MULTI-STEP EXECUTION**: You can execute multiple steps:
+1. First, analyze what you need to do
+2. Execute tools to gather information
+3. Analyze the results and decide if you need more tools
+4. Continue until you have enough information
+5. When ready to respond to user, include "FINAL_RESPONSE" or "RESPOND_TO_USER" in your thinking
 
 ## AVAILABLE TOOLS
 You can use these tools by wrapping them in ```tool_code blocks:
@@ -1273,6 +1367,64 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     else:
                         return f"Invalid arguments for delete_sandbox_file: {args_str}"
                 
+                elif func_name == "create_downloadable_file":
+                    # Format: create_downloadable_file("filename", "content", "txt")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']*)["\'](?:\s*,\s*["\']([^"\']+)["\'])?', args_str)
+                    if arg_match:
+                        filename = arg_match.group(1)
+                        content = arg_match.group(2) if arg_match.group(2) else ""
+                        file_type = arg_match.group(3) if arg_match.group(3) else "txt"
+                        result = self.create_downloadable_file(filename, content, file_type)
+                        if result:
+                            return f"📁 Created downloadable file: {filename}\nDownload link: {result}"
+                        else:
+                            return f"❌ Failed to create downloadable file: {filename}"
+                    else:
+                        return f"Invalid arguments for create_downloadable_file: {args_str}"
+                
+                elif func_name == "archive_conversation":
+                    # Format: archive_conversation()
+                    try:
+                        logger.info("🔧 Starting conversation archive...")
+                        from memory.conversation_history import conversation_history
+                        # Archive current conversation
+                        conversation_history._archive_old_messages()
+                        logger.info("✅ Conversation archived successfully")
+                        return "✅ Conversation archived successfully"
+                    except Exception as e:
+                        logger.error(f"Error archiving conversation: {e}")
+                        return f"❌ Failed to archive conversation: {e}"
+                
+                # System diagnostics and debugging tools
+                elif func_name == "get_system_logs":
+                    arg_match = re.match(r'(\d+)', args_str)
+                    if arg_match:
+                        lines = int(arg_match.group(1))
+                        result = self.get_system_logs(lines)
+                        return f"System logs (last {lines} lines):\n{result}"
+                    else:
+                        result = self.get_system_logs(50)
+                        return f"System logs (last 50 lines):\n{result}"
+                
+                elif func_name == "get_error_summary":
+                    result = self.get_error_summary()
+                    return f"Error summary:\n{result}"
+                
+                elif func_name == "diagnose_system_health":
+                    result = self.diagnose_system_health()
+                    return f"System health report:\n{result}"
+                
+                elif func_name == "analyze_image":
+                    # Format: analyze_image("path/to/image.jpg", "Analyze this image")
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                    if arg_match:
+                        image_path = arg_match.group(1)
+                        prompt = arg_match.group(2) if arg_match.group(2) else "Analyze this image in detail"
+                        result = self.analyze_image(image_path, prompt)
+                        return result
+                    else:
+                        return f"Invalid arguments for analyze_image: {args_str}"
+                
                 else:
                     return f"Unknown tool: {func_name}"
                     
@@ -1382,6 +1534,37 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         except Exception as e:
             logger.error(f"Error creating sandbox file {path}: {e}")
             return False
+    
+    def create_downloadable_file(self, filename: str, content: str, file_type: str = "txt") -> str:
+        """Create a file for user download"""
+        try:
+            # Create downloads directory
+            downloads_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'guardian_sandbox', 'downloads')
+            os.makedirs(downloads_dir, exist_ok=True)
+            
+            # Ensure filename is safe
+            safe_filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '.')).rstrip()
+            if not safe_filename:
+                safe_filename = f"file_{int(time.time())}"
+            
+            # Add extension if not present
+            if not safe_filename.endswith(f'.{file_type}'):
+                safe_filename += f'.{file_type}'
+            
+            file_path = os.path.join(downloads_dir, safe_filename)
+            
+            # Write content
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # Return download URL
+            download_url = f"/api/download/downloads/{safe_filename}"
+            logger.info(f"📁 Created downloadable file: {safe_filename}")
+            return download_url
+            
+        except Exception as e:
+            logger.error(f"Error creating downloadable file: {e}")
+            return ""
     
     def edit_sandbox_file(self, path: str, content: str) -> bool:
         """Edit file in Guardian sandbox with backup"""
@@ -1499,3 +1682,209 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             logger.error(f"Error deleting sandbox file {path}: {e}")
             return False
  
+    def get_system_logs(self, lines: int = 50) -> str:
+        """Get recent system logs for debugging"""
+        try:
+            import subprocess
+            import tempfile
+            
+            # Try to get logs from various sources
+            logs = []
+            
+            # Check if we can read from a log file
+            log_files = [
+                "logs/app.log",
+                "logs/error.log", 
+                "web_app.log",
+                "ai_client.log"
+            ]
+            
+            for log_file in log_files:
+                if os.path.exists(log_file):
+                    try:
+                        with open(log_file, 'r', encoding='utf-8') as f:
+                            lines_content = f.readlines()
+                            logs.append(f"=== {log_file} ===")
+                            logs.extend(lines_content[-lines:])
+                    except Exception as e:
+                        logs.append(f"Error reading {log_file}: {e}")
+            
+            # Get current model status
+            logs.append("\n=== Current Model Status ===")
+            logs.append(f"Current model: {self.models[self.current_model_index]['name']}")
+            logs.append(f"Model errors: {self.model_errors}")
+            
+            # Get recent errors from memory
+            try:
+                from memory.model_notes import model_notes
+                recent_notes = model_notes.get_all_notes(10)
+                if recent_notes.get("general_notes"):
+                    logs.append("\n=== Recent Model Notes ===")
+                    for note in recent_notes["general_notes"]:
+                        logs.append(f"{note.get('timestamp', '')}: {note.get('text', '')}")
+            except Exception as e:
+                logs.append(f"Error getting model notes: {e}")
+            
+            return "\n".join(logs) if logs else "No logs available"
+            
+        except Exception as e:
+            logger.error(f"Error getting system logs: {e}")
+            return f"Error accessing logs: {e}"
+    
+    def get_error_summary(self) -> str:
+        """Get summary of recent errors and issues"""
+        try:
+            errors = []
+            
+            # Check model errors
+            if self.model_errors:
+                errors.append("=== Model Errors ===")
+                for model, timestamp in self.model_errors.items():
+                    errors.append(f"- {model}: {datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # Check for common issues
+            issues = []
+            
+            # Check if model_notes.json exists and is valid
+            try:
+                with open("memory/model_notes.json", 'r') as f:
+                    data = json.load(f)
+                    if not isinstance(data, dict):
+                        issues.append("model_notes.json is not a dictionary")
+            except Exception as e:
+                issues.append(f"model_notes.json error: {e}")
+            
+            # Check conversation history
+            try:
+                with open("memory/conversation_history.json", 'r') as f:
+                    data = json.load(f)
+                    if not isinstance(data, list):
+                        issues.append("conversation_history.json is not a list")
+            except Exception as e:
+                issues.append(f"conversation_history.json error: {e}")
+            
+            if issues:
+                errors.append("=== System Issues ===")
+                errors.extend(issues)
+            
+            return "\n".join(errors) if errors else "No errors detected"
+            
+        except Exception as e:
+            logger.error(f"Error getting error summary: {e}")
+            return f"Error generating error summary: {e}"
+    
+    def diagnose_system_health(self) -> str:
+        """Comprehensive system health check"""
+        try:
+            health_report = []
+            
+            # Check file permissions
+            health_report.append("=== File System Health ===")
+            critical_files = [
+                "memory/model_notes.json",
+                "memory/conversation_history.json", 
+                "memory/guardian_profile.json",
+                "memory/user_profiles/meranda.json",
+                "memory/user_profiles/stepan.json"
+            ]
+            
+            for file_path in critical_files:
+                if os.path.exists(file_path):
+                    try:
+                        with open(file_path, 'r') as f:
+                            json.load(f)
+                        health_report.append(f"✅ {file_path}: OK")
+                    except Exception as e:
+                        health_report.append(f"❌ {file_path}: {e}")
+                else:
+                    health_report.append(f"⚠️ {file_path}: Missing")
+            
+            # Check API status
+            health_report.append("\n=== API Health ===")
+            api_key = os.getenv('GEMINI_API_KEY')
+            if api_key:
+                health_report.append("✅ GEMINI_API_KEY: Set")
+            else:
+                health_report.append("❌ GEMINI_API_KEY: Missing")
+            
+            # Check current model
+            current_model = self.models[self.current_model_index]
+            health_report.append(f"✅ Current model: {current_model['name']}")
+            
+            # Check sandbox
+            sandbox_path = "guardian_sandbox"
+            if os.path.exists(sandbox_path):
+                health_report.append(f"✅ Sandbox: {sandbox_path} exists")
+            else:
+                health_report.append(f"⚠️ Sandbox: {sandbox_path} missing")
+            
+            return "\n".join(health_report)
+            
+        except Exception as e:
+            logger.error(f"Error in system health check: {e}")
+            return f"Error during health check: {e}"
+
+    def analyze_image(self, image_path: str, prompt: str = "Analyze this image in detail") -> str:
+        """Analyze an image using Gemini Vision model"""
+        try:
+            # Find a vision-capable model
+            vision_model = None
+            for model_config in self.models:
+                if model_config.get('vision', False):
+                    if model_config['model'] is None:
+                        model_config['model'] = genai.GenerativeModel(model_config['name'])
+                    vision_model = model_config['model']
+                    logger.info(f"🔍 Using vision model: {model_config['name']}")
+                    break
+            
+            if not vision_model:
+                return "❌ No vision-capable model available"
+            
+            # Check if image file exists
+            if not os.path.exists(image_path):
+                return f"❌ Image file not found: {image_path}"
+            
+            # Read image file
+            with open(image_path, 'rb') as image_file:
+                image_data = image_file.read()
+            
+            # Create image part for Gemini
+            image_part = {
+                "mime_type": self._get_mime_type(image_path),
+                "data": image_data
+            }
+            
+            # Generate content with image
+            try:
+                response = vision_model.generate_content([prompt, image_part])
+                
+                if response.text:
+                    logger.info(f"✅ Image analysis completed using {vision_model.model_name}")
+                    return response.text
+                else:
+                    return "❌ No response from vision model"
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying image analysis with new model after quota error: {error_msg}")
+                    return self.analyze_image(image_path, prompt)
+                else:
+                    raise e
+                
+        except Exception as e:
+            logger.error(f"❌ Image analysis failed: {str(e)}")
+            return f"❌ Image analysis failed: {str(e)}"
+    
+    def _get_mime_type(self, file_path: str) -> str:
+        """Get MIME type based on file extension"""
+        ext = os.path.splitext(file_path)[1].lower()
+        mime_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.bmp': 'image/bmp'
+        }
+        return mime_types.get(ext, 'image/jpeg') 
