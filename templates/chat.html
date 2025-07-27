@@ -8,6 +8,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body class="theme-{{ theme }}">
+    <!-- Theme Switcher -->
+    <div class="theme-switcher">
+        <label for="themeSelect">Theme:</label>
+        <select id="themeSelect" onchange="changeTheme(this.value)">
+            <option value="default">Default</option>
+            <option value="romantic_pink">Romantic Pink</option>
+            <option value="test_blue">Blue</option>
+            <option value="custom_purple">Purple</option>
+            <option value="test_black">Dark</option>
+            <option value="custom_red">Red</option>
+            <option value="custom_black">Black</option>
+            <option value="melancholy">Melancholy</option>
+        </select>
+    </div>
+
+    <!-- Chat Container -->
     <div class="chat-container">
         <!-- Header -->
         <header class="chat-header">
@@ -19,7 +35,7 @@
                 <div class="user-info">
                     <span class="welcome-text">Welcome, {{ username.title() }}!</span>
                     <button class="profile-btn" onclick="showProfile()">👤 Profile</button>
-                    <button class="diary-btn" onclick="showDiary()">📖 Diary</button>
+
                     <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
                     <button class="logout-btn" onclick="logout()">🚪 Logout</button>
                 </div>
@@ -28,47 +44,7 @@
 
         <!-- Main chat area -->
         <main class="chat-main">
-            <!-- Sidebar -->
-            <aside class="chat-sidebar">
-                <div class="sidebar-section">
-                    <h3>💭 Quick Actions</h3>
-                    <button class="action-btn" onclick="sendQuickMessage('I need relationship advice')">
-                        💕 Relationship Advice
-                    </button>
-                    <button class="action-btn" onclick="sendQuickMessage('Help me with communication')">
-                        💬 Communication Help
-                    </button>
-                    <button class="action-btn" onclick="sendQuickMessage('We had a disagreement')">
-                        ⚖️ Conflict Resolution
-                    </button>
-                    <button class="action-btn" onclick="sendQuickMessage('Celebrate our relationship')">
-                        🎉 Celebrate Love
-                    </button>
-                </div>
 
-                <div class="sidebar-section">
-                    <h3>📊 Your Profile</h3>
-                    <div class="profile-summary">
-                        {% if user_profile %}
-                        <p><strong>Status:</strong> {{ user_profile.relationship_status }}</p>
-                        <p><strong>Feeling:</strong> {{ user_profile.current_feeling }}</p>
-                        <p><strong>Last Updated:</strong> {{ user_profile.last_updated[:10] if user_profile.last_updated else 'Never' }}</p>
-                        {% else %}
-                        <p>Profile not loaded</p>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <div class="sidebar-section">
-                    <h3>💡 Tips</h3>
-                    <div class="tips">
-                        <p>💝 Be open and honest in your communication</p>
-                        <p>💝 Practice active listening</p>
-                        <p>💝 Celebrate small victories together</p>
-                        <p>💝 Remember to express gratitude</p>
-                    </div>
-                </div>
-            </aside>
 
             <!-- Chat messages -->
             <section class="chat-messages">
@@ -126,23 +102,7 @@
         </div>
     </div>
 
-    <!-- Diary Modal -->
-    <div id="diaryModal" class="modal">
-        <div class="modal-content diary-modal">
-            <div class="modal-header">
-                <h2>📖 Personal Diary</h2>
-                <span class="close" onclick="closeModal('diaryModal')">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="diary-info">
-                    <p>💡 <strong>How to use:</strong> Write "write in diary - [your thoughts]" or "add to diary - [your message]" in the chat, and I'll create diary entries for you!</p>
-                </div>
-                <div class="diary-entries" id="diaryEntries">
-                    <!-- Diary entries will be loaded here -->
-                </div>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Loading overlay - REMOVED for streaming -->
     <!-- <div id="loadingOverlay" class="loading-overlay">

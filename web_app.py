@@ -25,7 +25,6 @@ from ai_client import AIClient
 from prompts.psychologist_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
 from memory.conversation_history import ConversationHistory
-from shared_context import SharedContextManager
 from file_agent import file_agent
 
 # Configure logging
@@ -46,7 +45,6 @@ security = HTTPBasic()
 # Initialize components
 ai_client = AIClient()
 conversation_history = ConversationHistory()
-shared_context = SharedContextManager()
 
 def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
     """Verify user credentials"""
@@ -89,7 +87,6 @@ async def chat_stream_endpoint(
             
             # Get conversation context
             recent_messages = conversation_history.get_recent_history(limit=5)
-            shared_context_data = shared_context.get_context_summary()
             
             # Build full context
             full_context = ""
@@ -99,10 +96,8 @@ async def chat_stream_endpoint(
                     full_context += f"- User: {msg.get('message', '')}\n"
                     full_context += f"- AI: {msg.get('ai_response', '')}\n"
             
-            if shared_context_data:
-                full_context += f"\nShared context: {shared_context_data}\n"
-            
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Starting response generation...'})}\n\n"
+            # Send initial status (optional - can be removed)
+            # yield f"data: {json.dumps({'type': 'status', 'message': 'Starting response generation...'})}\n\n"
             
             full_response = ""
             async for chunk in ai_client.generate_streaming_response(
@@ -115,16 +110,11 @@ async def chat_stream_endpoint(
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             
-            yield f"data: {json.dumps({'type': 'status', 'message': 'Processing response...'})}\n\n"
-            
             # Add to conversation history
             conversation_history.add_message(username, message, full_response)
             
-            # Update shared context if needed
-            if "relationship" in message.lower() or "feeling" in message.lower():
-                shared_context.add_shared_memory({"type": "discussion", "content": message[:100]})
-            
-            yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.now().isoformat()})}\n\n"
+            # Send completion signal (optional - can be removed)
+            # yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.now().isoformat()})}\n\n"
             
         except Exception as e:
             logger.error(f"Error in streaming chat: {e}")
@@ -154,7 +144,6 @@ async def chat_endpoint(
         
         # Get conversation context
         recent_messages = conversation_history.get_recent_history(limit=5)
-        shared_context_data = shared_context.get_context_summary()
         
         # Build full context
         full_context = ""
@@ -163,9 +152,6 @@ async def chat_endpoint(
             for msg in recent_messages:
                 full_context += f"- User: {msg.get('message', '')}\n"
                 full_context += f"- AI: {msg.get('ai_response', '')}\n"
-        
-        if shared_context_data:
-            full_context += f"\nShared context: {shared_context_data}\n"
         
         # Generate response
         response = await ai_client._generate_gemini_response(
@@ -225,67 +211,78 @@ async def get_conversation_history(
     limit: int = 10,
     username: str = Depends(verify_password)
 ):
-    """Get conversation history"""
+    """Get conversation history for the user"""
     try:
-        messages = conversation_history.get_recent_history(limit=limit)
-        return {"messages": messages}
+        # Get conversation history
+        history = conversation_history.get_recent_history(limit=limit)
         
+        # Get statistics
+        stats = conversation_history.get_statistics()
+        
+        return {
+            "history": history,
+            "statistics": stats,
+            "success": True
+        }
     except Exception as e:
         logger.error(f"Error getting conversation history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {
+            "history": [],
+            "statistics": {},
+            "success": False,
+            "error": str(e)
+        }
 
-@app.get("/api/diary")
-async def get_diary(username: str = Depends(verify_password)):
-    """Get user's diary entries"""
-    try:
-        user_profile = UserProfile(username)
-        diary_entries = user_profile.get_diary_entries()
-        return {"entries": diary_entries}
-        
-    except Exception as e:
-        logger.error(f"Error getting diary: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/diary/{entry_id}")
-async def update_diary_entry(
-    entry_id: int,
-    content: str = Form(...),
+@app.post("/api/conversation-clear")
+async def clear_conversation_history(
     username: str = Depends(verify_password)
 ):
-    """Update diary entry"""
+    """Clear and archive conversation history"""
     try:
-        user_profile = UserProfile(username)
-        result = user_profile.update_diary_entry(entry_id, content)
-        if result:
-            logger.info(f"✅ Diary entry {entry_id} updated successfully for user {username}")
-            return {"success": True, "message": "Diary entry updated successfully"}
-        else:
-            logger.error(f"❌ Failed to update diary entry {entry_id} for user {username}")
-            return {"success": False, "error": "Failed to update diary entry"}
-        
+        conversation_history.clear_history()
+        return {"success": True, "message": "Conversation history cleared and archived"}
     except Exception as e:
-        logger.error(f"Error updating diary entry: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error clearing conversation history: {e}")
+        return {"success": False, "error": str(e)}
 
-@app.delete("/api/diary/{entry_id}")
-async def delete_diary_entry(
-    entry_id: int,
+@app.get("/api/conversation-archive")
+async def get_conversation_archive(
     username: str = Depends(verify_password)
 ):
-    """Delete diary entry"""
+    """Get conversation archive"""
     try:
-        user_profile = UserProfile(username)
-        result = user_profile.delete_diary_entry(entry_id)
-        if result:
-            logger.info(f"✅ Diary entry {entry_id} deleted successfully for user {username}")
-            return {"success": True, "message": "Diary entry deleted successfully"}
-        else:
-            logger.error(f"❌ Failed to delete diary entry {entry_id} for user {username}")
-            return {"success": False, "error": "Failed to delete diary entry"}
+        archive = conversation_history.get_archive_entries()
+        summary = conversation_history.get_archive_summary()
         
+        return {
+            "archive": archive,
+            "summary": summary,
+            "success": True
+        }
     except Exception as e:
-        logger.error(f"Error deleting diary entry: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting conversation archive: {e}")
+        return {
+            "archive": [],
+            "summary": "Error loading archive",
+            "success": False,
+            "error": str(e)
+        }
+
+@app.put("/api/conversation-archive/{archive_id}")
+async def edit_conversation_archive(
+    archive_id: str,
+    summary: str = Form(...),
+    username: str = Depends(verify_password)
+):
+    """Edit conversation archive entry"""
+    try:
+        success = conversation_history.edit_archive_entry(archive_id, summary)
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Error editing archive entry: {e}")
+        return {"success": False, "error": str(e)}
+
+
 
 @app.get("/api/files/list")
 async def list_files(
@@ -317,6 +314,69 @@ async def search_files(
             raise HTTPException(status_code=400, detail=result.get("error", "Unknown error"))
     except Exception as e:
         logger.error(f"Error searching files: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/theme")
+async def get_current_theme(username: str = Depends(verify_password)):
+    """Get current theme"""
+    try:
+        theme_file = "memory/current_theme.json"
+        if os.path.exists(theme_file):
+            with open(theme_file, 'r') as f:
+                theme_data = json.load(f)
+                return {"success": True, "theme": theme_data}
+        else:
+            return {"success": True, "theme": {"theme": "default"}}
+    except Exception as e:
+        logger.error(f"Error getting theme: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/theme")
+async def update_theme(
+    theme: str = Form(...),
+    username: str = Depends(verify_password)
+):
+    """Update current theme"""
+    try:
+        theme_file = "memory/current_theme.json"
+        theme_data = {
+            "theme": theme,
+            "updated_at": datetime.now().isoformat()
+        }
+        
+        with open(theme_file, 'w') as f:
+            json.dump(theme_data, f, indent=2)
+        
+        return {"success": True, "theme": theme_data}
+    except Exception as e:
+        logger.error(f"Error updating theme: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/hidden-profile")
+async def get_hidden_profile(username: str = Depends(verify_password)):
+    """Get user's hidden profile (model's private notes)"""
+    try:
+        user_profile = UserProfile(username)
+        hidden_profile = user_profile.get_hidden_profile()
+        return {"success": True, "hidden_profile": hidden_profile}
+        
+    except Exception as e:
+        logger.error(f"Error getting hidden profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/hidden-profile")
+async def update_hidden_profile(
+    hidden_profile_data: dict,
+    username: str = Depends(verify_password)
+):
+    """Update user's hidden profile"""
+    try:
+        user_profile = UserProfile(username)
+        result = user_profile.update_hidden_profile(hidden_profile_data)
+        return {"success": result, "message": "Hidden profile updated successfully"}
+        
+    except Exception as e:
+        logger.error(f"Error updating hidden profile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

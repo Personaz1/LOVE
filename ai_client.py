@@ -14,7 +14,6 @@ load_dotenv()
 from prompts.psychologist_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
 from memory.conversation_history import ConversationHistory
-from shared_context import SharedContextManager
 
 from file_agent import file_agent
 
@@ -28,12 +27,18 @@ class AIClient:
             raise ValueError("GEMINI_API_KEY environment variable not set")
         
         genai.configure(api_key=api_key)
-        self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        # Changed to gemini-2.0-flash-lite for higher rate limits (1000 RPD vs 50)
+        self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-lite')
         
         # Initialize memory systems
         self.conversation_history = ConversationHistory()
-        self.shared_context = SharedContextManager()
-    
+        # Don't initialize profile_manager here - it needs username
+        # Will create per-user instances when needed
+
+    def _get_profile_manager(self, username: str) -> UserProfile:
+        """Get or create profile manager for specific user"""
+        return UserProfile(username)
+
     async def generate_streaming_response(
         self, 
         system_prompt: str, 
@@ -122,8 +127,13 @@ class AIClient:
                 yield "I'm here to help you with your relationship questions. Could you please tell me more about what's on your mind?"
                 
         except Exception as e:
-            logger.error(f"🌐 Multi-step streaming error: {e}")
-            yield "I'm experiencing some technical difficulties. Please try again in a moment."
+            error_msg = str(e)
+            if "429" in error_msg or "quota" in error_msg.lower():
+                logger.error(f"🌐 API quota exceeded: {e}")
+                yield "I've reached my daily conversation limit. Please try again tomorrow or consider upgrading to a paid plan for unlimited conversations."
+            else:
+                logger.error(f"🌐 Multi-step streaming error: {e}")
+                yield "I'm experiencing some technical difficulties. Please try again in a moment."
     
 
     
@@ -195,14 +205,14 @@ class AIClient:
         
         # Add emotional history and trends
         try:
-            emotional_history = self.profile_manager.get_emotional_history(limit=5)
+            emotional_history = self._get_profile_manager(user_profile.get('username', 'meranda')).get_emotional_history(limit=5)
             if emotional_history:
                 history_text = "## RECENT EMOTIONAL HISTORY\n"
                 for entry in emotional_history:
                     history_text += f"- {entry.get('date', 'Unknown')} {entry.get('time', '')}: {entry.get('feeling', 'Unknown')} (was: {entry.get('previous_feeling', 'Unknown')})\n"
                 prompt_parts.append(history_text)
             
-            trends = self.profile_manager.get_emotional_trends()
+            trends = self._get_profile_manager(user_profile.get('username', 'meranda')).get_emotional_trends()
             if trends and trends.get('trend') != 'No data':
                 trends_text = f"## EMOTIONAL TRENDS\n- Overall Trend: {trends.get('trend', 'Unknown')}\n- Most Common Feeling: {trends.get('most_common', 'Unknown')}\n"
                 prompt_parts.append(trends_text)
@@ -233,7 +243,7 @@ update_user_profile("username", {"field": "value"})
 ```
 
 ```tool_code
-add_diary_entry("username", {"content": "entry", "mood": "feeling"})
+
 ```
 
 ```tool_code
@@ -310,116 +320,87 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     
     # Function wrappers for the model to call
     def update_current_feeling(self, username: str, feeling: str, context: str = "") -> bool:
-        """Update user's emotional state - called by model"""
+        """Update user's current emotional state"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            result = user_profile.update_current_feeling(feeling, context)
-            logger.info(f"💭 Model updated feeling: {username} -> {feeling} (context: {context})")
-            return result
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.update_current_feeling(feeling, context)
         except Exception as e:
-            logger.error(f"Error in update_current_feeling: {e}")
+            logger.error(f"Error updating feeling: {e}")
             return False
-    
+
     def update_relationship_status(self, username: str, status: str) -> bool:
-        """Update relationship status - called by model"""
+        """Update user's relationship status"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            # For now, we'll just log the update since UserProfile doesn't have this method
-            logger.info(f"💕 Model requested relationship status update: {username} -> {status}")
-            return True
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.update_relationship_status(status)
         except Exception as e:
-            logger.error(f"Error in update_relationship_status: {e}")
+            logger.error(f"Error updating relationship status: {e}")
             return False
-    
+
     def update_user_profile(self, username: str, profile_data: Dict[str, Any]) -> bool:
-        """Update user profile - called by model"""
+        """Update user's profile information"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            # For now, we'll just log the update since UserProfile doesn't have a direct update method
-            logger.info(f"🔄 Model requested profile update for {username}: {profile_data}")
-            return True
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.update_profile(profile_data)
         except Exception as e:
-            logger.error(f"Error in update_user_profile: {e}")
+            logger.error(f"Error updating profile: {e}")
             return False
-    
-    def add_diary_entry(self, username: str, entry: Dict[str, Any]) -> bool:
-        """Add diary entry - called by model"""
+
+
+
+    def add_relationship_insight(self, username: str, insight: str) -> bool:
+        """Add relationship insight for the user"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            result = user_profile.add_diary_entry(entry)
-            logger.info(f"📖 Model added diary entry: {username}")
-            return result
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.add_relationship_insight(insight)
         except Exception as e:
-            logger.error(f"Error in add_diary_entry: {e}")
+            logger.error(f"Error adding relationship insight: {e}")
             return False
-    
-    def add_relationship_insight(self, insight: str) -> bool:
-        """Add relationship insight - called by model"""
+
+    def update_hidden_profile(self, username: str, hidden_profile_data: Dict[str, Any]) -> bool:
+        """Update user's hidden profile (AI's private notes)"""
         try:
-            # For now, we'll add insights to a shared insights file
-            from memory.user_profiles import UserProfile
-            # Add to meranda's diary as shared insight
-            user_profile = UserProfile("meranda")
-            entry_data = {
-                "content": f"Relationship Insight: {insight}",
-                "mood": "Analytical"
-            }
-            result = user_profile.add_diary_entry(entry_data)
-            logger.info(f"💡 Model added insight: {insight[:50]}...")
-            return result
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.update_hidden_profile(hidden_profile_data)
         except Exception as e:
-            logger.error(f"Error in add_relationship_insight: {e}")
+            logger.error(f"Error updating hidden profile: {e}")
             return False
-    
-    # File system functions for multi-step agency
+
+    def read_hidden_profile(self, username: str) -> str:
+        """Read user's hidden profile"""
+        try:
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.get_hidden_profile()
+        except Exception as e:
+            logger.error(f"Error reading hidden profile: {e}")
+            return "No hidden profile available"
+
     def read_user_profile(self, username: str) -> str:
-        """Read user's profile file - called by model"""
+        """Read user's profile information"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            profile = user_profile.get_profile()
-            return f"Profile for {username}: {json.dumps(profile, indent=2, ensure_ascii=False)}"
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.get_profile()
         except Exception as e:
-            logger.error(f"Error reading profile for {username}: {e}")
-            return f"Error reading profile for {username}: {str(e)}"
-    
+            logger.error(f"Error reading profile: {e}")
+            return "No profile available"
+
     def read_emotional_history(self, username: str) -> str:
-        """Read emotional history file - called by model"""
+        """Read user's emotional history"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            history = user_profile.get_emotional_history(limit=20)
-            return f"Emotional history for {username}: {json.dumps(history, indent=2, ensure_ascii=False)}"
+            profile_manager = self._get_profile_manager(username)
+            return profile_manager.get_emotional_history()
         except Exception as e:
-            logger.error(f"Error reading emotional history for {username}: {e}")
-            return f"Error reading emotional history for {username}: {str(e)}"
-    
-    def read_diary_entries(self, username: str) -> str:
-        """Read user's diary entries - called by model"""
-        try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            entries = user_profile.get_diary_entries(limit=10)
-            return f"Diary entries for {username}: {json.dumps(entries, indent=2, ensure_ascii=False)}"
-        except Exception as e:
-            logger.error(f"Error reading diary for {username}: {e}")
-            return f"Error reading diary for {username}: {str(e)}"
+            logger.error(f"Error getting emotional history: {e}")
+            return "No emotional history available"
+
+
     
     def write_insight_to_file(self, username: str, insight: str) -> bool:
         """Save insight to file - called by model"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
-            # Add insight as diary entry for now
-            entry_data = {
-                "content": f"Insight: {insight}",
-                "mood": "Reflective"
-            }
-            result = user_profile.add_diary_entry(entry_data)
+            user_profile = self._get_profile_manager(username)
+            # Add insight as relationship insight
+            result = user_profile.add_relationship_insight(insight)
             logger.info(f"💾 Model wrote insight to file for {username}: {insight[:50]}...")
             return result
         except Exception as e:
@@ -429,8 +410,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
     def search_user_data(self, username: str, query: str) -> str:
         """Search user's data files - called by model"""
         try:
-            from memory.user_profiles import UserProfile
-            user_profile = UserProfile(username)
+            user_profile = self._get_profile_manager(username)
             
             # Search in profile
             profile = user_profile.get_profile()
@@ -440,9 +420,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             history = user_profile.get_emotional_history(limit=50)
             history_text = json.dumps(history, ensure_ascii=False)
             
-            # Search in diary entries
-            diary_entries = user_profile.get_diary_entries(limit=50)
-            diary_text = json.dumps(diary_entries, ensure_ascii=False)
+
             
             # Simple text search
             results = []
@@ -450,8 +428,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                 results.append("Found in profile")
             if query.lower() in history_text.lower():
                 results.append("Found in emotional history")
-            if query.lower() in diary_text.lower():
-                results.append("Found in diary entries")
+
             
             return f"Search results for '{query}' in {username}'s data: {', '.join(results) if results else 'No matches found'}"
         except Exception as e:
@@ -556,7 +533,20 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         
         matches = re.findall(tool_code_pattern, text, re.DOTALL)
         for match in matches:
-            tool_calls.append(match.strip())
+            # Clean up the tool call
+            cleaned_call = match.strip()
+            if cleaned_call:
+                tool_calls.append(cleaned_call)
+        
+        # Also look for direct function calls without tool_code blocks
+        direct_pattern = r'(\w+)\s*\([^)]*\)'
+        direct_matches = re.findall(direct_pattern, text)
+        for match in direct_matches:
+            if match not in ['print', 'len', 'str', 'int', 'float', 'bool']:  # Skip common Python functions
+                # Find the full function call
+                full_match = re.search(rf'{match}\s*\([^)]*\)', text)
+                if full_match:
+                    tool_calls.append(full_match.group(0))
         
         return tool_calls
     
@@ -565,8 +555,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         try:
             logger.info(f"🔧 Executing tool call: {tool_call}")
             
-            # Parse the tool call using ast.literal_eval for safety
-            import ast
+            # Parse the tool call using regex for safety
             import re
             
             # Extract function name and arguments
@@ -589,6 +578,8 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         context = arg_match.group(3) if arg_match.group(3) else ""
                         result = self.update_current_feeling(username, feeling, context)
                         return f"Updated feeling to '{feeling}' for {username}"
+                    else:
+                        return f"Invalid arguments for update_current_feeling: {args_str}"
                 
                 elif func_name == "update_relationship_status":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -597,6 +588,71 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         status = arg_match.group(2)
                         result = self.update_relationship_status(username, status)
                         return f"Updated relationship status to '{status}' for {username}"
+                    else:
+                        return f"Invalid arguments for update_relationship_status: {args_str}"
+                
+                elif func_name == "update_user_profile":
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*({[^}]+})', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        profile_data_str = arg_match.group(2)
+                        try:
+                            import json
+                            profile_data = json.loads(profile_data_str)
+                            result = self.update_user_profile(username, profile_data)
+                            return f"Updated profile for {username}"
+                        except json.JSONDecodeError:
+                            return f"Invalid JSON in profile data: {profile_data_str}"
+                    else:
+                        return f"Invalid arguments for update_user_profile: {args_str}"
+                
+
+                
+                elif func_name == "add_relationship_insight":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        insight = arg_match.group(1)
+                        result = self.add_relationship_insight(username, insight)
+                        return f"Added relationship insight: {insight[:50]}..."
+                    else:
+                        return f"Invalid arguments for add_relationship_insight: {args_str}"
+                
+                elif func_name == "read_user_profile":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        result = self.read_user_profile(username)
+                        return f"Read profile for {username}: {result[:100]}..."
+                    else:
+                        return f"Invalid arguments for read_user_profile: {args_str}"
+                
+                elif func_name == "read_emotional_history":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        result = self.read_emotional_history(username)
+                        return f"Read emotional history for {username}: {result[:100]}..."
+                    else:
+                        return f"Invalid arguments for read_emotional_history: {args_str}"
+                
+                elif func_name == "read_diary_entries":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        result = self.read_diary_entries(username)
+                        return f"Read diary entries for {username}: {result[:100]}..."
+                    else:
+                        return f"Invalid arguments for read_diary_entries: {args_str}"
+                
+                elif func_name == "search_user_data":
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        query = arg_match.group(2)
+                        result = self.search_user_data(username, query)
+                        return f"Searched data for {username}: {result[:100]}..."
+                    else:
+                        return f"Invalid arguments for search_user_data: {args_str}"
                 
                 elif func_name == "read_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
@@ -604,6 +660,8 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         path = arg_match.group(1)
                         result = self.read_file(path)
                         return f"Read file {path}: {result[:100]}..."
+                    else:
+                        return f"Invalid arguments for read_file: {args_str}"
                 
                 elif func_name == "write_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -612,6 +670,8 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         content = arg_match.group(2)
                         result = self.write_file(path, content)
                         return f"Wrote to file {path}: {result}"
+                    else:
+                        return f"Invalid arguments for write_file: {args_str}"
                 
                 elif func_name == "list_files":
                     arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
@@ -619,6 +679,35 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         directory = arg_match.group(1)
                         result = self.list_files(directory)
                         return f"Listed files in {directory}: {result}"
+                    else:
+                        return f"Invalid arguments for list_files: {args_str}"
+                
+                elif func_name == "search_files":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        query = arg_match.group(1)
+                        result = self.search_files(query)
+                        return f"Searched files for '{query}': {result}"
+                    else:
+                        return f"Invalid arguments for search_files: {args_str}"
+                
+                elif func_name == "get_file_info":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        result = self.get_file_info(path)
+                        return f"File info for {path}: {result}"
+                    else:
+                        return f"Invalid arguments for get_file_info: {args_str}"
+                
+                elif func_name == "delete_file":
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
+                        result = self.delete_file(path)
+                        return f"Deleted file {path}: {result}"
+                    else:
+                        return f"Invalid arguments for delete_file: {args_str}"
                 
                 else:
                     return f"Unknown tool: {func_name}"

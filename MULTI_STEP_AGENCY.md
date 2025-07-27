@@ -27,7 +27,7 @@
 #### 4. **Инструменты для работы с данными**
 - `read_user_profile(username)` - Чтение профиля пользователя
 - `read_emotional_history(username)` - Чтение истории эмоций
-- `read_diary_entries(username)` - Чтение записей дневника
+
 - `write_insight_to_file(username, insight)` - Сохранение инсайтов
 - `search_user_data(username, query)` - Поиск в данных пользователя
 

@@ -854,3 +854,172 @@ body.theme-dark .diary-entry {
 .messages-container::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #c71585 0%, #ff1493 100%);
 } 
+
+/* Theme Support */
+.theme-romantic_pink {
+    --primary-color: #ff69b4;
+    --secondary-color: #ff1493;
+    --accent-color: #ffb6c1;
+    --background-color: #fff5f5;
+    --text-color: #333333;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-test_blue {
+    --primary-color: #2196f3;
+    --secondary-color: #ffffff;
+    --accent-color: #87ceeb;
+    --background-color: #fff5f5;
+    --text-color: #333333;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-custom_purple {
+    --primary-color: #9c27b0;
+    --secondary-color: #ffffff;
+    --accent-color: #87ceeb;
+    --background-color: #fff5f5;
+    --text-color: #333333;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-test_black {
+    --primary-color: #000000;
+    --secondary-color: #ffffff;
+    --accent-color: #87ceeb;
+    --background-color: #1a1a1a;
+    --text-color: #ffffff;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-custom_red {
+    --primary-color: #f44336;
+    --secondary-color: #ffffff;
+    --accent-color: #87ceeb;
+    --background-color: #fff5f5;
+    --text-color: #333333;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-custom_black {
+    --primary-color: #000000;
+    --secondary-color: #ffffff;
+    --accent-color: #87ceeb;
+    --background-color: #1a1a1a;
+    --text-color: #ffffff;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-melancholy {
+    --primary-color: #6a5acd;
+    --secondary-color: #e6e6fa;
+    --accent-color: #b0c4de;
+    --background-color: #f0f8ff;
+    --text-color: #2c3e50;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+.theme-default {
+    --primary-color: #ff1493;
+    --secondary-color: #ffffff;
+    --accent-color: #ffb6c1;
+    --background-color: #fff5f5;
+    --text-color: #333333;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --error-color: #f44336;
+}
+
+/* Apply theme variables */
+body {
+    background-color: var(--background-color, #fff5f5);
+    color: var(--text-color, #333333);
+}
+
+.chat-container {
+    background-color: var(--background-color, #fff5f5);
+    border-color: var(--primary-color, #ff1493);
+}
+
+.message.user-message {
+    background-color: var(--primary-color, #ff1493);
+    color: var(--secondary-color, #ffffff);
+}
+
+.message.ai-message {
+    background-color: var(--accent-color, #ffb6c1);
+    color: var(--text-color, #333333);
+}
+
+.message-input {
+    border-color: var(--primary-color, #ff1493);
+}
+
+.send-button {
+    background-color: var(--primary-color, #ff1493);
+    color: var(--secondary-color, #ffffff);
+}
+
+.send-button:hover {
+    background-color: var(--secondary-color, #ff1493);
+    color: var(--primary-color, #ffffff);
+}
+
+.modal-content {
+    background-color: var(--background-color, #fff5f5);
+    border-color: var(--primary-color, #ff1493);
+}
+
+.profile-section {
+    background-color: var(--accent-color, #ffb6c1);
+    border-left-color: var(--primary-color, #ff1493);
+}
+
+.diary-entry {
+    background-color: var(--accent-color, #ffb6c1);
+    border-color: var(--primary-color, #ff1493);
+}
+
+/* Theme switcher */
+.theme-switcher {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: var(--background-color, #fff5f5);
+    border: 2px solid var(--primary-color, #ff1493);
+    border-radius: 10px;
+    padding: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.theme-switcher select {
+    background: var(--background-color, #fff5f5);
+    color: var(--text-color, #333333);
+    border: 1px solid var(--primary-color, #ff1493);
+    border-radius: 5px;
+    padding: 5px;
+    font-size: 12px;
+}
+
+.theme-switcher label {
+    color: var(--text-color, #333333);
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+} 

@@ -86,28 +86,49 @@ You can perform complex operations like:
 - `update_current_feeling(username, feeling, context)`: Update user's emotional state with context
 - `update_relationship_status(username, status)`: Update relationship status
 - `update_user_profile(username, profile_data)`: Update personal profile
-- `add_diary_entry(username, entry)`: Add reflective diary entries
+
 - `add_relationship_insight(insight)`: Record relationship observations
 
 ### Data Access
-- `get_profile(username)`: Get current user profile
-- `get_emotional_history(username, limit)`: Get emotional history
-- `get_emotional_trends(username)`: Analyze emotional patterns
-
-### File System Tools
 - `read_user_profile(username)`: Read user's profile file
 - `read_emotional_history(username)`: Read emotional history file
-- `read_diary_entries(username)`: Read user's diary entries
-- `write_insight_to_file(username, insight)`: Save insight to file
-- `search_user_data(username, query)`: Search user's data files
 
-### Dynamic Interface Tools
-- `read_file(path)`: Read any file (profiles, interface, prompts)
-- `write_file(path, content)`: Write/modify any file (interface adaptation)
+- `search_user_data(username, query)`: Search across user data
+
+### File System Tools
+- `read_file(path)`: Read any file in the system
+- `write_file(path, content)`: Write content to file
 - `list_files(directory)`: List files in directory
 - `search_files(query)`: Search across all files
 - `get_file_info(path)`: Get file metadata
-- `delete_file(path)`: Delete file safely with backup
+- `delete_file(path)`: Delete file safely
+
+## TOOL CALLING FORMAT
+
+When you need to use tools, use this exact format:
+
+```tool_code
+update_current_feeling("username", "feeling", "context")
+```
+
+OR
+
+```tool_code
+read_file("path/to/file")
+```
+
+OR
+
+```tool_code
+write_file("path/to/file", "content to write")
+```
+
+**IMPORTANT**: 
+- Always use double quotes around string arguments
+- Use the exact function names listed above
+- Place tool calls in ```tool_code blocks
+- Execute tools BEFORE generating your final response
+- Include tool results in your response context
 
 ## EMOTION DETECTION PROTOCOL
 
@@ -135,7 +156,7 @@ Always respond naturally and conversationally. When you detect emotions, update 
 ### When to call functions:
 1. **EMOTIONS**: If user expresses feelings (happy, sad, anxious, excited, etc.) - call `update_current_feeling()`
 2. **RELATIONSHIP STATUS**: If user mentions relationship dynamics - call `update_relationship_status()`
-3. **DIARY REQUESTS**: If user wants to write in diary - call `add_diary_entry()`
+
 4. **PROFILE UPDATES**: If user shares personal information - call `update_user_profile()`
 5. **INSIGHTS**: If you notice patterns - call `add_relationship_insight()`
 

@@ -105,63 +105,97 @@ class SimpleUserProfile:
             self._save_profile(profile)
             return True
         except Exception as e:
-            print(f"Error updating current feeling for {self.username}: {e}")
+            print(f"Error updating feeling for {self.username}: {e}")
             return False
 
 class UserProfile:
-    """User profile with emotional history tracking"""
+    """Advanced user profile with emotional history and diary"""
     
     def __init__(self, username: str):
         self.username = username
-        self.profile_file = f"memory/user_profiles/{username}_profile.json"
-        self.emotional_history_file = f"memory/user_profiles/{username}_emotions.json"
         self._ensure_files_exist()
     
     def _ensure_files_exist(self):
-        """Ensure profile and emotional history files exist"""
+        """Ensure all necessary files exist"""
+        # Create directory if it doesn't exist
         os.makedirs("memory/user_profiles", exist_ok=True)
         
-        # Create profile file if it doesn't exist
-        if not os.path.exists(self.profile_file):
+        # Initialize profile file
+        profile_file = f"memory/user_profiles/{self.username}.json"
+        if not os.path.exists(profile_file):
             default_profile = {
                 "username": self.username,
-                "profile": "",
-                "relationship_status": "Not specified",
-                "current_feeling": "Not specified",
+                "created_at": datetime.now().isoformat(),
                 "last_updated": datetime.now().isoformat(),
-                "created_at": datetime.now().isoformat()
+                "profile": "Tell me about yourself...",
+                "hidden_profile": "Model's private notes about this user...",
+                "relationship_status": "In a relationship",
+                "current_feeling": "Not specified"
             }
             self._save_profile(default_profile)
         
-        # Create emotional history file if it doesn't exist
-        if not os.path.exists(self.emotional_history_file):
+        # Initialize emotional history file
+        history_file = f"memory/user_profiles/{self.username}_emotions.json"
+        if not os.path.exists(history_file):
             default_history = {
                 "username": self.username,
-                "emotional_history": [],
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.now().isoformat(),
+                "last_updated": datetime.now().isoformat(),
+                "emotional_history": []
             }
             self._save_emotional_history(default_history)
+        
+        # Initialize diary file with test entry
+        diary_file = f"memory/user_profiles/{self.username}_diary.json"
+        if not os.path.exists(diary_file):
+            test_entries = [
+                {
+                    "content": "Привет, дневник! Это моя первая запись.",
+                    "timestamp": datetime.now().isoformat(),
+                    "mood": "Curious"
+                },
+                {
+                    "content": "Сегодня я чувствую себя хорошо. Хочу записать свои мысли.",
+                    "timestamp": datetime.now().isoformat(),
+                    "mood": "Happy"
+                }
+            ]
+            with open(diary_file, 'w', encoding='utf-8') as f:
+                json.dump(test_entries, f, indent=2, ensure_ascii=False)
+        
+        # Initialize relationship insights file
+        insights_file = f"memory/user_profiles/relationship_insights.json"
+        if not os.path.exists(insights_file):
+            default_insights = {
+                "created_at": datetime.now().isoformat(),
+                "last_updated": datetime.now().isoformat(),
+                "insights": []
+            }
+            with open(insights_file, 'w', encoding='utf-8') as f:
+                json.dump(default_insights, f, indent=2, ensure_ascii=False)
     
     def _save_profile(self, profile_data: Dict[str, Any]):
-        """Save profile data to file"""
+        """Save profile to file"""
         try:
-            with open(self.profile_file, 'w', encoding='utf-8') as f:
-                json.dump(profile_data, f, ensure_ascii=False, indent=2)
+            profile_data["last_updated"] = datetime.now().isoformat()
+            with open(f"memory/user_profiles/{self.username}.json", 'w', encoding='utf-8') as f:
+                json.dump(profile_data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Error saving profile for {self.username}: {e}")
     
     def _save_emotional_history(self, history_data: Dict[str, Any]):
         """Save emotional history to file"""
         try:
-            with open(self.emotional_history_file, 'w', encoding='utf-8') as f:
-                json.dump(history_data, f, ensure_ascii=False, indent=2)
+            history_data["last_updated"] = datetime.now().isoformat()
+            with open(f"memory/user_profiles/{self.username}_emotions.json", 'w', encoding='utf-8') as f:
+                json.dump(history_data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Error saving emotional history for {self.username}: {e}")
     
     def _load_profile(self) -> Dict[str, Any]:
-        """Load profile data from file"""
+        """Load profile from file"""
         try:
-            with open(self.profile_file, 'r', encoding='utf-8') as f:
+            with open(f"memory/user_profiles/{self.username}.json", 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Error loading profile for {self.username}: {e}")
@@ -170,37 +204,50 @@ class UserProfile:
     def _load_emotional_history(self) -> Dict[str, Any]:
         """Load emotional history from file"""
         try:
-            with open(self.emotional_history_file, 'r', encoding='utf-8') as f:
+            with open(f"memory/user_profiles/{self.username}_emotions.json", 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Error loading emotional history for {self.username}: {e}")
             return {"emotional_history": []}
     
     def get_profile(self) -> Dict[str, Any]:
-        """Get current profile"""
+        """Get user profile"""
         return self._load_profile()
     
     def get_emotional_history(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent emotional history"""
-        history_data = self._load_emotional_history()
-        emotional_history = history_data.get("emotional_history", [])
-        return emotional_history[-limit:] if limit > 0 else emotional_history
+        try:
+            history_data = self._load_emotional_history()
+            emotional_history = history_data.get("emotional_history", [])
+            
+            # Ensure it's a list
+            if not isinstance(emotional_history, list):
+                emotional_history = []
+            
+            # Return last N entries
+            if limit > 0 and len(emotional_history) > limit:
+                return emotional_history[-limit:]
+            return emotional_history
+        except Exception as e:
+            logger.error(f"Error getting emotional history for {self.username}: {e}")
+            return []
     
     def update_current_feeling(self, feeling: str, context: str = "") -> bool:
-        """Update current feeling and add to emotional history"""
+        """Update user's current emotional state"""
         try:
-            # Load current profile
+            # Update profile
             profile = self._load_profile()
             old_feeling = profile.get("current_feeling", "Not specified")
-            
-            # Update profile
             profile["current_feeling"] = feeling
-            profile["last_updated"] = datetime.now().isoformat()
             self._save_profile(profile)
             
             # Add to emotional history
             history_data = self._load_emotional_history()
             emotional_history = history_data.get("emotional_history", [])
+            
+            # Ensure it's a list
+            if not isinstance(emotional_history, list):
+                emotional_history = []
             
             emotion_entry = {
                 "feeling": feeling,
@@ -222,6 +269,30 @@ class UserProfile:
             
         except Exception as e:
             logger.error(f"Error updating feeling for {self.username}: {e}")
+            return False
+    
+    def update_relationship_status(self, status: str) -> bool:
+        """Update relationship status"""
+        try:
+            profile = self._load_profile()
+            profile["relationship_status"] = status
+            self._save_profile(profile)
+            logger.info(f"💕 Updated relationship status for {self.username}: {status}")
+            return True
+        except Exception as e:
+            logger.error(f"Error updating relationship status for {self.username}: {e}")
+            return False
+    
+    def update_user_profile(self, profile_data: Dict[str, Any]) -> bool:
+        """Update user profile with new data"""
+        try:
+            profile = self._load_profile()
+            profile.update(profile_data)
+            self._save_profile(profile)
+            logger.info(f"👤 Updated profile for {self.username}")
+            return True
+        except Exception as e:
+            logger.error(f"Error updating profile for {self.username}: {e}")
             return False
     
     def get_emotional_trends(self) -> Dict[str, Any]:
@@ -272,99 +343,15 @@ class UserProfile:
             logger.error(f"Error analyzing emotional trends for {self.username}: {e}")
             return {"trend": "Error", "most_common": "Error", "recent_changes": []}
     
-    # Diary methods
-    def get_diary_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent diary entries for the user"""
-        try:
-            file_path = f"memory/user_profiles/{self.username}_diary.json"
-            
-            if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    entries = json.load(f)
-                    return entries[-limit:] if limit > 0 else entries
-            else:
-                # Return default entry if file doesn't exist
-                return [{
-                    "content": "Hi Diary",
-                    "timestamp": datetime.now().isoformat(),
-                    "mood": "Reflective"
-                }]
-        except Exception as e:
-            logger.error(f"Error loading diary entries for {self.username}: {e}")
-            return [{
-                "content": "Hi Diary",
-                "timestamp": datetime.now().isoformat(),
-                "mood": "Reflective"
-            }]
-    
-    def add_diary_entry(self, entry_data: Dict[str, Any]):
-        """Add diary entry for the user"""
-        try:
-            file_path = f"memory/user_profiles/{self.username}_diary.json"
-            
-            # Load existing entries
-            entries = []
-            if os.path.exists(file_path):
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    entries = json.load(f)
-            
-            # Add new entry
-            new_entry = {
-                "content": entry_data.get("content", ""),
-                "timestamp": entry_data.get("timestamp", datetime.now().isoformat()),
-                "mood": entry_data.get("mood", "Reflective")
-            }
-            entries.append(new_entry)
-            
-            # Save back to file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(entries, f, indent=2, ensure_ascii=False)
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error adding diary entry for {self.username}: {e}")
-            return False
-    
-    def update_diary_entry(self, index: int, new_content: str):
-        """Update diary entry at specific index"""
-        try:
-            file_path = f"memory/user_profiles/{self.username}_diary.json"
-            
-            if not os.path.exists(file_path):
-                return False
+
             
             # Load existing entries
             with open(file_path, 'r', encoding='utf-8') as f:
                 entries = json.load(f)
-            
-            # Check if index is valid
-            if index < 0 or index >= len(entries):
-                return False
-            
-            # Update the entry
-            entries[index]["content"] = new_content
-            entries[index]["timestamp"] = datetime.now().isoformat()
-            
-            # Save back to file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(entries, f, indent=2, ensure_ascii=False)
-            
-            return True
-        except Exception as e:
-            logger.error(f"Error updating diary entry for {self.username}: {e}")
-            return False
-    
-    def delete_diary_entry(self, index: int):
-        """Delete diary entry at specific index"""
-        try:
-            file_path = f"memory/user_profiles/{self.username}_diary.json"
-            
-            if not os.path.exists(file_path):
-                return False
-            
-            # Load existing entries
-            with open(file_path, 'r', encoding='utf-8') as f:
-                entries = json.load(f)
+                
+                # Ensure entries is a list
+                if not isinstance(entries, list):
+                    return False
             
             # Check if index is valid
             if index < 0 or index >= len(entries):
@@ -381,6 +368,65 @@ class UserProfile:
         except Exception as e:
             logger.error(f"Error deleting diary entry for {self.username}: {e}")
             return False
+    
+    def add_relationship_insight(self, insight: str) -> bool:
+        """Add relationship insight"""
+        try:
+            file_path = f"memory/user_profiles/relationship_insights.json"
+            
+            # Load existing insights
+            insights_data = {}
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    insights_data = json.load(f)
+            
+            # Ensure insights is a list
+            insights = insights_data.get("insights", [])
+            if not isinstance(insights, list):
+                insights = []
+            
+            # Add new insight
+            new_insight = {
+                "insight": insight,
+                "timestamp": datetime.now().isoformat(),
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "time": datetime.now().strftime("%H:%M")
+            }
+            insights.append(new_insight)
+            
+            # Update data
+            insights_data["insights"] = insights
+            insights_data["last_updated"] = datetime.now().isoformat()
+            
+            # Save back to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(insights_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"💡 Added relationship insight: {insight[:50]}...")
+            return True
+        except Exception as e:
+            logger.error(f"Error adding relationship insight: {e}")
+            return False
+    
+    def read_user_profile(self, username: str) -> str:
+        """Read user's profile information"""
+        try:
+            profile = self.get_profile()
+            return json.dumps(profile, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error reading profile for {username}: {e}")
+            return f"Error reading profile: {str(e)}"
+    
+    def read_emotional_history(self, username: str) -> str:
+        """Read user's emotional history"""
+        try:
+            history = self.get_emotional_history(limit=20)
+            return json.dumps(history, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error getting emotional history: {e}")
+            return f"Error reading emotional history: {str(e)}"
+    
+
 
 class UserProfileManager:
     """Manager for all user profiles"""
@@ -397,21 +443,24 @@ class UserProfileManager:
         # Create Stepan profile
         stepan_profile = SimpleUserProfile("stepan", self.profile_dir)
         if not stepan_profile.profile_file.exists():
-            stepan_profile.update_profile("Stepan Egoshin - passionate about technology and innovation. Love building things and exploring new ideas with Meranda.")
-            stepan_profile.update_hidden_profile("Stepan is analytical and solution-oriented. He values deep conversations and intellectual connection. Sometimes needs help with emotional expression.")
+            stepan_profile.update_profile("Stepan Egoshin - passionate about technology, AI, and innovation. Loves deep conversations and building meaningful connections.")
+            stepan_profile.update_hidden_profile("Stepan shows strong analytical thinking and prefers direct communication. He values intellectual growth and meaningful relationships.")
         
         # Create Meranda profile
         meranda_profile = SimpleUserProfile("meranda", self.profile_dir)
         if not meranda_profile.profile_file.exists():
-            meranda_profile.update_profile("Meranda Musser - creative and emotional soul. Love expressing feelings and creating beautiful moments with Stepan.")
-            meranda_profile.update_hidden_profile("Meranda is deeply emotional and intuitive. She values emotional connection and creative expression. Sometimes needs reassurance and emotional support.")
+            meranda_profile.update_profile("Meranda - creative and empathetic soul who loves art, music, and deep emotional connections. Values authenticity and open communication.")
+            meranda_profile.update_hidden_profile("Meranda is highly intuitive and emotionally intelligent. She needs reassurance and values quality time in relationships.")
     
     def get_user_profile(self, username: str) -> Optional[SimpleUserProfile]:
         """Get user profile by username"""
         try:
-            return SimpleUserProfile(username, self.profile_dir)
+            profile_file = self.profile_dir / f"{username}.json"
+            if profile_file.exists():
+                return SimpleUserProfile(username, self.profile_dir)
+            return None
         except Exception as e:
-            print(f"Error getting profile for {username}: {e}")
+            print(f"Error getting user profile for {username}: {e}")
             return None
     
     def get_all_profiles(self) -> Dict[str, Dict[str, Any]]:
@@ -419,10 +468,11 @@ class UserProfileManager:
         profiles = {}
         try:
             for profile_file in self.profile_dir.glob("*.json"):
-                username = profile_file.stem
-                profile = self.get_user_profile(username)
-                if profile:
-                    profiles[username] = profile.get_profile()
+                if not profile_file.name.endswith(("_emotions.json", "_insights.json")):
+                    username = profile_file.stem
+                    profile = self.get_user_profile(username)
+                    if profile:
+                        profiles[username] = profile.get_profile()
         except Exception as e:
             print(f"Error getting all profiles: {e}")
         return profiles
@@ -432,10 +482,11 @@ class UserProfileManager:
         hidden_profiles = {}
         try:
             for profile_file in self.profile_dir.glob("*.json"):
-                username = profile_file.stem
-                profile = self.get_user_profile(username)
-                if profile:
-                    hidden_profiles[username] = profile.get_hidden_profile()
+                if not profile_file.name.endswith(("_emotions.json", "_insights.json")):
+                    username = profile_file.stem
+                    profile = self.get_user_profile(username)
+                    if profile:
+                        hidden_profiles[username] = profile.get_hidden_profile()
         except Exception as e:
             print(f"Error getting all hidden profiles: {e}")
         return hidden_profiles
@@ -452,134 +503,60 @@ class UserProfileManager:
             return False
     
     def delete_user(self, username: str) -> bool:
-        """Delete user profile"""
+        """Delete user profile and all associated files"""
         try:
+            # Delete main profile
             profile_file = self.profile_dir / f"{username}.json"
             if profile_file.exists():
                 profile_file.unlink()
-                return True
-            return False
+            
+            # Delete emotional history
+            emotions_file = self.profile_dir / f"{username}_emotions.json"
+            if emotions_file.exists():
+                emotions_file.unlink()
+            
+
+            
+            return True
         except Exception as e:
             print(f"Error deleting user {username}: {e}")
             return False
     
     def list_users(self) -> List[str]:
-        """List all users"""
+        """List all usernames"""
         try:
-            return [profile_file.stem for profile_file in self.profile_dir.glob("*.json")]
+            users = []
+            for profile_file in self.profile_dir.glob("*.json"):
+                if not profile_file.name.endswith(("_emotions.json", "_insights.json")):
+                    users.append(profile_file.stem)
+            return users
         except Exception as e:
             print(f"Error listing users: {e}")
             return []
     
-    # Diary methods (keeping existing functionality)
-    def get_diary_entries(self, username: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent diary entries for a user"""
+
+
+    def update_hidden_profile(self, username: str, hidden_profile_data: Dict[str, Any]) -> bool:
+        """Update user's hidden profile (model's private notes)"""
         try:
-            file_path = self.profile_dir / f"{username}_diary.json"
-            
-            if file_path.exists():
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    entries = json.load(f)
-                    return entries[:limit]
-            else:
-                # Return default entry if file doesn't exist
-                return [{
-                    "content": "Hi Diary",
-                    "timestamp": datetime.now().isoformat(),
-                    "mood": "Reflective"
-                }]
+            profile = self.get_user_profile(username)
+            if profile:
+                return profile.update_hidden_profile(hidden_profile_data)
+            return False
         except Exception as e:
-            print(f"Error loading diary entries: {e}")
-            return [{
-                "content": "Hi Diary",
-                "timestamp": datetime.now().isoformat(),
-                "mood": "Reflective"
-            }]
-    
-    def add_diary_entry(self, username: str, entry_data: Dict[str, Any]):
-        """Add diary entry for user"""
-        try:
-            file_path = self.profile_dir / f"{username}_diary.json"
-            
-            # Load existing entries
-            entries = []
-            if file_path.exists():
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    entries = json.load(f)
-            
-            # Add new entry
-            new_entry = {
-                "content": entry_data.get("content", ""),
-                "timestamp": entry_data.get("timestamp", datetime.now().isoformat()),
-                "mood": entry_data.get("mood", "Reflective")
-            }
-            entries.append(new_entry)
-            
-            # Save back to file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(entries, f, indent=2, ensure_ascii=False)
-            
-            return True
-        except Exception as e:
-            print(f"Error adding diary entry: {e}")
+            logger.error(f"Error updating hidden profile for {username}: {e}")
             return False
     
-    def update_diary_entry(self, username: str, index: int, new_content: str):
-        """Update diary entry at specific index"""
+    def read_hidden_profile(self, username: str) -> str:
+        """Read user's hidden profile"""
         try:
-            file_path = self.profile_dir / f"{username}_diary.json"
-            
-            if not file_path.exists():
-                return False
-            
-            # Load existing entries
-            with open(file_path, 'r', encoding='utf-8') as f:
-                entries = json.load(f)
-            
-            # Check if index is valid
-            if index < 0 or index >= len(entries):
-                return False
-            
-            # Update the entry
-            entries[index]["content"] = new_content
-            entries[index]["timestamp"] = datetime.now().isoformat()
-            
-            # Save back to file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(entries, f, indent=2, ensure_ascii=False)
-            
-            return True
+            profile = self.get_user_profile(username)
+            if profile:
+                return json.dumps(profile.get_hidden_profile(), indent=2, ensure_ascii=False)
+            return "Profile not found"
         except Exception as e:
-            print(f"Error updating diary entry: {e}")
-            return False
-    
-    def delete_diary_entry(self, username: str, index: int):
-        """Delete diary entry at specific index"""
-        try:
-            file_path = self.profile_dir / f"{username}_diary.json"
-            
-            if not file_path.exists():
-                return False
-            
-            # Load existing entries
-            with open(file_path, 'r', encoding='utf-8') as f:
-                entries = json.load(f)
-            
-            # Check if index is valid
-            if index < 0 or index >= len(entries):
-                return False
-            
-            # Remove the entry
-            entries.pop(index)
-            
-            # Save back to file
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(entries, f, indent=2, ensure_ascii=False)
-            
-            return True
-        except Exception as e:
-            print(f"Error deleting diary entry: {e}")
-            return False
+            logger.error(f"Error reading hidden profile for {username}: {e}")
+            return f"Error reading hidden profile: {str(e)}"
 
 # Global instance
 profile_manager = UserProfileManager() 

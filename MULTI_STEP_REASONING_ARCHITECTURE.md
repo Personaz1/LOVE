@@ -50,7 +50,7 @@ Tool Results → Final Prompt → Streaming Response → User
 ### Data Access
 - `read_user_profile(username)` - чтение профиля пользователя
 - `read_emotional_history(username)` - чтение эмоциональной истории
-- `read_diary_entries(username)` - чтение дневниковых записей
+
 - `search_user_data(username, query)` - поиск по данным пользователя
 
 ### File System Operations
@@ -62,7 +62,7 @@ Tool Results → Final Prompt → Streaming Response → User
 - `delete_file(path)` - удаление файлов
 
 ### Relationship Insights
-- `add_diary_entry(username, entry)` - добавление записи в дневник
+
 - `add_relationship_insight(insight)` - добавление инсайта
 
 ## Implementation Details

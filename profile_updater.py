@@ -17,7 +17,7 @@ class ProfileUpdater:
         self.username = username
         self.profile_file = f"memory/user_profiles/{username}_profile.json"
         self.emotional_history_file = f"memory/user_profiles/{username}_emotions.json"
-        self.diary_file = f"memory/user_profiles/{username}_diary.json"
+
         self.insights_file = f"memory/user_profiles/relationship_insights.json"
         self._ensure_files_exist()
     
@@ -46,14 +46,7 @@ class ProfileUpdater:
             }
             self._save_emotional_history(default_history)
         
-        # Create diary file if it doesn't exist
-        if not os.path.exists(self.diary_file):
-            default_diary = {
-                "username": self.username,
-                "entries": [],
-                "created_at": datetime.now().isoformat()
-            }
-            self._save_diary(default_diary)
+
         
         # Create insights file if it doesn't exist
         if not os.path.exists(self.insights_file):
@@ -79,13 +72,7 @@ class ProfileUpdater:
         except Exception as e:
             logger.error(f"Error saving emotional history for {self.username}: {e}")
     
-    def _save_diary(self, diary_data: Dict[str, Any]):
-        """Save diary data to file"""
-        try:
-            with open(self.diary_file, 'w', encoding='utf-8') as f:
-                json.dump(diary_data, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"Error saving diary for {self.username}: {e}")
+
     
     def _save_insights(self, insights_data: Dict[str, Any]):
         """Save insights data to file"""
@@ -113,14 +100,7 @@ class ProfileUpdater:
             logger.error(f"Error loading emotional history for {self.username}: {e}")
             return {"emotional_history": []}
     
-    def _load_diary(self) -> Dict[str, Any]:
-        """Load diary data from file"""
-        try:
-            with open(self.diary_file, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Error loading diary for {self.username}: {e}")
-            return {"entries": []}
+
     
     def _load_insights(self) -> Dict[str, Any]:
         """Load insights data from file"""
@@ -199,27 +179,7 @@ class ProfileUpdater:
             logger.error(f"Error updating profile for {username}: {e}")
             return False
     
-    def add_diary_entry(self, username: str, entry: Dict[str, Any]) -> bool:
-        """Add diary entry"""
-        try:
-            diary_data = self._load_diary()
-            entries = diary_data.get("entries", [])
-            
-            entry["id"] = len(entries)
-            entry["timestamp"] = datetime.now().isoformat()
-            entries.append(entry)
-            
-            diary_data["entries"] = entries
-            diary_data["last_updated"] = datetime.now().isoformat()
-            
-            self._save_diary(diary_data)
-            
-            logger.info(f"📖 Added diary entry for {username}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding diary entry for {username}: {e}")
-            return False
+
     
     def add_relationship_insight(self, insight: str) -> bool:
         """Add relationship insight"""
@@ -349,6 +309,4 @@ def update_relationship_phase(phase: str) -> bool:
     """Update relationship phase"""
     return profile_updater.update_relationship_phase(phase)
 
-def add_diary_entry(username: str, entry_data: dict) -> bool:
-    """Add diary entry"""
-    return profile_updater.add_diary_entry(username, entry_data) 
+ 

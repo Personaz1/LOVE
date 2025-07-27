@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load conversation history
     loadConversationHistory();
+    
+    // Load current theme
+    loadCurrentTheme();
 
     // Handle message submission
     messageForm.addEventListener('submit', async function(e) {
@@ -160,9 +163,8 @@ async function sendStreamingMessage(message) {
 async function handleStreamData(data) {
     switch (data.type) {
         case 'status':
+            // Remove status messages - they're just decorative
             console.log('Status:', data.message);
-            // Show status message
-            showStatusMessage(data.message);
             break;
             
         case 'chunk':
@@ -179,6 +181,7 @@ async function handleStreamData(data) {
             break;
             
         case 'complete':
+            // Remove completion message - it's just decorative
             console.log('Streaming completed');
             break;
             
@@ -205,15 +208,15 @@ function addStreamingMessage() {
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.appendChild(messageDiv);
     
-    // Add typing indicator
-    const typingIndicator = document.createElement('div');
-    typingIndicator.className = 'typing-indicator';
-    typingIndicator.innerHTML = `
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-    `;
-    messagesContainer.appendChild(typingIndicator);
+    // Remove typing indicator - it's just decorative
+    // const typingIndicator = document.createElement('div');
+    // typingIndicator.className = 'typing-indicator';
+    // typingIndicator.innerHTML = `
+    //     <div class="typing-dot"></div>
+    //     <div class="typing-dot"></div>
+    //     <div class="typing-dot"></div>
+    // `;
+    // messagesContainer.appendChild(typingIndicator);
     
     scrollToBottom();
     
@@ -222,7 +225,7 @@ function addStreamingMessage() {
 
 // Finalize streaming message
 function finalizeStreamingMessage(messageElement) {
-    // Remove typing indicator
+    // Remove typing indicator if it exists
     const typingIndicator = document.querySelector('.typing-indicator');
     if (typingIndicator) {
         typingIndicator.remove();
@@ -240,23 +243,23 @@ function finalizeStreamingMessage(messageElement) {
 }
 
 // Show status message
-function showStatusMessage(message) {
-    const statusDiv = document.createElement('div');
-    statusDiv.className = 'status-message';
-    statusDiv.textContent = message;
+// function showStatusMessage(message) {
+//     const statusDiv = document.createElement('div');
+//     statusDiv.className = 'status-message';
+//     statusDiv.textContent = message;
     
-    const messagesContainer = document.getElementById('messagesContainer');
-    messagesContainer.appendChild(statusDiv);
+//     const messagesContainer = document.getElementById('messagesContainer');
+//     messagesContainer.appendChild(statusDiv);
     
-    // Remove status message after 3 seconds
-    setTimeout(() => {
-        if (statusDiv.parentNode) {
-            statusDiv.remove();
-        }
-    }, 3000);
+//     // Remove status message after 3 seconds
+//     setTimeout(() => {
+//         if (statusDiv.parentNode) {
+//             statusDiv.remove();
+//         }
+//     }, 3000);
     
-    scrollToBottom();
-}
+//     scrollToBottom();
+// }
 
 // Send message to API (legacy function for fallback)
 async function sendMessage(message) {
@@ -407,11 +410,7 @@ function showProfile() {
     modal.style.display = 'block';
 }
 
-function showDiary() {
-    const modal = document.getElementById('diaryModal');
-    modal.style.display = 'block';
-    loadDiaryEntries();
-}
+
 
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -592,166 +591,7 @@ async function updateHiddenProfile() {
     }
 }
 
-// Load diary entries
-async function loadDiaryEntries() {
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
 
-        // Use the correct credentials based on username
-        let authUsername = username;
-        let authPassword = password;
-        
-        // Map old credentials to new ones
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch('/api/diary', {
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const entries = await response.json();
-        displayDiaryEntries(entries);
-    } catch (error) {
-        console.error('Error loading diary:', error);
-        displayDiaryEntries([]);
-    }
-}
-
-// Display diary entries
-function displayDiaryEntries(entries) {
-    const container = document.getElementById('diaryEntries');
-    
-    if (!entries || entries.length === 0) {
-        container.innerHTML = '<div class="diary-entry empty">No diary entries yet. Write "write in diary - [your thoughts]" in the chat to create your first entry!</div>';
-        return;
-    }
-
-    container.innerHTML = entries.map(entry => `
-        <div class="diary-entry" data-id="${entry.id}">
-            <div class="diary-entry-header">
-                <span class="diary-entry-date">${formatDate(entry.timestamp)}</span>
-                <div class="diary-entry-actions">
-                    <button class="diary-entry-edit" onclick="editDiaryEntry('${entry.id}')" title="Edit">✏️</button>
-                    <button class="diary-entry-delete" onclick="deleteDiaryEntry('${entry.id}')" title="Delete">🗑️</button>
-                </div>
-            </div>
-            <div class="diary-entry-content">${entry.content}</div>
-        </div>
-    `).join('');
-}
-
-// Format date for display
-function formatDate(timestamp) {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-// Edit diary entry
-async function editDiaryEntry(entryId) {
-    const newContent = prompt('Edit your diary entry:');
-    if (!newContent) return;
-
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        // Use the correct credentials based on username
-        let authUsername = username;
-        let authPassword = password;
-        
-        // Map old credentials to new ones
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch(`/api/diary/${entryId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            },
-            body: JSON.stringify({ content: newContent })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-            // Reload diary entries immediately
-            await loadDiaryEntries();
-            console.log('✅ Diary entry updated successfully');
-        } else {
-            alert('Error updating diary entry: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error editing diary:', error);
-        alert('Error editing diary entry. Please try again.');
-    }
-}
-
-// Delete diary entry
-async function deleteDiaryEntry(entryId) {
-    if (!confirm('Are you sure you want to delete this diary entry?')) return;
-
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const username = urlParams.get('username') || currentUser;
-        const password = urlParams.get('password') || '';
-
-        // Use the correct credentials based on username
-        let authUsername = username;
-        let authPassword = password;
-        
-        // Map old credentials to new ones
-        if (username === 'musser') {
-            authUsername = 'meranda';
-            authPassword = 'musser';
-        }
-
-        const response = await fetch(`/api/diary/${entryId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        if (result.success) {
-            // Reload diary entries immediately
-            await loadDiaryEntries();
-            console.log('✅ Diary entry deleted successfully');
-        } else {
-            alert('Error deleting diary entry: ' + result.error);
-        }
-    } catch (error) {
-        console.error('Error deleting diary:', error);
-        alert('Error deleting diary entry. Please try again.');
-    }
-}
 
 // Utility functions
 function clearChat() {
@@ -1080,3 +920,92 @@ function createChatHearts() {
 
 // Start floating hearts
 createChatHearts(); 
+
+// Load current theme
+async function loadCurrentTheme() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || currentUser;
+        const password = urlParams.get('password') || '';
+
+        let authUsername = username;
+        let authPassword = password;
+        
+        if (username === 'musser') {
+            authUsername = 'meranda';
+            authPassword = 'musser';
+        }
+
+        const response = await fetch('/api/theme', {
+            headers: {
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.theme) {
+                applyTheme(data.theme.theme);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading theme:', error);
+    }
+}
+
+// Apply theme to interface
+function applyTheme(themeName) {
+    // Remove existing theme classes
+    document.body.classList.remove('theme-romantic_pink', 'theme-test_blue', 'theme-custom_purple', 
+                                  'theme-test_black', 'theme-custom_red', 'theme-custom_black', 
+                                  'theme-melancholy', 'theme-default');
+    
+    // Add new theme class
+    document.body.classList.add(`theme-${themeName}`);
+    
+    // Update theme indicator if it exists
+    const themeIndicator = document.getElementById('currentTheme');
+    if (themeIndicator) {
+        themeIndicator.textContent = themeName;
+    }
+    
+    console.log(`Applied theme: ${themeName}`);
+}
+
+// Change theme function
+async function changeTheme(themeName) {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username') || currentUser;
+        const password = urlParams.get('password') || '';
+
+        let authUsername = username;
+        let authPassword = password;
+        
+        if (username === 'musser') {
+            authUsername = 'meranda';
+            authPassword = 'musser';
+        }
+
+        const formData = new FormData();
+        formData.append('theme', themeName);
+
+        const response = await fetch('/api/theme', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': 'Basic ' + btoa(authUsername + ':' + authPassword)
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                applyTheme(themeName);
+                console.log(`Theme changed to: ${themeName}`);
+            }
+        }
+    } catch (error) {
+        console.error('Error changing theme:', error);
+    }
+} 
