@@ -1,11 +1,13 @@
 // Chat functionality JavaScript
 // Get username from URL parameters
 const urlParams = new URLSearchParams(window.location.search);
-let currentUser = urlParams.get('username') || 'meranda';
+let currentUser = urlParams.get('username');
 // Map old username to new one
 if (currentUser === 'musser') {
     currentUser = 'meranda';
 }
+
+// If no username in URL, we'll get it from the server
 let messageHistory = [];
 let currentStreamingMessage = null;
 let userProfile = null;
@@ -36,6 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Focus on input after loading
         messageInput.focus();
+        
+        // Initialize technical steps toggles
+        initializeTechnicalSteps();
     }).catch((error) => {
         console.error('Error during initialization:', error);
         hideLoadingBanner();
@@ -92,21 +97,53 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeFileUpload();
 });
 
+// Initialize technical steps toggles
+function initializeTechnicalSteps() {
+    // Add event listeners to existing technical steps
+    document.querySelectorAll('.technical-steps').forEach(details => {
+        details.addEventListener('toggle', function() {
+            const toggle = this.querySelector('.toggle-text');
+            const icon = this.querySelector('.toggle-icon');
+            
+            if (this.open) {
+                toggle.textContent = 'Hide Technical Steps';
+                icon.textContent = '▲';
+            } else {
+                toggle.textContent = 'Show Technical Steps';
+                icon.textContent = '▼';
+            }
+        });
+    });
+}
+
 // Load user profile for avatar
 async function loadUserProfile() {
     try {
         const response = await fetch('/api/profile', {
             credentials: 'include'
         });
-        const data = await response.json();
         
-        if (data.success && data.profile) {
-            userProfile = data.profile;
-            // Update existing messages with user avatar
-            updateUserAvatars();
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.profile) {
+                userProfile = data.profile;
+                // Set currentUser from server response if not already set
+                if (!currentUser && userProfile.username) {
+                    currentUser = userProfile.username;
+                    console.log('Set currentUser from server:', currentUser);
+                }
+                return userProfile;
+            } else {
+                console.error('Invalid profile data format:', data);
+                return null;
+            }
+        } else {
+            console.error('Failed to load user profile:', response.status);
+            return null;
         }
     } catch (error) {
         console.error('Error loading user profile:', error);
+        return null;
     }
 }
 
@@ -400,12 +437,19 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
     });
 
     const avatar = getAvatar(sender);
+    
     // Handle different senders: 'ai', 'user' (current user), or specific usernames
     let senderName;
     if (sender === 'ai') {
         senderName = 'ΔΣ Guardian';
     } else if (sender === 'user') {
-        senderName = currentUser.charAt(0).toUpperCase() + currentUser.slice(1);
+        // Use currentUser if available, otherwise try to get from userProfile
+        let username = currentUser;
+        if (!username && userProfile && userProfile.username) {
+            username = userProfile.username;
+            currentUser = username; // Update currentUser for future use
+        }
+        senderName = username ? username.charAt(0).toUpperCase() + username.slice(1) : 'User';
     } else {
         // Specific username from history (meranda, stepan, etc.)
         senderName = sender.charAt(0).toUpperCase() + sender.slice(1);
@@ -463,6 +507,23 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
 
     messagesContainer.appendChild(messageDiv);
     scrollToBottom();
+    
+    // Initialize technical steps for new message
+    const technicalSteps = messageDiv.querySelector('.technical-steps');
+    if (technicalSteps) {
+        technicalSteps.addEventListener('toggle', function() {
+            const toggle = this.querySelector('.toggle-text');
+            const icon = this.querySelector('.toggle-icon');
+            
+            if (this.open) {
+                toggle.textContent = 'Hide Technical Steps';
+                icon.textContent = '▲';
+            } else {
+                toggle.textContent = 'Show Technical Steps';
+                icon.textContent = '▼';
+            }
+        });
+    }
     
     // Add to history only for new messages
     if (!timestamp) {
@@ -529,6 +590,52 @@ function updateGuardianAvatars() {
 
 // Format message text (convert URLs to links, etc.)
 function formatMessage(text) {
+    // Check if message contains technical steps (🔧, ✅, 🎯)
+    const hasTechnicalSteps = text.includes('🔧 **Executing:') || text.includes('✅ **Result:') || text.includes('🎯 **Ready for final response');
+    
+    if (hasTechnicalSteps) {
+        // Split into technical steps and final response
+        const parts = text.split(/(🎯 \*\*Ready for final response|\💬 \*\*Generating final response)/);
+        
+        if (parts.length > 1) {
+            // Technical steps are everything before the final response
+            const technicalSteps = parts[0];
+            const finalResponse = parts.slice(1).join('');
+            
+            return `
+                <div class="technical-steps-container">
+                    <details class="technical-steps">
+                        <summary class="tech-steps-toggle">
+                            🔧 <span class="toggle-text">Show Technical Steps</span>
+                            <span class="toggle-icon">▼</span>
+                        </summary>
+                        <div class="tech-steps-content">
+                            ${formatTechnicalSteps(technicalSteps)}
+                        </div>
+                    </details>
+                    <div class="final-response">
+                        ${formatFinalResponse(finalResponse)}
+                    </div>
+                </div>
+            `;
+        } else {
+            // If no final response marker, treat everything as technical steps
+            return `
+                <div class="technical-steps-container">
+                    <details class="technical-steps">
+                        <summary class="tech-steps-toggle">
+                            🔧 <span class="toggle-text">Show Technical Steps</span>
+                            <span class="toggle-icon">▼</span>
+                        </summary>
+                        <div class="tech-steps-content">
+                            ${formatTechnicalSteps(text)}
+                        </div>
+                    </details>
+                </div>
+            `;
+        }
+    }
+    
     // Convert URLs to links
     text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>');
     
@@ -536,6 +643,23 @@ function formatMessage(text) {
     text = text.replace(/\n/g, '<br>');
     
     return text;
+}
+
+function formatTechnicalSteps(steps) {
+    // Format technical steps with proper styling
+    return steps
+        .replace(/(🔧 \*\*Executing:\*\*)/g, '<div class="executing-step">$1</div>')
+        .replace(/(✅ \*\*Result:\*\*)/g, '<div class="result-step">$1</div>')
+        .replace(/(🎯 \*\*Ready for final response|\🎯 \*\*No more tools needed)/g, '<div class="step-header">$1</div>')
+        .replace(/\n/g, '<br>');
+}
+
+function formatFinalResponse(response) {
+    // Format final response, removing any remaining technical markers
+    return response
+        .replace(/(💬 \*\*Final response:\*\*)/g, '<div class="final-response-header">$1</div>')
+        .replace(/(🎯 \*\*Ready for final response|\🎯 \*\*No more tools needed|\💬 \*\*Generating final response)/g, '')
+        .replace(/\n/g, '<br>');
 }
 
 // Scroll to bottom of messages

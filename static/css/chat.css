@@ -1603,3 +1603,148 @@ body.theme-dark .diary-entry {
 .attached-image:hover {
     transform: scale(1.05);
 } 
+
+/* Technical Steps Collapsible */
+.technical-steps-container {
+    margin: 10px 0;
+}
+
+.technical-steps {
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.tech-steps-toggle {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 12px 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    color: #495057;
+    transition: all 0.3s ease;
+    border: none;
+    width: 100%;
+    text-align: left;
+}
+
+.tech-steps-toggle:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    color: #212529;
+}
+
+.tech-steps-toggle:focus {
+    outline: 2px solid #007bff;
+    outline-offset: -2px;
+}
+
+.toggle-text {
+    font-size: 0.9rem;
+}
+
+.toggle-icon {
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+    margin-left: auto;
+}
+
+.technical-steps[open] .toggle-icon {
+    transform: rotate(180deg);
+}
+
+.tech-steps-content {
+    padding: 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: #495057;
+}
+
+.step-header {
+    font-weight: bold;
+    color: #007bff;
+    margin: 8px 0 4px 0;
+    padding: 4px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.executing-step {
+    color: #856404;
+    background: #fff3cd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: 4px 0;
+    border-left: 3px solid #ffc107;
+}
+
+.result-step {
+    color: #155724;
+    background: #d4edda;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: 4px 0;
+    border-left: 3px solid #28a745;
+}
+
+.final-response {
+    margin-top: 15px;
+    padding: 15px;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-radius: 8px;
+    border-left: 4px solid #2196f3;
+}
+
+.final-response-header {
+    font-weight: bold;
+    color: #1976d2;
+    margin-bottom: 8px;
+    font-size: 1rem;
+}
+
+/* Dark theme support */
+body.theme-dark .tech-steps-toggle {
+    background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+    color: #e9ecef;
+}
+
+body.theme-dark .tech-steps-toggle:hover {
+    background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
+    color: #ffffff;
+}
+
+body.theme-dark .tech-steps-content {
+    background: #2d3748;
+    color: #e2e8f0;
+    border-top-color: #4a5568;
+}
+
+body.theme-dark .step-header {
+    color: #63b3ed;
+    border-bottom-color: #4a5568;
+}
+
+body.theme-dark .executing-step {
+    color: #f6e05e;
+    background: #744210;
+    border-left-color: #d69e2e;
+}
+
+body.theme-dark .result-step {
+    color: #9ae6b4;
+    background: #22543d;
+    border-left-color: #38a169;
+}
+
+body.theme-dark .final-response {
+    background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+    border-left-color: #3182ce;
+}
+
+body.theme-dark .final-response-header {
+    color: #63b3ed;
+} 

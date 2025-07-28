@@ -163,7 +163,7 @@ class AIClient:
         
         try:
             # Multi-step execution loop
-            max_steps = 5  # Maximum number of thinking-execution cycles
+            max_steps = 666  # Maximum number of thinking-execution cycles
             all_tool_results = []
             current_context = context or ""
             
@@ -178,7 +178,25 @@ class AIClient:
                 # Get thinking response that may contain tool calls
                 try:
                     initial_response = self._get_current_model().generate_content(thinking_prompt)
-                    initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
+                    
+                    # Handle different response formats
+                    if hasattr(initial_response, 'text') and initial_response.text:
+                        initial_text = initial_response.text
+                    elif hasattr(initial_response, 'parts') and initial_response.parts:
+                        initial_text = ""
+                        for part in initial_response.parts:
+                            if hasattr(part, 'text') and part.text:
+                                initial_text += part.text
+                    elif hasattr(initial_response, 'candidates') and initial_response.candidates:
+                        initial_text = ""
+                        for candidate in initial_response.candidates:
+                            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                                for part in candidate.content.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        initial_text += part.text
+                    else:
+                        initial_text = str(initial_response)
+                        
                 except Exception as e:
                     error_msg = str(e)
                     if self._handle_quota_error(error_msg):
@@ -189,32 +207,55 @@ class AIClient:
                             yield chunk
                         return
                     else:
-                        raise e
+                        logger.error(f"❌ Error getting thinking response: {e}")
+                        yield f"❌ **Error:** Unable to process request. {str(e)}\n\n"
+                        return
                 
                 # Extract and execute tool calls
                 tool_calls = self._extract_tool_calls(initial_text)
                 step_tool_results = []
                 
-                for tool_call in tool_calls:
+                # Send thinking step to chat
+                if step == 0:
+                    yield f"🤔 **Step {step + 1}: Analyzing request...**\n\n"
+                else:
+                    yield f"🔄 **Step {step + 1}: Continuing analysis...**\n\n"
+                
+                # Execute tools and send results to chat
+                for i, tool_call in enumerate(tool_calls):
                     logger.info(f"🔧 Executing tool call: {tool_call}")
+                    
+                    # Send tool execution to chat
+                    yield f"🔧 **Executing:** `{tool_call}`\n\n"
+                    
                     try:
                         result = self._execute_tool_call(tool_call)
                         step_tool_results.append(f"Tool {tool_call} returned: {result}")
                         logger.info(f"✅ Tool result: {result}")
+                        
+                        # Send tool result to chat
+                        yield f"✅ **Result:** {result}\n\n"
+                        
                     except Exception as e:
                         logger.error(f"❌ Tool call failed: {e}")
-                        step_tool_results.append(f"Tool {tool_call} failed: {str(e)}")
+                        error_msg = f"Tool {tool_call} failed: {str(e)}"
+                        step_tool_results.append(error_msg)
+                        
+                        # Send error to chat
+                        yield f"❌ **Error:** {error_msg}\n\n"
                 
                 all_tool_results.extend(step_tool_results)
                 
                 # Check if Guardian wants to continue with more tools or give final response
                 if "FINAL_RESPONSE" in initial_text or "RESPOND_TO_USER" in initial_text:
                     logger.info(f"🎯 Guardian ready for final response after {step + 1} steps")
+                    yield f"🎯 **Ready for final response after {step + 1} steps**\n\n"
                     break
                 
                 # If no tools were called, assume Guardian is ready to respond
                 if not tool_calls:
                     logger.info(f"🎯 No more tools needed after {step + 1} steps")
+                    yield f"🎯 **No more tools needed after {step + 1} steps**\n\n"
                     break
             
             # Generate final response with all tool results
@@ -224,6 +265,7 @@ class AIClient:
             )
             
             logger.info("💬 Generating final response...")
+            yield f"💬 **Generating final response...**\n\n"
             
             # Stream the final response
             try:
@@ -246,16 +288,35 @@ class AIClient:
             chunk_count = 0
             for chunk in response_stream:
                 chunk_count += 1
-                if chunk and hasattr(chunk, 'text') and chunk.text:
-                    chunk_text = chunk.text
-                    logger.debug(f"📄 Received chunk {chunk_count}: {len(chunk_text)} chars")
-                    yield chunk_text
-                elif chunk and hasattr(chunk, 'parts') and chunk.parts:
-                    for part in chunk.parts:
-                        if hasattr(part, 'text') and part.text:
-                            part_text = part.text
-                            logger.debug(f"📄 Received part {chunk_count}: {len(part_text)} chars")
-                            yield part_text
+                try:
+                    # Handle different response formats
+                    if hasattr(chunk, 'text') and chunk.text:
+                        chunk_text = chunk.text
+                        logger.debug(f"📄 Received chunk {chunk_count}: {len(chunk_text)} chars")
+                        yield chunk_text
+                    elif hasattr(chunk, 'parts') and chunk.parts:
+                        for part in chunk.parts:
+                            if hasattr(part, 'text') and part.text:
+                                part_text = part.text
+                                logger.debug(f"📄 Received part {chunk_count}: {len(part_text)} chars")
+                                yield part_text
+                    elif hasattr(chunk, 'candidates') and chunk.candidates:
+                        for candidate in chunk.candidates:
+                            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                                for part in candidate.content.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        part_text = part.text
+                                        logger.debug(f"📄 Received candidate part {chunk_count}: {len(part_text)} chars")
+                                        yield part_text
+                    else:
+                        # Fallback: try to get text from any available attribute
+                        chunk_text = str(chunk)
+                        if chunk_text and chunk_text != "None":
+                            logger.debug(f"📄 Received fallback chunk {chunk_count}: {len(chunk_text)} chars")
+                            yield chunk_text
+                except Exception as chunk_error:
+                    logger.warning(f"⚠️ Error processing chunk {chunk_count}: {chunk_error}")
+                    continue
             
             api_time = time.time() - api_start_time
             logger.info(f"🌐 Multi-step streaming completed in {api_time:.2f}s")
@@ -395,118 +456,56 @@ class AIClient:
         user_profile: Optional[Dict[str, Any]] = None,
         previous_tool_results: Optional[List[str]] = None
     ) -> str:
-        """Build comprehensive prompt with context and profile"""
-        prompt_parts = []
+        """Build prompt for thinking phase with tool execution"""
         
-        # Add system prompt
-        prompt_parts.append(system_prompt)
+        prompt = f"""You are an AI assistant. Think through the user's request and execute any necessary tools.
+
+SYSTEM PROMPT:
+{system_prompt}
+
+USER MESSAGE:
+{user_message}
+
+CONTEXT:
+{context or 'No additional context provided.'}
+
+USER PROFILE:
+{user_profile or 'No user profile provided.'}
+
+PREVIOUS TOOL RESULTS:
+{chr(10).join(previous_tool_results) if previous_tool_results else 'No previous tool results.'}
+
+INSTRUCTIONS:
+1. Analyze the user's request carefully
+2. Determine what tools you need to execute
+3. Execute tools step by step
+4. Show your work and reasoning
+5. If you need to call tools, put them in ```tool_code blocks
+6. Use exact tool names and correct syntax
+7. If you're ready to give final response, include "FINAL_RESPONSE" or "RESPOND_TO_USER"
+
+AVAILABLE TOOLS:
+- read_file(path) - Read file content
+- write_file(path, content) - Write content to file
+- edit_file(path, content) - Edit existing file
+- create_file(path, content) - Create new file
+- delete_file(path) - Delete file
+- list_files(directory) - List files in directory
+- search_files(query) - Search for content in files
+- print(message) - Print message for debugging
+- len(string) - Get length of string or list
+- str(value) - Convert to string
+- int(value) - Convert to integer
+- float(value) - Convert to float
+- bool(value) - Convert to boolean
+- list(items) - Create list from comma-separated values
+- dict(key_value_pairs) - Create dictionary from key-value pairs
+- json_dumps(data) - Convert data to JSON string
+- json_loads(json_string) - Parse JSON string to object
+
+Think through this step by step and execute any necessary tools."""
         
-        # Add user profile information
-        if user_profile:
-            profile_info = f"""
-## USER PROFILE
-- Current Feeling: {user_profile.get('current_feeling', 'Not specified')}
-- Relationship Status: {user_profile.get('relationship_status', 'Not specified')}
-- Profile: {user_profile.get('profile', 'Not specified')}
-"""
-            prompt_parts.append(profile_info)
-        
-        # Add multi-user context
-        multi_user_context = self._get_multi_user_context()
-        if multi_user_context:
-            prompt_parts.append(f"## MULTI-USER CONTEXT\n{multi_user_context}")
-        
-        # Add conversation context
-        if context:
-            prompt_parts.append(f"## CONVERSATION CONTEXT\n{context}")
-        
-        # Add emotional history and trends
-        try:
-            emotional_history = self._get_profile_manager(user_profile.get('username', 'meranda')).get_emotional_history(limit=5)
-            if emotional_history:
-                history_text = "## RECENT EMOTIONAL HISTORY\n"
-                for entry in emotional_history:
-                    history_text += f"- {entry.get('date', 'Unknown')} {entry.get('time', '')}: {entry.get('feeling', 'Unknown')} (was: {entry.get('previous_feeling', 'Unknown')})\n"
-                prompt_parts.append(history_text)
-            
-            trends = self._get_profile_manager(user_profile.get('username', 'meranda')).get_emotional_trends()
-            if trends and trends.get('trend') != 'No data':
-                trends_text = f"## EMOTIONAL TRENDS\n- Overall Trend: {trends.get('trend', 'Unknown')}\n- Most Common Feeling: {trends.get('most_common', 'Unknown')}\n"
-                prompt_parts.append(trends_text)
-        except Exception as e:
-            logger.error(f"Error getting emotional history: {e}")
-        
-        # Add user message
-        prompt_parts.append(f"\n## USER MESSAGE\n{user_message}")
-        
-        # Add previous tool results if available
-        if previous_tool_results:
-            prompt_parts.append("## PREVIOUS TOOL RESULTS")
-            for i, result in enumerate(previous_tool_results, 1):
-                prompt_parts.append(f"{i}. {result}")
-            prompt_parts.append("")
-        
-        # Add instructions for thinking and tool calling
-        prompt_parts.append("""
-## THINKING PHASE INSTRUCTIONS
-You are in the THINKING phase. Analyze the user's message and previous tool results to determine what actions to take.
-
-**MULTI-STEP EXECUTION**: You can execute multiple steps:
-1. First, analyze what you need to do
-2. Execute tools to gather information
-3. Analyze the results and decide if you need more tools
-4. Continue until you have enough information
-5. When ready to respond to user, include "FINAL_RESPONSE" or "RESPOND_TO_USER" in your thinking
-
-## AVAILABLE TOOLS
-You can use these tools by wrapping them in ```tool_code blocks:
-
-### Profile & Memory Management:
-- update_current_feeling(username, feeling, context) - Update user's current emotional state
-- update_relationship_status(username, status) - Update relationship status
-- update_user_profile(username, new_profile_text) - Update user's profile text
-- add_relationship_insight(username, insight) - Add relationship insight
-- add_user_observation(username, observation) - Add observation about user
-- read_user_profile(username) - Read user's profile
-- read_emotional_history(username) - Read emotional history
-
-### System & Model Management:
-- add_model_note(note_text, category) - Add model note
-- add_personal_thought(thought) - Add personal thought
-- add_system_insight(insight) - Add system insight
-- get_model_notes(limit) - Get recent model notes
-
-### File System Operations (USE WITH EXTREME CAUTION):
-⚠️ **CRITICAL WARNING**: File operations are extremely powerful and should ONLY be used when explicitly requested by the user. Never modify files without explicit permission.
-
-- read_file(path) - Read file content (full project access)
-- write_file(path, content) - Write content to file (full project access)
-- create_file(path, content) - Create new file (full project access)
-- edit_file(path, content) - Edit existing file with backup (full project access)
-- list_files(directory) - List files in directory (full project access)
-- search_files(query) - Search files by content (full project access)
-- get_file_info(path) - Get detailed file information (full project access)
-- delete_file(path) - Delete file with backup (full project access, critical files protected)
-- create_directory(path) - Create new directory (full project access)
-
-**FILE OPERATION RULES:**
-1. Only use file operations when user explicitly requests them
-2. Always create backups before editing/deleting files
-3. Never delete critical system files (web_app.py, ai_client.py, etc.)
-4. Stay within project directory boundaries
-5. Ask for confirmation before destructive operations
-
-### Data Analysis:
-- search_user_data(username, query) - Search user data
-- write_insight_to_file(username, insight) - Write insight to file
-
-## RESPONSE FORMAT
-After analyzing and executing any necessary tool calls, provide your final response to the user.
-
-Remember: You are ΔΣ Guardian, a family guardian angel focused on emotional well-being and relationship guidance. Use file operations only when absolutely necessary and explicitly requested.
-""")
-        
-        return "\n".join(prompt_parts)
+        return prompt
     
     def _build_final_prompt(
         self, 
@@ -1035,31 +1034,108 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             return False
     
     def _extract_tool_calls(self, text: str) -> List[str]:
-        """Extract function calls from text"""
+        """Extract function calls from text - enhanced to handle complex AI responses"""
         import re
         
-        # Look for tool_code blocks
-        tool_code_pattern = r'```tool_code\s*\n(.*?)\n```'
         tool_calls = []
         
+        # Define valid tool names to avoid false positives
+        valid_tools = [
+            'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
+            'list_files', 'search_files', 'print', 'len', 'str', 'int', 'float', 'bool',
+            'list', 'dict', 'json_dumps', 'json_loads', 'add_model_note', 'add_user_observation',
+            'add_personal_thought', 'update_user_profile', 'update_current_feeling',
+            'get_system_logs', 'analyze_image', 'archive_conversation'
+        ]
+        
+        # Look for tool_code blocks first (preferred format)
+        tool_code_pattern = r'```tool_code\s*\n(.*?)\n```'
         matches = re.findall(tool_code_pattern, text, re.DOTALL)
         for match in matches:
-            # Clean up the tool call
             cleaned_call = match.strip()
             if cleaned_call:
-                tool_calls.append(cleaned_call)
+                # Handle nested calls like print(read_file(...))
+                nested_calls = self._extract_nested_calls(cleaned_call)
+                tool_calls.extend(nested_calls)
         
-        # Also look for direct function calls without tool_code blocks
-        direct_pattern = r'(\w+)\s*\([^)]*\)'
-        direct_matches = re.findall(direct_pattern, text)
-        for match in direct_matches:
-            if match not in ['print', 'len', 'str', 'int', 'float', 'bool']:  # Skip common Python functions
-                # Find the full function call
+        # Look for direct function calls in the text (only valid tools)
+        function_pattern = r'(\w+)\s*\([^)]*\)'
+        matches = re.findall(function_pattern, text)
+        
+        for match in matches:
+            # Only process if it's a known tool
+            if match in valid_tools:
                 full_match = re.search(rf'{match}\s*\([^)]*\)', text)
                 if full_match:
-                    tool_calls.append(full_match.group(0))
+                    call = full_match.group(0)
+                    # Handle nested calls
+                    nested_calls = self._extract_nested_calls(call)
+                    tool_calls.extend(nested_calls)
         
-        return tool_calls
+        # Also look for tool calls mentioned in comments or explanations
+        # Pattern: "I will use read_file("path")" or "Let me call edit_file("path", "content")"
+        comment_pattern = r'(?:I will use|Let me call|I need to call|I should use)\s+(\w+)\s*\([^)]*\)'
+        comment_matches = re.findall(comment_pattern, text, re.IGNORECASE)
+        for match in comment_matches:
+            if match in valid_tools and match not in tool_calls:
+                full_match = re.search(rf'{match}\s*\([^)]*\)', text)
+                if full_match:
+                    call = full_match.group(0)
+                    nested_calls = self._extract_nested_calls(call)
+                    tool_calls.extend(nested_calls)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_calls = []
+        for call in tool_calls:
+            if call not in seen:
+                seen.add(call)
+                unique_calls.append(call)
+        
+        return unique_calls
+    
+    def _extract_nested_calls(self, text: str) -> List[str]:
+        """Extract nested function calls like print(read_file(...)) into separate calls"""
+        import re
+        
+        calls = []
+        
+        # Pattern to match nested calls: outer_function(inner_function(...))
+        nested_pattern = r'(\w+)\s*\((\w+)\s*\([^)]*\)[^)]*\)'
+        matches = re.findall(nested_pattern, text)
+        
+        if matches:
+            for outer_func, inner_func in matches:
+                # Extract the inner call first
+                inner_match = re.search(rf'{inner_func}\s*\([^)]*\)', text)
+                if inner_match:
+                    inner_call = inner_match.group(0)
+                    calls.append(inner_call)
+                
+                # Then extract the outer call
+                outer_match = re.search(rf'{outer_func}\s*\([^)]*\)', text)
+                if outer_match:
+                    outer_call = outer_match.group(0)
+                    calls.append(outer_call)
+        else:
+            # If no nested calls found, return the original call
+            # Extract simple function calls
+            simple_pattern = r'(\w+)\s*\([^)]*\)'
+            simple_matches = re.findall(simple_pattern, text)
+            for match in simple_matches:
+                full_match = re.search(rf'{match}\s*\([^)]*\)', text)
+                if full_match:
+                    calls.append(full_match.group(0))
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_calls = []
+        for call in calls:
+            if call not in seen:
+                seen.add(call)
+                unique_calls.append(call)
+        
+        return unique_calls
     
     def _execute_tool_call(self, tool_call: str) -> str:
         """Execute a function call extracted from model response"""
@@ -1211,12 +1287,17 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     if arg_match:
                         path = arg_match.group(1)
                         logger.info(f"🔧 read_file: path={path}")
+                        # Help Guardian find the correct path for his profile
+                        if path == "ai_client.py" and "guardian" in args_str.lower():
+                            logger.info(f"🔄 Guardian trying to read ai_client.py, suggesting guardian_profile.json")
+                            path = "memory/guardian_profile.json"
                         result = self.read_file(path)
                         logger.info(f"✅ read_file result: {result[:200]}..." if len(result) > 200 else result)
                         return f"File content for {path}: {result[:200]}..." if len(result) > 200 else result
                     else:
                         logger.error(f"❌ Invalid arguments for read_file: {args_str}")
-                        return f"Invalid arguments for read_file: {args_str}"
+                        return ("Ошибка: read_file требует путь к файлу. Пример: read_file(\"memory/guardian_profile.json\"). "
+                                "Для поиска файлов используй list_files(\"директория\") или уточни путь у пользователя.")
                 
                 elif func_name == "write_file":
                     # Handle both single and double quotes
@@ -1526,6 +1607,160 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     else:
                         logger.error(f"❌ Invalid arguments for analyze_image: {args_str}")
                         return f"Invalid arguments for analyze_image: {args_str}"
+                
+                # Standard Python tools
+                elif func_name == "print":
+                    # Format: print("message") or print(variable)
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        message = arg_match.group(1)
+                        logger.info(f"🔧 print: {message}")
+                        return f"PRINT: {message}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for print: {args_str}")
+                        return f"Invalid arguments for print: {args_str}"
+                
+                elif func_name == "len":
+                    # Format: len("string") or len(list)
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        item = arg_match.group(1)
+                        length = len(item)
+                        logger.info(f"🔧 len: {item} = {length}")
+                        return f"Length of '{item}': {length}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for len: {args_str}")
+                        return f"Invalid arguments for len: {args_str}"
+                
+                elif func_name == "str":
+                    # Format: str(value)
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        value = arg_match.group(1)
+                        result = str(value)
+                        logger.info(f"🔧 str: {value} = {result}")
+                        return f"String representation: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for str: {args_str}")
+                        return f"Invalid arguments for str: {args_str}"
+                
+                elif func_name == "int":
+                    # Format: int("123")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        value = arg_match.group(1)
+                        try:
+                            result = int(value)
+                            logger.info(f"🔧 int: {value} = {result}")
+                            return f"Integer: {result}"
+                        except ValueError:
+                            logger.error(f"❌ Cannot convert '{value}' to int")
+                            return f"Cannot convert '{value}' to int"
+                    else:
+                        logger.error(f"❌ Invalid arguments for int: {args_str}")
+                        return f"Invalid arguments for int: {args_str}"
+                
+                elif func_name == "float":
+                    # Format: float("123.45")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        value = arg_match.group(1)
+                        try:
+                            result = float(value)
+                            logger.info(f"🔧 float: {value} = {result}")
+                            return f"Float: {result}"
+                        except ValueError:
+                            logger.error(f"❌ Cannot convert '{value}' to float")
+                            return f"Cannot convert '{value}' to float"
+                    else:
+                        logger.error(f"❌ Invalid arguments for float: {args_str}")
+                        return f"Invalid arguments for float: {args_str}"
+                
+                elif func_name == "bool":
+                    # Format: bool("True") or bool("False")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        value = arg_match.group(1).lower()
+                        if value in ['true', '1', 'yes', 'on']:
+                            result = True
+                        elif value in ['false', '0', 'no', 'off']:
+                            result = False
+                        else:
+                            result = bool(value)
+                        logger.info(f"🔧 bool: {value} = {result}")
+                        return f"Boolean: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for bool: {args_str}")
+                        return f"Invalid arguments for bool: {args_str}"
+                
+                elif func_name == "list":
+                    # Format: list("item1,item2,item3")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        items_str = arg_match.group(1)
+                        items = [item.strip() for item in items_str.split(',')]
+                        logger.info(f"🔧 list: {items_str} = {items}")
+                        return f"List: {items}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for list: {args_str}")
+                        return f"Invalid arguments for list: {args_str}"
+                
+                elif func_name == "dict":
+                    # Format: dict("key1:value1,key2:value2")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        pairs_str = arg_match.group(1)
+                        try:
+                            pairs = [pair.strip().split(':') for pair in pairs_str.split(',')]
+                            result = {pair[0].strip(): pair[1].strip() for pair in pairs if len(pair) == 2}
+                            logger.info(f"🔧 dict: {pairs_str} = {result}")
+                            return f"Dictionary: {result}"
+                        except Exception as e:
+                            logger.error(f"❌ Error creating dict: {e}")
+                            return f"Error creating dict: {e}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for dict: {args_str}")
+                        return f"Invalid arguments for dict: {args_str}"
+                
+                elif func_name == "json_dumps":
+                    # Format: json_dumps("data")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        data_str = arg_match.group(1)
+                        try:
+                            import json
+                            # Try to parse as JSON first, then stringify
+                            try:
+                                data = json.loads(data_str)
+                                result = json.dumps(data, indent=2)
+                            except:
+                                # If not JSON, treat as string
+                                result = json.dumps(data_str)
+                            logger.info(f"🔧 json_dumps: {data_str} = {result}")
+                            return f"JSON: {result}"
+                        except Exception as e:
+                            logger.error(f"❌ Error in json_dumps: {e}")
+                            return f"Error in json_dumps: {e}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for json_dumps: {args_str}")
+                        return f"Invalid arguments for json_dumps: {args_str}"
+                
+                elif func_name == "json_loads":
+                    # Format: json_loads('{"key": "value"}')
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        json_str = arg_match.group(1)
+                        try:
+                            import json
+                            result = json.loads(json_str)
+                            logger.info(f"🔧 json_loads: {json_str} = {result}")
+                            return f"Parsed JSON: {result}"
+                        except Exception as e:
+                            logger.error(f"❌ Error in json_loads: {e}")
+                            return f"Error in json_loads: {e}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for json_loads: {args_str}")
+                        return f"Invalid arguments for json_loads: {args_str}"
                 
                 # Handle non-existent tools that model tries to call
                 elif func_name in ["elements", "effort", "earlier", "stabilization", "stable", "state"]:

@@ -30,7 +30,14 @@ from memory.guardian_profile import guardian_profile
 from memory.theme_manager import theme_manager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="ΔΣ Guardian - Family Guardian Angel", version="1.0.0")
@@ -333,6 +340,7 @@ async def get_profile(request: Request):
     try:
         user_profile = UserProfile(username)
         profile_data = user_profile.get_profile()
+        profile_data['username'] = username  # Add username to profile data
         
         return JSONResponse({
             "success": True,
@@ -440,10 +448,10 @@ async def update_profile_full(request: Request):
             if current_password == 'musser':  # Simple validation for demo
                 profile_data['password'] = new_password
             else:
-                                        return JSONResponse({
-                            "success": False,
-                            "error": "Incorrect current password"
-                        }, status_code=400)
+                return JSONResponse({
+                    "success": False,
+                    "error": "Incorrect current password"
+                }, status_code=400)
         
         # Update profile
         user_profile._save_profile(profile_data)
@@ -774,7 +782,7 @@ async def profile_page(request: Request):
             "username": username,
             "profile": profile_data
         })
-        
+            
     except Exception as e:
         logger.error(f"Error loading profile page: {e}")
         raise HTTPException(status_code=500, detail="Error loading profile")
