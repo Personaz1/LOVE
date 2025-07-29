@@ -1,0 +1,686 @@
+/* Mobile Styles for ΔΣ Guardian */
+/* Mobile-first responsive design */
+
+/* Mobile breakpoint */
+@media (max-width: 768px) {
+    
+    /* Reset for mobile */
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+        overflow-x: hidden;
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    
+    /* Mobile Chat Container */
+    .chat-container {
+        flex-direction: column;
+        height: 100vh;
+        position: relative;
+    }
+    
+    /* Mobile Header */
+    .chat-header {
+        padding: 15px 20px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .logo {
+        align-self: center;
+    }
+    
+    .logo h1 {
+        font-size: 1.4rem;
+    }
+    
+    .guardian-icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .user-info {
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .welcome-text {
+        font-size: 0.9rem;
+    }
+    
+    .profile-btn, .guardian-btn, .diary-btn, .model-status-btn, .logout-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* Mobile Main Chat Area */
+    .chat-main {
+        margin-top: 120px; /* Account for fixed header */
+        height: calc(100vh - 120px);
+        flex-direction: column;
+    }
+    
+    /* Mobile System Panel - Current Status */
+    .system-panel {
+        position: static;
+        width: 100%;
+        height: auto;
+        margin-bottom: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        margin: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .panel-header {
+        padding: 15px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .panel-header h3 {
+        font-size: 1rem;
+        margin: 0;
+    }
+    
+    .panel-content {
+        padding: 15px;
+    }
+    
+    .analysis-section, .tips-section {
+        margin-bottom: 15px;
+    }
+    
+    .analysis-section h4, .tips-section h4 {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+    
+    .status-content, .tips-content {
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+    
+    /* Mobile Chat Messages */
+    .chat-messages {
+        flex: 1;
+        margin: 0 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .messages-container {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Mobile Messages */
+    .message {
+        margin-bottom: 15px;
+        max-width: 100%;
+    }
+    
+    .message-avatar {
+        width: 40px;
+        height: 40px;
+        margin-right: 10px;
+    }
+    
+    .message-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .message-header {
+        margin-bottom: 5px;
+    }
+    
+    .sender {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
+    .time {
+        font-size: 0.75rem;
+    }
+    
+    .message-text {
+        font-size: 0.9rem;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+    
+    /* Mobile Message Input */
+    .message-input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        z-index: 1000;
+    }
+    
+    .message-form {
+        margin: 0;
+    }
+    
+    .input-wrapper {
+        display: flex;
+        gap: 10px;
+        align-items: flex-end;
+    }
+    
+    #messageInput {
+        flex: 1;
+        min-height: 44px;
+        padding: 12px 15px;
+        font-size: 16px; /* Prevent zoom on iOS */
+        border-radius: 22px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        background: rgba(255, 255, 255, 0.9);
+    }
+    
+    .send-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .send-icon {
+        font-size: 1.2rem;
+    }
+    
+    .input-actions {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+    }
+    
+    .action-btn-small {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+        min-height: 36px;
+    }
+    
+    /* Mobile Tips Section */
+    .tips-section {
+        margin-top: 10px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        margin: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .tip-item {
+        font-size: 0.85rem;
+        line-height: 1.4;
+        margin-bottom: 8px;
+        padding: 8px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 8px;
+    }
+    
+    /* Mobile Bottom Navigation */
+    .mobile-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        padding: 10px 0;
+        z-index: 999;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+    
+    .mobile-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 8px;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #666;
+        font-size: 0.75rem;
+        transition: all 0.3s ease;
+        min-height: 44px;
+        justify-content: center;
+    }
+    
+    .mobile-nav-item.active {
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .mobile-nav-item:hover {
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .mobile-nav-icon {
+        font-size: 1.2rem;
+    }
+    
+    /* Mobile Modals */
+    .modal {
+        padding: 20px;
+    }
+    
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        border-radius: 12px;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+    
+    .modal-header {
+        padding: 20px;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    /* Mobile File Upload */
+    .file-drop-zone {
+        margin: 10px;
+        border-radius: 12px;
+        min-height: 100px;
+    }
+    
+    .drop-zone-content {
+        padding: 20px;
+    }
+    
+    /* Mobile Attached Files */
+    .attached-files-container {
+        margin: 10px 0;
+    }
+    
+    .attached-files-preview {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .attached-file-preview {
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    
+    .preview-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+    }
+    
+    /* Mobile Loading */
+    .loading-banner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2000;
+    }
+    
+    /* Mobile Status Messages */
+    .status-message {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        z-index: 2000;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 0.9rem;
+    }
+    
+    /* Mobile Model Status */
+    .model-status-modal .modal-content {
+        max-height: 70vh;
+    }
+    
+    .model-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .model-item {
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    /* Mobile Profile & Guardian Pages */
+    .profile-container, .guardian-container {
+        padding: 20px;
+        margin-top: 80px;
+    }
+    
+    .profile-header, .guardian-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 15px 20px;
+    }
+    
+    .profile-main, .guardian-main {
+        margin-top: 80px;
+    }
+    
+    .avatar-section {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .avatar-container {
+        margin: 0 auto 20px;
+    }
+    
+    .avatar {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto;
+    }
+    
+    .form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group h3 {
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+    
+    .input-group {
+        margin-bottom: 15px;
+    }
+    
+    .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    
+    .input-group input,
+    .input-group select,
+    .input-group textarea {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        font-size: 16px;
+        background: rgba(255, 255, 255, 0.9);
+    }
+    
+    .update-btn, .view-btn, .back-btn {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        border-radius: 8px;
+        font-size: 1rem;
+        min-height: 44px;
+    }
+    
+    /* Mobile Touch Optimizations */
+    .message-action-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 8px;
+    }
+    
+    .edit-input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+    
+    .edit-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .edit-btn, .cancel-btn {
+        flex: 1;
+        padding: 12px;
+        min-height: 44px;
+    }
+    
+    /* Mobile Swipe Actions */
+    .message {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .message-swipe-actions {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 8px 0 0 8px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .message.swiped .message-swipe-actions {
+        transform: translateX(0);
+    }
+    
+    .swipe-action-btn {
+        padding: 8px 12px;
+        border: none;
+        background: none;
+        color: #666;
+        font-size: 0.9rem;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .swipe-action-btn.edit {
+        color: #2196F3;
+    }
+    
+    .swipe-action-btn.delete {
+        color: #f44336;
+    }
+    
+    /* Mobile Pull to Refresh */
+    .pull-to-refresh {
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .pull-to-refresh.loading {
+        color: #667eea;
+    }
+    
+    /* Mobile Floating Action Button */
+    .fab {
+        position: fixed;
+        bottom: 80px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #667eea;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        z-index: 1000;
+        transition: all 0.3s ease;
+    }
+    
+    .fab:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+    }
+    
+    /* Mobile Keyboard Adjustments */
+    .chat-container.keyboard-open {
+        height: 100vh;
+    }
+    
+    .chat-container.keyboard-open .message-input-container {
+        position: relative;
+        bottom: auto;
+    }
+    
+    /* Mobile Landscape Adjustments */
+    @media (max-width: 768px) and (orientation: landscape) {
+        .chat-header {
+            padding: 10px 20px;
+        }
+        
+        .header-content {
+            flex-direction: row;
+            gap: 20px;
+        }
+        
+        .chat-main {
+            margin-top: 80px;
+            height: calc(100vh - 80px);
+        }
+        
+        .mobile-nav {
+            display: none; /* Hide bottom nav in landscape */
+        }
+    }
+    
+    /* Mobile Dark Theme Support */
+    @media (prefers-color-scheme: dark) {
+        .chat-header,
+        .message-input-container,
+        .mobile-nav,
+        .system-panel,
+        .tips-section,
+        .chat-messages {
+            background: rgba(30, 30, 30, 0.95);
+            color: #fff;
+        }
+        
+        #messageInput,
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            background: rgba(50, 50, 50, 0.9);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .message-text {
+            color: #fff;
+        }
+        
+        .form-section {
+            background: rgba(30, 30, 30, 0.9);
+            color: #fff;
+        }
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+    .chat-header {
+        padding: 10px 15px;
+    }
+    
+    .user-info {
+        gap: 5px;
+    }
+    
+    .profile-btn, .guardian-btn, .diary-btn, .model-status-btn, .logout-btn {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+    
+    .message-input-container {
+        padding: 10px;
+    }
+    
+    .input-actions {
+        gap: 5px;
+    }
+    
+    .action-btn-small {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+    
+    .mobile-nav-item {
+        font-size: 0.7rem;
+    }
+    
+    .mobile-nav-icon {
+        font-size: 1rem;
+    }
+} 

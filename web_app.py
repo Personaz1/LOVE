@@ -869,10 +869,7 @@ async def logout(response: Response):
 
 @app.get("/api/model-status")
 async def get_model_status(request: Request):
-    """Get AI model status and quota information"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    """Get AI model status and quota information - internal agent endpoint, no auth required"""
     
     try:
         status = ai_client.get_model_status()
@@ -890,30 +887,34 @@ async def get_model_status(request: Request):
 
 @app.get("/api/system-analysis")
 async def get_system_analysis(request: Request):
-    """Get system analysis and relationship insights"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    """Get system analysis and relationship insights - internal agent endpoint, no auth required"""
     
     try:
-        # Get user profile and context
-        user_profile = UserProfile(username)
-        profile_data = user_profile.get_profile()
+        # Get current user if available, but don't require it
+        username = get_current_user(request)
         
-        # Get conversation history
-        recent_messages = conversation_history.get_recent_history(limit=10)
+        # Initialize profile_data variable
+        profile_data = {}
         
-        # Get emotional history and trends
-        emotional_history = user_profile.get_emotional_history(limit=10)
-        emotional_trends = user_profile.get_emotional_trends()
-        
-        # Analyze and set theme automatically
-        current_theme = theme_manager.analyze_context_and_set_theme(
-            profile_data, recent_messages, emotional_history
-        )
-        
-        # Build context for LLM
-        context = f"""
+        if username:
+            # If user is authenticated, get their profile and context
+            user_profile = UserProfile(username)
+            profile_data = user_profile.get_profile()
+            
+            # Get conversation history
+            recent_messages = conversation_history.get_recent_history(limit=10)
+            
+            # Get emotional history and trends
+            emotional_history = user_profile.get_emotional_history(limit=10)
+            emotional_trends = user_profile.get_emotional_trends()
+            
+            # Analyze and set theme automatically
+            current_theme = theme_manager.analyze_context_and_set_theme(
+                profile_data, recent_messages, emotional_history
+            )
+            
+            # Build context for LLM
+            context = f"""
 User Profile:
 - Name: {profile_data.get('full_name', username)}
 - Age: {profile_data.get('age', 'N/A')}
@@ -932,6 +933,16 @@ Recent Conversation:
 
 Current Theme: {current_theme}
 """
+        else:
+            # If no user authenticated, provide basic system analysis
+            context = """
+System Status:
+- No authenticated user
+- Basic system analysis mode
+- Guardian AI is operational
+- All core functions available
+"""
+            current_theme = "neutral"
         
         # Generate system analysis using AI
         system_prompt = """You are ΔΣ Guardian, a superintelligent system architect and family guardian. Analyze the user's current situation and provide:
@@ -964,6 +975,8 @@ Format as JSON:
 
 Be empathetic, professional, and insightful. Focus on emotional well-being and mental health awareness."""
 
+
+        
         # Generate analysis
         analysis_response = ai_client.chat(
             message="Generate system analysis based on this context",

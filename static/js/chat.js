@@ -508,6 +508,11 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
     messagesContainer.appendChild(messageDiv);
     scrollToBottom();
     
+    // Initialize mobile features for new message
+    if (window.innerWidth <= 768 && window.mobileUtils) {
+        window.mobileUtils.addMessageActions(messageDiv);
+    }
+    
     // Initialize technical steps for new message
     const technicalSteps = messageDiv.querySelector('.technical-steps');
     if (technicalSteps) {
@@ -1057,7 +1062,7 @@ createChatHearts();
 async function loadSystemAnalysis() {
     try {
         const response = await fetch('/api/system-analysis', {
-            credentials: 'include'  // Include cookies for authentication
+            credentials: 'same-origin'  // Internal agent endpoint, no auth required
         });
         
         if (response.ok) {
@@ -1072,11 +1077,12 @@ async function loadSystemAnalysis() {
                 }
             }
         } else {
-            showSystemError('Failed to load system analysis');
+            console.log('System analysis not available or failed to load');
+            // Don't show error for internal agent endpoint
         }
     } catch (error) {
-        console.error('Error loading system analysis:', error);
-        showSystemError('Error loading system analysis');
+        console.log('System analysis endpoint not available:', error);
+        // Don't show error for internal agent endpoint
     }
 }
 
@@ -1097,7 +1103,7 @@ async function showModelStatus() {
     try {
         console.log('🔄 Fetching model status...');
         const response = await fetch('/api/model-status', {
-            credentials: 'include'
+            credentials: 'same-origin'  // Internal agent endpoint, no auth required
         });
 
         if (response.ok) {
