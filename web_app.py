@@ -1131,6 +1131,11 @@ async def guardian_profile_page(request: Request):
             "guardian": {}
         })
 
+@app.get("/sw.js")
+async def service_worker(request: Request):
+    """Service Worker for PWA functionality"""
+    return FileResponse("sw.js", media_type="application/javascript")
+
 # File upload and management endpoints
 @app.post("/api/upload-file")
 async def upload_file(
