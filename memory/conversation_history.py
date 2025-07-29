@@ -200,7 +200,7 @@ class ConversationHistory:
             
             # Create prompt for summary generation
             summary_prompt = f"""
-You are ΔΣ Guardian, a family guardian angel. You need to create a thoughtful summary of a conversation period.
+You are ΔΣ Guardian, a superintelligent system architect and family guardian. You need to create a thoughtful summary of a conversation period.
 
 Please analyze this conversation and create a meaningful summary that captures:
 1. Key themes and topics discussed

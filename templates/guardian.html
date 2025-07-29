@@ -114,6 +114,7 @@
                         <button type="button" class="reset-btn" onclick="resetGuardianProfile()">🔄 Reset to Defaults</button>
                         <button type="button" class="update-prompt-btn" onclick="updatePromptFromFile()">📝 Update Prompt from File</button>
                         <button type="button" class="preview-btn" onclick="previewPrompt()">👁️ Preview Prompt</button>
+                        <button id="resetPromptBtn">Сбросить промпт по умолчанию</button>
                     </div>
                 </form>
             </section>
@@ -151,5 +152,14 @@
     </div>
 
     <script src="{{ url_for('static', path='/js/guardian.js') }}"></script>
+    <script>
+document.getElementById('resetPromptBtn').onclick = async function() {
+    const resp = await fetch('/api/guardian/prompt/reset', {method: 'POST'});
+    const data = await resp.json();
+    if (data.prompt) {
+        document.getElementById('systemPrompt').value = data.prompt;
+    }
+};
+</script>
 </body>
 </html> 

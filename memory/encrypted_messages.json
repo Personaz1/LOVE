@@ -1,0 +1,24 @@
+{
+  "cb4c0173-8ce5-4e61-9411-c43c385b7369": {
+    "conversation_id": "44866a79-44f0-406c-ab3f-f797cf2a6679",
+    "sender": "stepan",
+    "encrypted_content": "SRvPqdiKuHGSzo/I",
+    "iv": "CceN5qbI1mIQiFO3",
+    "tag": "34RTkvaT2Tck3UMf8pRVBQ==",
+    "hmac": "q4kfD6NFcmgFx2jmOJCo0oWl10bxgmcCjSV6eEe3Vtc=",
+    "salt": "JRRaxGr6oPxJm+1jsnlKNY/obQbtY+CZywm7ezeac7g=",
+    "timestamp": "2025-07-28T11:46:44.539539",
+    "message_id": "cb4c0173-8ce5-4e61-9411-c43c385b7369"
+  },
+  "7341c1ad-f779-4736-bdeb-4459dc6fe856": {
+    "conversation_id": "6ac2b2a0-1b08-4483-846b-8998050dcfba",
+    "sender": "stepan",
+    "encrypted_content": "3J8/",
+    "iv": "wbCOq4dbt7P6KmVZ",
+    "tag": "XumtVlpOl9LM49WLBwQ9Zw==",
+    "hmac": "sFGF6NAA2X34BCqwDqqwDOX4us5yxs6RvD41ny0bMJE=",
+    "salt": "1o9WdgeCRRO6xVQx7B5WAKB2svblOj9NxsvUhpByFNI=",
+    "timestamp": "2025-07-28T11:47:33.400395",
+    "message_id": "7341c1ad-f779-4736-bdeb-4459dc6fe856"
+  }
+}

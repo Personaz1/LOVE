@@ -3,6 +3,8 @@
 import json
 import os
 from ai_client import AIClient
+import pytest
+from memory.guardian_profile import guardian_profile, get_default_prompt_from_file
 
 def test_guardian_edit():
     """Test if Guardian can edit his own prompt"""
@@ -44,6 +46,15 @@ def test_guardian_edit():
             
     except Exception as e:
         print(f"❌ Error testing guardian edit: {e}")
+
+def test_prompt_edit_and_reset():
+    original = guardian_profile.get_system_prompt()
+    new_prompt = "TEST PROMPT"
+    guardian_profile.update_profile({"system_prompt": new_prompt})
+    assert guardian_profile.get_system_prompt() == new_prompt
+    guardian_profile.update_prompt_from_file()
+    assert guardian_profile.get_system_prompt() == get_default_prompt_from_file()
+    guardian_profile.update_profile({"system_prompt": original})
 
 if __name__ == "__main__":
     test_guardian_edit() 

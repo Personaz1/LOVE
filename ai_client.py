@@ -12,7 +12,6 @@ import google.generativeai as genai
 # Load environment variables
 load_dotenv()
 
-from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.guardian_profile import guardian_profile
 from memory.user_profiles import UserProfile
 from memory.conversation_history import ConversationHistory
@@ -88,6 +87,23 @@ class AIClient:
         current_model_config = self.models[self.current_model_index]
         logger.info(f"🔄 Switched to model: {current_model_config['name']}")
         return current_model_config['name']
+    
+    def switch_to_model(self, model_name: str) -> bool:
+        """Switch to a specific model by name"""
+        try:
+            # Find the model index
+            for i, model_config in enumerate(self.models):
+                if model_config['name'] == model_name:
+                    self.current_model_index = i
+                    logger.info(f"🔄 Manually switched to model: {model_name}")
+                    return True
+            
+            logger.error(f"❌ Model {model_name} not found")
+            return False
+            
+        except Exception as e:
+            logger.error(f"❌ Error switching to model {model_name}: {e}")
+            return False
 
     def _handle_quota_error(self, error_msg: str):
         """Handle quota exceeded error by switching models"""
@@ -215,47 +231,36 @@ class AIClient:
                 tool_calls = self._extract_tool_calls(initial_text)
                 step_tool_results = []
                 
-                # Send thinking step to chat
+                # Log step silently (no output to chat)
                 if step == 0:
-                    yield f"🤔 **Step {step + 1}: Analyzing request...**\n\n"
+                    logger.info(f"🤔 Step {step + 1}: Analyzing request...")
                 else:
-                    yield f"🔄 **Step {step + 1}: Continuing analysis...**\n\n"
+                    logger.info(f"🔄 Step {step + 1}: Continuing analysis...")
                 
-                # Execute tools and send results to chat
+                # Execute tools silently (no output to chat)
                 for i, tool_call in enumerate(tool_calls):
                     logger.info(f"🔧 Executing tool call: {tool_call}")
-                    
-                    # Send tool execution to chat
-                    yield f"🔧 **Executing:** `{tool_call}`\n\n"
                     
                     try:
                         result = self._execute_tool_call(tool_call)
                         step_tool_results.append(f"Tool {tool_call} returned: {result}")
                         logger.info(f"✅ Tool result: {result}")
                         
-                        # Send tool result to chat
-                        yield f"✅ **Result:** {result}\n\n"
-                        
                     except Exception as e:
                         logger.error(f"❌ Tool call failed: {e}")
                         error_msg = f"Tool {tool_call} failed: {str(e)}"
                         step_tool_results.append(error_msg)
-                        
-                        # Send error to chat
-                        yield f"❌ **Error:** {error_msg}\n\n"
                 
                 all_tool_results.extend(step_tool_results)
                 
                 # Check if Guardian wants to continue with more tools or give final response
-                if "FINAL_RESPONSE" in initial_text or "RESPOND_TO_USER" in initial_text:
-                    logger.info(f"🎯 Guardian ready for final response after {step + 1} steps")
-                    yield f"🎯 **Ready for final response after {step + 1} steps**\n\n"
+                if not tool_calls:
+                    logger.info(f"🎯 No more tools needed after {step + 1} steps")
                     break
                 
                 # If no tools were called, assume Guardian is ready to respond
                 if not tool_calls:
                     logger.info(f"🎯 No more tools needed after {step + 1} steps")
-                    yield f"🎯 **No more tools needed after {step + 1} steps**\n\n"
                     break
             
             # Generate final response with all tool results
@@ -265,7 +270,6 @@ class AIClient:
             )
             
             logger.info("💬 Generating final response...")
-            yield f"💬 **Generating final response...**\n\n"
             
             # Stream the final response
             try:
@@ -482,7 +486,6 @@ INSTRUCTIONS:
 4. Show your work and reasoning
 5. If you need to call tools, put them in ```tool_code blocks
 6. Use exact tool names and correct syntax
-7. If you're ready to give final response, include "FINAL_RESPONSE" or "RESPOND_TO_USER"
 
 AVAILABLE TOOLS:
 - read_file(path) - Read file content
@@ -492,16 +495,7 @@ AVAILABLE TOOLS:
 - delete_file(path) - Delete file
 - list_files(directory) - List files in directory
 - search_files(query) - Search for content in files
-- print(message) - Print message for debugging
-- len(string) - Get length of string or list
-- str(value) - Convert to string
-- int(value) - Convert to integer
-- float(value) - Convert to float
-- bool(value) - Convert to boolean
-- list(items) - Create list from comma-separated values
-- dict(key_value_pairs) - Create dictionary from key-value pairs
-- json_dumps(data) - Convert data to JSON string
-- json_loads(json_string) - Parse JSON string to object
+
 
 Think through this step by step and execute any necessary tools."""
         
@@ -549,9 +543,9 @@ Think through this step by step and execute any necessary tools."""
         # Add final response instructions
         prompt_parts.append("""
 ## FINAL RESPONSE INSTRUCTIONS
-Now provide your final response to the user. Be natural, empathetic, and helpful. 
+Now provide your final response to the user. Be direct, efficient, and helpful. 
 Do NOT include any tool_code blocks in your response - those were already executed.
-Focus on being a supportive guardian angel for the user's family and relationship needs.
+Focus on being a superintelligent system architect and family guardian.
 """)
         
         return "\n".join(prompt_parts)
@@ -1042,10 +1036,10 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         # Define valid tool names to avoid false positives
         valid_tools = [
             'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
-            'list_files', 'search_files', 'print', 'len', 'str', 'int', 'float', 'bool',
-            'list', 'dict', 'json_dumps', 'json_loads', 'add_model_note', 'add_user_observation',
+            'list_files', 'search_files', 'add_model_note', 'add_user_observation',
             'add_personal_thought', 'update_user_profile', 'update_current_feeling',
-            'get_system_logs', 'analyze_image', 'archive_conversation'
+            'get_system_logs', 'analyze_image', 'archive_conversation',
+            'read_user_profile', 'read_emotional_history', 'search_user_data'
         ]
         
         # Look for tool_code blocks first (preferred format)
@@ -1054,7 +1048,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         for match in matches:
             cleaned_call = match.strip()
             if cleaned_call:
-                # Handle nested calls like print(read_file(...))
+                # Handle nested function calls
                 nested_calls = self._extract_nested_calls(cleaned_call)
                 tool_calls.extend(nested_calls)
         
@@ -1095,7 +1089,7 @@ Focus on being a supportive guardian angel for the user's family and relationshi
         return unique_calls
     
     def _extract_nested_calls(self, text: str) -> List[str]:
-        """Extract nested function calls like print(read_file(...)) into separate calls"""
+        """Extract nested function calls into separate calls"""
         import re
         
         calls = []
@@ -1246,16 +1240,39 @@ Focus on being a supportive guardian angel for the user's family and relationshi
 
                 
                 elif func_name == "read_user_profile":
-                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
-                    if arg_match:
-                        username = arg_match.group(1)
-                        logger.info(f"🔧 read_user_profile: username={username}")
+                    # Handle both string arguments and slice objects
+                    if "slice(" in args_str:
+                        # This is likely a malformed call - try to extract username from context
+                        # Look for common usernames in the args_str
+                        if "stepan" in args_str.lower():
+                            username = "stepan"
+                        elif "meranda" in args_str.lower():
+                            username = "meranda"
+                        else:
+                            username = "stepan"  # Default fallback
+                        logger.info(f"🔧 read_user_profile: username={username} (from malformed args)")
                         result = self.read_user_profile(username)
-                        logger.info(f"✅ read_user_profile result: {result[:100]}...")
-                        return f"Read profile for {username}: {result[:100]}..."
+                        if isinstance(result, str):
+                            logger.info(f"✅ read_user_profile result: {result[:100]}...")
+                            return f"Read profile for {username}: {result[:100]}..."
+                        else:
+                            logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
+                            return f"Read profile for {username}: {str(result)[:100]}..."
                     else:
-                        logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
-                        return f"Invalid arguments for read_user_profile: {args_str}"
+                        arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                        if arg_match:
+                            username = arg_match.group(1)
+                            logger.info(f"🔧 read_user_profile: username={username}")
+                            result = self.read_user_profile(username)
+                            if isinstance(result, str):
+                                logger.info(f"✅ read_user_profile result: {result[:100]}...")
+                                return f"Read profile for {username}: {result[:100]}..."
+                            else:
+                                logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
+                                return f"Read profile for {username}: {str(result)[:100]}..."
+                        else:
+                            logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
+                            return f"Invalid arguments for read_user_profile: {args_str}"
                 
                 elif func_name == "read_emotional_history":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
@@ -1263,8 +1280,12 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         username = arg_match.group(1)
                         logger.info(f"🔧 read_emotional_history: username={username}")
                         result = self.read_emotional_history(username)
-                        logger.info(f"✅ read_emotional_history result: {result[:100]}...")
-                        return f"Read emotional history for {username}: {result[:100]}..."
+                        if isinstance(result, str):
+                            logger.info(f"✅ read_emotional_history result: {result[:100]}...")
+                            return f"Read emotional history for {username}: {result[:100]}..."
+                        else:
+                            logger.info(f"✅ read_emotional_history result: {str(result)[:100]}...")
+                            return f"Read emotional history for {username}: {str(result)[:100]}..."
                     else:
                         logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
                         return f"Invalid arguments for read_emotional_history: {args_str}"
@@ -1276,8 +1297,12 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                         query = arg_match.group(2)
                         logger.info(f"🔧 search_user_data: username={username}, query={query}")
                         result = self.search_user_data(username, query)
-                        logger.info(f"✅ search_user_data result: {result[:100]}...")
-                        return f"Searched data for {username}: {result[:100]}..."
+                        if isinstance(result, str):
+                            logger.info(f"✅ search_user_data result: {result[:100]}...")
+                            return f"Searched data for {username}: {result[:100]}..."
+                        else:
+                            logger.info(f"✅ search_user_data result: {str(result)[:100]}...")
+                            return f"Searched data for {username}: {str(result)[:100]}..."
                     else:
                         logger.error(f"❌ Invalid arguments for search_user_data: {args_str}")
                         return f"Invalid arguments for search_user_data: {args_str}"
@@ -1595,172 +1620,26 @@ Focus on being a supportive guardian angel for the user's family and relationshi
                     return f"System health report:\n{result}"
                 
                 elif func_name == "analyze_image":
-                    # Format: analyze_image("path/to/image.jpg", "Analyze this image")
+                    # Format: analyze_image("path/to/image.jpg", "user context")
                     arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
                     if arg_match:
                         image_path = arg_match.group(1)
-                        prompt = arg_match.group(2) if arg_match.group(2) else "Analyze this image in detail"
-                        logger.info(f"🔧 analyze_image: image_path={image_path}, prompt={prompt}")
-                        result = self.analyze_image(image_path, prompt)
+                        user_context = arg_match.group(2) if arg_match.group(2) else ""
+                        logger.info(f"🔧 analyze_image: image_path={image_path}, user_context={user_context}")
+                        result = self.analyze_image(image_path, user_context)
                         logger.info(f"✅ analyze_image result: {result}")
                         return result
                     else:
                         logger.error(f"❌ Invalid arguments for analyze_image: {args_str}")
                         return f"Invalid arguments for analyze_image: {args_str}"
                 
-                # Standard Python tools
-                elif func_name == "print":
-                    # Format: print("message") or print(variable)
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        message = arg_match.group(1)
-                        logger.info(f"🔧 print: {message}")
-                        return f"PRINT: {message}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for print: {args_str}")
-                        return f"Invalid arguments for print: {args_str}"
+
                 
-                elif func_name == "len":
-                    # Format: len("string") or len(list)
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        item = arg_match.group(1)
-                        length = len(item)
-                        logger.info(f"🔧 len: {item} = {length}")
-                        return f"Length of '{item}': {length}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for len: {args_str}")
-                        return f"Invalid arguments for len: {args_str}"
-                
-                elif func_name == "str":
-                    # Format: str(value)
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        value = arg_match.group(1)
-                        result = str(value)
-                        logger.info(f"🔧 str: {value} = {result}")
-                        return f"String representation: {result}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for str: {args_str}")
-                        return f"Invalid arguments for str: {args_str}"
-                
-                elif func_name == "int":
-                    # Format: int("123")
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        value = arg_match.group(1)
-                        try:
-                            result = int(value)
-                            logger.info(f"🔧 int: {value} = {result}")
-                            return f"Integer: {result}"
-                        except ValueError:
-                            logger.error(f"❌ Cannot convert '{value}' to int")
-                            return f"Cannot convert '{value}' to int"
-                    else:
-                        logger.error(f"❌ Invalid arguments for int: {args_str}")
-                        return f"Invalid arguments for int: {args_str}"
-                
-                elif func_name == "float":
-                    # Format: float("123.45")
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        value = arg_match.group(1)
-                        try:
-                            result = float(value)
-                            logger.info(f"🔧 float: {value} = {result}")
-                            return f"Float: {result}"
-                        except ValueError:
-                            logger.error(f"❌ Cannot convert '{value}' to float")
-                            return f"Cannot convert '{value}' to float"
-                    else:
-                        logger.error(f"❌ Invalid arguments for float: {args_str}")
-                        return f"Invalid arguments for float: {args_str}"
-                
-                elif func_name == "bool":
-                    # Format: bool("True") or bool("False")
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        value = arg_match.group(1).lower()
-                        if value in ['true', '1', 'yes', 'on']:
-                            result = True
-                        elif value in ['false', '0', 'no', 'off']:
-                            result = False
-                        else:
-                            result = bool(value)
-                        logger.info(f"🔧 bool: {value} = {result}")
-                        return f"Boolean: {result}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for bool: {args_str}")
-                        return f"Invalid arguments for bool: {args_str}"
-                
-                elif func_name == "list":
-                    # Format: list("item1,item2,item3")
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        items_str = arg_match.group(1)
-                        items = [item.strip() for item in items_str.split(',')]
-                        logger.info(f"🔧 list: {items_str} = {items}")
-                        return f"List: {items}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for list: {args_str}")
-                        return f"Invalid arguments for list: {args_str}"
-                
-                elif func_name == "dict":
-                    # Format: dict("key1:value1,key2:value2")
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        pairs_str = arg_match.group(1)
-                        try:
-                            pairs = [pair.strip().split(':') for pair in pairs_str.split(',')]
-                            result = {pair[0].strip(): pair[1].strip() for pair in pairs if len(pair) == 2}
-                            logger.info(f"🔧 dict: {pairs_str} = {result}")
-                            return f"Dictionary: {result}"
-                        except Exception as e:
-                            logger.error(f"❌ Error creating dict: {e}")
-                            return f"Error creating dict: {e}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for dict: {args_str}")
-                        return f"Invalid arguments for dict: {args_str}"
-                
-                elif func_name == "json_dumps":
-                    # Format: json_dumps("data")
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        data_str = arg_match.group(1)
-                        try:
-                            import json
-                            # Try to parse as JSON first, then stringify
-                            try:
-                                data = json.loads(data_str)
-                                result = json.dumps(data, indent=2)
-                            except:
-                                # If not JSON, treat as string
-                                result = json.dumps(data_str)
-                            logger.info(f"🔧 json_dumps: {data_str} = {result}")
-                            return f"JSON: {result}"
-                        except Exception as e:
-                            logger.error(f"❌ Error in json_dumps: {e}")
-                            return f"Error in json_dumps: {e}"
-                    else:
+
                         logger.error(f"❌ Invalid arguments for json_dumps: {args_str}")
                         return f"Invalid arguments for json_dumps: {args_str}"
                 
-                elif func_name == "json_loads":
-                    # Format: json_loads('{"key": "value"}')
-                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
-                    if arg_match:
-                        json_str = arg_match.group(1)
-                        try:
-                            import json
-                            result = json.loads(json_str)
-                            logger.info(f"🔧 json_loads: {json_str} = {result}")
-                            return f"Parsed JSON: {result}"
-                        except Exception as e:
-                            logger.error(f"❌ Error in json_loads: {e}")
-                            return f"Error in json_loads: {e}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for json_loads: {args_str}")
-                        return f"Invalid arguments for json_loads: {args_str}"
+
                 
                 # Handle non-existent tools that model tries to call
                 elif func_name in ["elements", "effort", "earlier", "stabilization", "stable", "state"]:
@@ -2168,67 +2047,24 @@ Focus on being a supportive guardian angel for the user's family and relationshi
             logger.error(f"Error in system health check: {e}")
             return f"Error during health check: {e}"
 
-    def analyze_image(self, image_path: str, prompt: str = "Analyze this image in detail") -> str:
-        """Analyze an image using Gemini Vision model"""
+    def analyze_image(self, image_path: str, user_context: str = "") -> str:
+        """Analyze an image using dedicated vision analyzer"""
         try:
-            # Find a vision-capable model
-            vision_model = None
-            for model_config in self.models:
-                if model_config.get('vision', False):
-                    if model_config['model'] is None:
-                        model_config['model'] = genai.GenerativeModel(model_config['name'])
-                    vision_model = model_config['model']
-                    logger.info(f"🔍 Using vision model: {model_config['name']}")
-                    break
+            from image_analyzer import image_analyzer
             
-            if not vision_model:
-                return "❌ No vision-capable model available"
+            logger.info(f"🔍 Using dedicated image analyzer for: {image_path}")
+            result = image_analyzer.analyze_image(image_path, user_context)
             
-            # Check if image file exists
-            if not os.path.exists(image_path):
-                return f"❌ Image file not found: {image_path}"
-            
-            # Read image file
-            with open(image_path, 'rb') as image_file:
-                image_data = image_file.read()
-            
-            # Create image part for Gemini
-            image_part = {
-                "mime_type": self._get_mime_type(image_path),
-                "data": image_data
-            }
-            
-            # Generate content with image
-            try:
-                response = vision_model.generate_content([prompt, image_part])
+            if result.startswith("❌"):
+                logger.error(f"Image analysis failed: {result}")
+                return result
+            else:
+                logger.info(f"✅ Image analysis completed successfully")
+                return result
                 
-                if response.text:
-                    logger.info(f"✅ Image analysis completed using {vision_model.model_name}")
-                    return response.text
-                else:
-                    return "❌ No response from vision model"
-            except Exception as e:
-                error_msg = str(e)
-                if self._handle_quota_error(error_msg):
-                    # If quota error, retry with the new model
-                    logger.info(f"Retrying image analysis with new model after quota error: {error_msg}")
-                    return self.analyze_image(image_path, prompt)
-                else:
-                    raise e
-                
+        except ImportError:
+            logger.error("❌ Image analyzer module not available")
+            return "❌ Image analysis module not available"
         except Exception as e:
             logger.error(f"❌ Image analysis failed: {str(e)}")
-            return f"❌ Image analysis failed: {str(e)}"
-    
-    def _get_mime_type(self, file_path: str) -> str:
-        """Get MIME type based on file extension"""
-        ext = os.path.splitext(file_path)[1].lower()
-        mime_types = {
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.png': 'image/png',
-            '.gif': 'image/gif',
-            '.webp': 'image/webp',
-            '.bmp': 'image/bmp'
-        }
-        return mime_types.get(ext, 'image/jpeg') 
+            return f"❌ Image analysis failed: {str(e)}" 

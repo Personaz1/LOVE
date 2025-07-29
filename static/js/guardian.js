@@ -257,3 +257,13 @@ function setupAutoSave() {
 
 // Initialize auto-save
 setupAutoSave(); 
+
+// Функция для сохранения промпта
+async function savePrompt() {
+    const prompt = document.getElementById('systemPrompt').value;
+    await fetch('/api/guardian/profile/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({system_prompt: prompt})
+    });
+} 

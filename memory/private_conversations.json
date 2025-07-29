@@ -1,0 +1,42 @@
+{
+  "44866a79-44f0-406c-ab3f-f797cf2a6679": {
+    "user1": "stepan",
+    "user2": "meranda",
+    "conversation_type": "private",
+    "created_at": "2025-07-28T11:46:35.776277",
+    "last_activity": "2025-07-28T11:46:44.539920",
+    "message_count": 1,
+    "is_active": true,
+    "conversation_id": "44866a79-44f0-406c-ab3f-f797cf2a6679",
+    "key_info": {
+      "created_at": "2025-07-28T11:46:35.828006",
+      "salt": "JRRaxGr6oPxJm+1jsnlKNY/obQbtY+CZywm7ezeac7g=",
+      "key_hash": "218457eb604fc63c",
+      "participants": [
+        "stepan",
+        "meranda"
+      ],
+      "last_activity": "2025-07-28T11:46:35.828488"
+    }
+  },
+  "6ac2b2a0-1b08-4483-846b-8998050dcfba": {
+    "user1": "stepan",
+    "user2": "guardian",
+    "conversation_type": "private",
+    "created_at": "2025-07-28T11:47:28.934052",
+    "last_activity": "2025-07-28T11:47:33.400854",
+    "message_count": 1,
+    "is_active": true,
+    "conversation_id": "6ac2b2a0-1b08-4483-846b-8998050dcfba",
+    "key_info": {
+      "created_at": "2025-07-28T11:47:29.017679",
+      "salt": "1o9WdgeCRRO6xVQx7B5WAKB2svblOj9NxsvUhpByFNI=",
+      "key_hash": "0acf11e108e01ae9",
+      "participants": [
+        "stepan",
+        "guardian"
+      ],
+      "last_activity": "2025-07-28T11:47:29.019190"
+    }
+  }
+}

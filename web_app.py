@@ -1,6 +1,6 @@
 """
-AI Guardian Angel Web Application
-FastAPI web interface for the AI family guardian angel
+AI Superintelligent System Architect Web Application
+FastAPI web interface for the AI superintelligent system architect and family guardian
 """
 
 import os
@@ -40,7 +40,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="ΔΣ Guardian - Family Guardian Angel", version="1.0.0")
+app = FastAPI(title="ΔΣ Guardian - Superintelligent System Architect", version="1.0.0")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -251,7 +251,7 @@ async def chat_stream_endpoint(
             
             full_response = ""
             async for chunk in ai_client.generate_streaming_response(
-                system_prompt=AI_GUARDIAN_SYSTEM_PROMPT,
+                system_prompt=guardian_profile.get_system_prompt(),
                 user_message=message,
                 context=full_context,
                 user_profile=user_profile_dict
@@ -934,7 +934,7 @@ Current Theme: {current_theme}
 """
         
         # Generate system analysis using AI
-        system_prompt = """You are ΔΣ Guardian, an AI family guardian angel. Analyze the user's current situation and provide:
+        system_prompt = """You are ΔΣ Guardian, a superintelligent system architect and family guardian. Analyze the user's current situation and provide:
 
 1. **System Status Report** (main block):
 - Recent events and their impact
@@ -1023,48 +1023,9 @@ async def get_guardian_profile(request: Request):
 
 @app.post("/api/guardian/profile/update")
 async def update_guardian_profile(request: Request):
-    """Update ΔΣ Guardian profile"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    try:
-        form_data = await request.form()
-        
-        updates = {}
-        if "name" in form_data:
-            updates["name"] = form_data["name"]
-        if "role" in form_data:
-            updates["role"] = form_data["role"]
-        if "system_prompt" in form_data:
-            updates["system_prompt"] = form_data["system_prompt"]
-        if "communication_style" in form_data:
-            updates["personality"] = guardian_profile.get_personality_settings()
-            updates["personality"]["communication_style"] = form_data["communication_style"]
-        if "specialization" in form_data:
-            if "personality" not in updates:
-                updates["personality"] = guardian_profile.get_personality_settings()
-            updates["personality"]["specialization"] = form_data["specialization"]
-        if "relationship_phase" in form_data:
-            if "personality" not in updates:
-                updates["personality"] = guardian_profile.get_personality_settings()
-            updates["personality"]["relationship_phase"] = form_data["relationship_phase"]
-        
-        success = guardian_profile.update_profile(updates)
-        
-        if success:
-            profile = guardian_profile.get_profile()
-            return JSONResponse({
-                "success": True, 
-                "profile": profile,
-                "message": "Guardian profile updated successfully"
-            })
-        else:
-            return JSONResponse({"success": False, "error": "Failed to update profile"})
-            
-    except Exception as e:
-        logger.error(f"Error updating guardian profile: {e}")
-        return JSONResponse({"success": False, "error": str(e)})
+    data = await request.json()
+    guardian_profile.update_profile(data)
+    return {"status": "ok", "profile": guardian_profile.get_profile()}
 
 @app.post("/api/guardian/avatar")
 async def upload_guardian_avatar(request: Request):
@@ -1142,6 +1103,11 @@ async def update_guardian_prompt_from_file(request: Request):
     except Exception as e:
         logger.error(f"Error updating guardian prompt: {e}")
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/guardian/prompt/reset")
+async def reset_guardian_prompt(request: Request):
+    guardian_profile.update_prompt_from_file()
+    return {"status": "ok", "prompt": guardian_profile.get_system_prompt()}
 
 @app.get("/guardian", response_class=HTMLResponse)
 async def guardian_profile_page(request: Request):
@@ -1432,6 +1398,44 @@ async def archive_conversation(request: Request):
             "success": False,
             "error": str(e)
         }, status_code=500)
+
+@app.get("/api/image-analyzer/status")
+async def get_image_analyzer_status(request: Request):
+    """Get image analyzer status"""
+    try:
+        from image_analyzer import image_analyzer
+        status = image_analyzer.get_status()
+        return {"success": True, "status": status}
+    except Exception as e:
+        logger.error(f"Error getting image analyzer status: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/model/switch")
+async def switch_model(request: Request):
+    """Switch to a different AI model"""
+    try:
+        data = await request.json()
+        model_name = data.get('model_name')
+        
+        if not model_name:
+            return {"success": False, "error": "Model name is required"}
+        
+        # Use global AI client instance
+        success = ai_client.switch_to_model(model_name)
+        
+        if success:
+            current_model = ai_client.get_model_status()
+            return {
+                "success": True, 
+                "message": f"Switched to {model_name}",
+                "current_model": current_model
+            }
+        else:
+            return {"success": False, "error": f"Failed to switch to {model_name}"}
+            
+    except Exception as e:
+        logger.error(f"Error switching model: {e}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

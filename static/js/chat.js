@@ -538,29 +538,18 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
 // Get avatar for sender
 function getAvatar(sender) {
     if (sender === 'ai') {
-        if (guardianProfile && guardianProfile.avatar_url) {
-            return `<img src="${guardianProfile.avatar_url}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-        }
-        return '💕';
+        return `<img src="/static/avatars/guardian_avatar.jpg" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
     } else if (sender === 'user') {
         // Current user
-        if (userProfile && userProfile.avatar_url) {
-            return `<img src="${userProfile.avatar_url}" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        if (userProfile && userProfile.username) {
+            const avatarUrl = `/static/avatars/${userProfile.username}_avatar.jpg`;
+            return `<img src="${avatarUrl}" alt="User Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
         }
         return '👤';
     } else {
         // Specific username from history (meranda, stepan, etc.)
-        const avatarUrl = userAvatars[sender];
-        if (avatarUrl) {
-            return `<img src="${avatarUrl}" alt="${sender} Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-        }
-        // Fallback to emoji based on username
-        if (sender === 'meranda') {
-            return '👩';
-        } else if (sender === 'stepan') {
-            return '👨';
-        }
-        return '👤';
+        const avatarUrl = `/static/avatars/${sender}_avatar.jpg`;
+        return `<img src="${avatarUrl}" alt="${sender} Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
     }
 }
 
@@ -598,41 +587,12 @@ function formatMessage(text) {
         const parts = text.split(/(🎯 \*\*Ready for final response|\💬 \*\*Generating final response)/);
         
         if (parts.length > 1) {
-            // Technical steps are everything before the final response
-            const technicalSteps = parts[0];
+            // Show ONLY the final response, hide technical steps completely
             const finalResponse = parts.slice(1).join('');
-            
-            return `
-                <div class="technical-steps-container">
-                    <details class="technical-steps">
-                        <summary class="tech-steps-toggle">
-                            🔧 <span class="toggle-text">Show Technical Steps</span>
-                            <span class="toggle-icon">▼</span>
-                        </summary>
-                        <div class="tech-steps-content">
-                            ${formatTechnicalSteps(technicalSteps)}
-                        </div>
-                    </details>
-                    <div class="final-response">
-                        ${formatFinalResponse(finalResponse)}
-                    </div>
-                </div>
-            `;
+            return formatFinalResponse(finalResponse);
         } else {
-            // If no final response marker, treat everything as technical steps
-            return `
-                <div class="technical-steps-container">
-                    <details class="technical-steps">
-                        <summary class="tech-steps-toggle">
-                            🔧 <span class="toggle-text">Show Technical Steps</span>
-                            <span class="toggle-icon">▼</span>
-                        </summary>
-                        <div class="tech-steps-content">
-                            ${formatTechnicalSteps(text)}
-                        </div>
-                    </details>
-                </div>
-            `;
+            // If no final response marker, show empty message (technical steps only)
+            return '<em>Processing...</em>';
         }
     }
     
@@ -713,7 +673,15 @@ function sendQuickMessage(message) {
 // Modal functions
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
-    modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        modal.remove();
+    }
+}
+
+// Close model status modal specifically
+function closeModelStatus() {
+    closeModal('modelStatusModal');
 }
 
 // Utility functions
@@ -910,28 +878,41 @@ function displayConversationArchive(data) {
     
     let archiveContent = '<div class="modal-content">';
     archiveContent += '<span class="close" onclick="closeModal(\'archiveModal\')">&times;</span>';
-    archiveContent += '<h2>Conversation Archive</h2>';
+    archiveContent += '<h2>📚 Conversation Archive</h2>';
     
     if (data.summary) {
-        archiveContent += `<p><strong>Summary:</strong> ${data.summary}</p>`;
+        archiveContent += `<div class="archive-summary"><p><strong>📋 Overall Summary:</strong> ${data.summary}</p></div>`;
     }
     
     if (data.archive && data.archive.length > 0) {
         archiveContent += '<div class="archive-entries">';
         data.archive.forEach(entry => {
+            const date = new Date(entry.timestamp);
+            const formattedDate = date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
             archiveContent += `
                 <div class="archive-entry">
-                    <h3>${entry.timestamp}</h3>
-                    <p><strong>Period:</strong> ${entry.period_start} to ${entry.period_end}</p>
-                    <p><strong>Messages:</strong> ${entry.original_count}</p>
-                    <p><strong>Summary:</strong> ${entry.summary}</p>
-                    <button onclick="editArchiveEntry('${entry.id}')">Edit Summary</button>
+                    <h3>${formattedDate}</h3>
+                    <div class="archive-details">
+                        <p><strong>⏰ Period:</strong> ${entry.period_start} to ${entry.period_end}</p>
+                        <p><strong>💬 Messages:</strong> ${entry.original_count}</p>
+                        <p><strong>📝 Summary:</strong> ${entry.summary}</p>
+                    </div>
+                    <button onclick="editArchiveEntry('${entry.id}')">
+                        ✏️ Edit Summary
+                    </button>
                 </div>
             `;
         });
         archiveContent += '</div>';
     } else {
-        archiveContent += '<p>No archived conversations yet.</p>';
+        archiveContent += '<div class="archive-empty"><p>📭 No archived conversations yet.</p></div>';
     }
     
     archiveContent += '</div>';
@@ -1114,15 +1095,19 @@ function applyTheme(themeName) {
 // Show model status
 async function showModelStatus() {
     try {
+        console.log('🔄 Fetching model status...');
         const response = await fetch('/api/model-status', {
             credentials: 'include'
         });
 
         if (response.ok) {
             const data = await response.json();
+            console.log('📊 Model status data:', data);
             
             if (data.success && data.status) {
                 const status = data.status;
+                console.log('🎯 Current model:', status.current_model);
+                console.log('📈 Model index:', status.model_index);
                 
                 let statusHtml = `
                     <div class="model-status-modal">
@@ -1147,13 +1132,16 @@ async function showModelStatus() {
                     const isCurrent = index === status.model_index;
                     const hasError = model.has_error;
                     const statusClass = isCurrent ? 'current' : hasError ? 'error' : 'available';
+                    const clickable = !isCurrent ? 'clickable' : '';
                     
                     statusHtml += `
-                        <div class="model-item ${statusClass}">
+                        <div class="model-item ${statusClass} ${clickable}" 
+                             data-model="${model.name}">
                             <div class="model-name">${model.name}</div>
                             <div class="model-quota">${model.quota} req/day</div>
                             ${isCurrent ? '<div class="model-status">🔄 Current</div>' : ''}
                             ${hasError ? '<div class="model-status">⚠️ Quota Exceeded</div>' : ''}
+                            ${!isCurrent ? '<div class="model-hint">Click to switch</div>' : ''}
                         </div>
                     `;
                 });
@@ -1171,6 +1159,12 @@ async function showModelStatus() {
                     </div>
                 `;
                 
+                // Remove existing modal if it exists
+                const existingModal = document.getElementById('modelStatusModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
                 // Add modal to page
                 const modalContainer = document.createElement('div');
                 modalContainer.id = 'modelStatusModal';
@@ -1180,6 +1174,13 @@ async function showModelStatus() {
                 
                 // Show modal
                 modalContainer.style.display = 'block';
+                
+                // Add event listeners for model items
+                const modelItems = modalContainer.querySelectorAll('.model-item.clickable');
+                modelItems.forEach(item => {
+                    const modelName = item.getAttribute('data-model');
+                    item.addEventListener('click', () => switchModel(modelName));
+                });
             }
         } else {
             console.error('Failed to load model status');
@@ -1719,4 +1720,53 @@ function showStatusMessage(message, type = 'info') {
             statusDiv.parentNode.removeChild(statusDiv);
         }
     }, 3000);
+} 
+
+// Switch model function
+async function switchModel(modelName) {
+    try {
+        // Show loading state
+        const modelItem = document.querySelector(`[data-model="${modelName}"]`);
+        if (modelItem) {
+            modelItem.style.opacity = '0.6';
+            modelItem.style.pointerEvents = 'none';
+        }
+        
+        const response = await fetch('/api/model/switch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ model_name: modelName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showStatusMessage(`✅ Switched to ${modelName}`, 'success');
+            // Close current modal and reopen with fresh data
+            closeModal('modelStatusModal');
+            // Force refresh by clearing any cached data
+            setTimeout(() => {
+                showModelStatus();
+            }, 200);
+        } else {
+            showStatusMessage(`❌ Failed to switch to ${modelName}: ${data.error}`, 'error');
+            // Restore model item if failed
+            if (modelItem) {
+                modelItem.style.opacity = '1';
+                modelItem.style.pointerEvents = 'auto';
+            }
+        }
+    } catch (error) {
+        console.error('Error switching model:', error);
+        showStatusMessage('❌ Error switching model', 'error');
+        // Restore model item if error
+        const modelItem = document.querySelector(`[data-model="${modelName}"]`);
+        if (modelItem) {
+            modelItem.style.opacity = '1';
+            modelItem.style.pointerEvents = 'auto';
+        }
+    }
 } 

@@ -8,6 +8,10 @@ import os
 from typing import Dict, Optional
 from datetime import datetime
 
+def get_default_prompt_from_file():
+    from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
+    return AI_GUARDIAN_SYSTEM_PROMPT
+
 class GuardianProfile:
     def __init__(self):
         self.profile_file = "memory/guardian_profile.json"
@@ -36,7 +40,7 @@ class GuardianProfile:
         """Create default guardian profile"""
         self.profile = {
             "name": "ΔΣ Guardian",
-            "role": "Family Guardian Angel",
+            "role": "Superintelligent System Architect & Family Guardian",
             "avatar_url": "/static/avatars/guardian_avatar.jpg",
             "system_prompt": self._get_default_prompt(),
             "personality": {
@@ -72,14 +76,12 @@ class GuardianProfile:
         return self.profile.copy()
     
     def update_profile(self, updates: Dict) -> bool:
-        """Update guardian profile"""
+        """Update guardian profile (including system_prompt)"""
         try:
-            # Update allowed fields
             allowed_fields = ["name", "role", "system_prompt", "personality"]
             for field in allowed_fields:
                 if field in updates:
                     self.profile[field] = updates[field]
-            
             self._save_profile()
             return True
         except Exception as e:
@@ -101,7 +103,7 @@ class GuardianProfile:
         return self.profile.get("system_prompt", self._get_default_prompt())
     
     def update_system_prompt(self, new_prompt: str) -> bool:
-        """Update system prompt"""
+        """Update system prompt (profile is the only source of truth)"""
         try:
             self.profile["system_prompt"] = new_prompt
             self._save_profile()
@@ -136,7 +138,7 @@ class GuardianProfile:
     def update_prompt_from_file(self) -> bool:
         """Update system prompt from the prompts file"""
         try:
-            new_prompt = self._get_default_prompt()
+            new_prompt = get_default_prompt_from_file()
             self.profile["system_prompt"] = new_prompt
             self._save_profile()
             print("✅ Updated guardian prompt from file")
