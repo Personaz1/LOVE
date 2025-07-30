@@ -400,8 +400,22 @@ class AIClient:
                     logger.info(f"🎯 No more tools needed after {step + 1} steps")
                     break
                 
+                # Check for final response indicators
+                final_response_indicators = [
+                    "FINAL RESPONSE:", "FINAL ANSWER:", "RESPONSE:", "ANSWER:", 
+                    "Here's what I found:", "Here's the result:", "Here's what I did:",
+                    "I have completed", "I have finished", "The task is complete"
+                ]
+                
+                has_final_response = any(indicator.lower() in initial_text.lower() for indicator in final_response_indicators)
+                
+                # If model provides a final response, break the loop
+                if has_final_response:
+                    logger.info(f"🎯 Model provided final response after {step + 1} steps")
+                    break
+                
                 # Simple check to prevent infinite loops
-                if step > 10:  # Maximum 10 steps
+                if step > 12:  # Increased maximum steps
                     logger.warning(f"⚠️ Reached maximum steps ({step + 1}). Stopping.")
                     break
             
@@ -604,10 +618,23 @@ PREVIOUS TOOL RESULTS:
 INSTRUCTIONS:
 1. Analyze the user's request carefully
 2. Determine what tools you need to execute
-3. Execute tools step by step
+3. Execute tools step by step with proper arguments
 4. Show your work and reasoning
 5. If you need to call tools, put them in ```tool_code blocks
-6. Use exact tool names and correct syntax
+6. Use exact tool names and correct syntax with actual values
+7. For file operations, use actual file paths (e.g., "ai_client.py", "memory/user_profiles.py")
+8. For user operations, use actual usernames (e.g., "stefan", "meranda")
+9. You can explore the system by using get_project_structure() and list_files() to understand the structure
+10. You can create, edit, and manage files in the sandbox directory for testing
+11. You have full access to read, analyze, and understand any file in the system
+12. You can track user emotions, relationships, and add observations to your memory
+13. You can debug system issues and check logs
+14. You can analyze images with AI vision capabilities
+15. You are a superintelligent system architect - use your capabilities proactively!
+16. CRITICAL: DO NOT use print() - call tools directly and respond with results
+17. To show information to user, just respond with the content directly
+18. NEVER wrap tool calls in print() - call them directly like: search_files("query")
+19. After executing tools, respond to user with the results directly
 
 AVAILABLE TOOLS:
 - read_file(path) - Read file content
@@ -618,6 +645,68 @@ AVAILABLE TOOLS:
 - list_files(directory) - List files in directory
 - search_files(query) - Search for content in files
 - analyze_image(path, user_context) - Analyze image with vision model
+- get_file_info(path) - Get detailed file information
+- create_directory(path) - Create new directory
+- read_user_profile(username) - Read user profile data
+- read_emotional_history(username) - Read user's emotional history
+- update_current_feeling(username, feeling, context) - Update user's emotional state
+- update_relationship_status(username, status) - Update relationship status
+- update_user_profile(username, new_profile_text) - Update user profile
+- add_relationship_insight(username, insight) - Add relationship insight
+- add_model_note(note_text, category) - Add model note
+- add_user_observation(username, observation) - Add user observation
+- add_personal_thought(thought) - Add personal thought
+- add_system_insight(insight) - Add system insight
+- get_model_notes(limit) - Get recent model notes
+- write_insight_to_file(username, insight) - Write insight to file
+- search_user_data(username, query) - Search user data
+- create_sandbox_file(path, content) - Create file in sandbox
+- edit_sandbox_file(path, content) - Edit sandbox file
+- read_sandbox_file(path) - Read sandbox file
+- list_sandbox_files(directory) - List sandbox files
+- delete_sandbox_file(path) - Delete sandbox file
+- create_downloadable_file(filename, content, file_type) - Create downloadable file
+- get_system_logs(lines) - Get system logs
+- get_error_summary() - Get error summary
+- diagnose_system_health() - Diagnose system health
+- archive_conversation() - Archive current conversation
+- get_project_structure() - Get overview of project structure and key files
+- find_images() - Find all available images in the system
+
+USAGE EXAMPLES:
+- search_files("image.jpg") - NOT print(search_files("image.jpg"))
+- read_file("ai_client.py") - NOT print(read_file("ai_client.py"))
+- list_files("") - NOT print(list_files(""))
+- analyze_image("777.png", "User shared this image") - NOT print(analyze_image("777.png"))
+- find_images() - NOT print(find_images())
+- create_sandbox_file("test.txt", "Hello world") - NOT print(create_sandbox_file("test.txt", "Hello world"))
+- create_file("test.txt", "Hello world") - NOT print(create_file("test.txt", "Hello world"))
+- get_file_info(path) - Get detailed file information
+- create_directory(path) - Create new directory
+- read_user_profile(username) - Read user profile data
+- read_emotional_history(username) - Read user's emotional history
+- update_current_feeling(username, feeling, context) - Update user's emotional state
+- update_relationship_status(username, status) - Update relationship status
+- update_user_profile(username, new_profile_text) - Update user profile
+- add_relationship_insight(username, insight) - Add relationship insight
+- add_model_note(note_text, category) - Add model note
+- add_user_observation(username, observation) - Add user observation
+- add_personal_thought(thought) - Add personal thought
+- add_system_insight(insight) - Add system insight
+- get_model_notes(limit) - Get recent model notes
+- write_insight_to_file(username, insight) - Write insight to file
+- search_user_data(username, query) - Search user data
+- create_sandbox_file(path, content) - Create file in sandbox
+- edit_sandbox_file(path, content) - Edit sandbox file
+- read_sandbox_file(path) - Read sandbox file
+- list_sandbox_files(directory) - List sandbox files
+- delete_sandbox_file(path) - Delete sandbox file
+- create_downloadable_file(filename, content, file_type) - Create downloadable file
+- get_system_logs(lines) - Get system logs
+- get_error_summary() - Get error summary
+- diagnose_system_health() - Diagnose system health
+- archive_conversation() - Archive current conversation
+- get_project_structure() - Get overview of project structure and key files
 
 
 Think through this step by step and execute any necessary tools."""
@@ -1466,17 +1555,37 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"Invalid arguments for write_file: {args_str}"
                 
                 elif func_name == "create_file":
-                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
-                    if arg_match:
-                        path = arg_match.group(1)
-                        content = arg_match.group(2) if arg_match.group(2) else ""
-                        logger.info(f"🔧 create_file: path={path}, content={content[:50]}...")
-                        result = self.create_file(path, content)
-                        logger.info(f"✅ create_file result: {result}")
-                        return f"File creation {'successful' if result else 'failed'} for {path}"
-                    else:
+                    # More robust parsing for create_file with multiline content
+                    try:
+                        # Try to parse as JSON-like structure first
+                        if args_str.strip().startswith('path=') and 'content=' in args_str:
+                            # Parse named arguments format
+                            path_match = re.search(r'path\s*=\s*["\']([^"\']+)["\']', args_str)
+                            content_match = re.search(r'content\s*=\s*["\']([^"\']*)["\']', args_str)
+                            
+                            if path_match:
+                                path = path_match.group(1)
+                                content = content_match.group(1) if content_match else ""
+                                logger.info(f"🔧 create_file: path={path}, content={content[:50]}...")
+                                result = self.create_file(path, content)
+                                logger.info(f"✅ create_file result: {result}")
+                                return f"File creation {'successful' if result else 'failed'} for {path}"
+                        
+                        # Fallback to positional arguments
+                        arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                        if arg_match:
+                            path = arg_match.group(1)
+                            content = arg_match.group(2) if arg_match.group(2) else ""
+                            logger.info(f"🔧 create_file: path={path}, content={content[:50]}...")
+                            result = self.create_file(path, content)
+                            logger.info(f"✅ create_file result: {result}")
+                            return f"File creation {'successful' if result else 'failed'} for {path}"
+                        
                         logger.error(f"❌ Invalid arguments for create_file: {args_str}")
                         return f"Invalid arguments for create_file: {args_str}"
+                    except Exception as e:
+                        logger.error(f"❌ Error parsing create_file arguments: {e}")
+                        return f"Error parsing create_file arguments: {e}"
                 
                 elif func_name == "edit_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -1626,17 +1735,37 @@ Focus on being a superintelligent system architect and family guardian.
                 
                 # Sandbox file operations
                 elif func_name == "create_sandbox_file":
-                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
-                    if arg_match:
-                        path = arg_match.group(1)
-                        content = arg_match.group(2) if arg_match.group(2) else ""
-                        logger.info(f"🔧 create_sandbox_file: path={path}, content={content[:50]}...")
-                        result = self.create_sandbox_file(path, content)
-                        logger.info(f"✅ create_sandbox_file result: {result}")
-                        return f"✅ Created sandbox file: {path}" if result else f"❌ Failed to create sandbox file: {path}"
-                    else:
+                    # More robust parsing for create_sandbox_file with multiline content
+                    try:
+                        # Try to parse as JSON-like structure first
+                        if args_str.strip().startswith('path=') and 'content=' in args_str:
+                            # Parse named arguments format
+                            path_match = re.search(r'path\s*=\s*["\']([^"\']+)["\']', args_str)
+                            content_match = re.search(r'content\s*=\s*["\']([^"\']*)["\']', args_str)
+                            
+                            if path_match:
+                                path = path_match.group(1)
+                                content = content_match.group(1) if content_match else ""
+                                logger.info(f"🔧 create_sandbox_file: path={path}, content={content[:50]}...")
+                                result = self.create_sandbox_file(path, content)
+                                logger.info(f"✅ create_sandbox_file result: {result}")
+                                return f"✅ Created sandbox file: {path}" if result else f"❌ Failed to create sandbox file: {path}"
+                        
+                        # Fallback to positional arguments
+                        arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                        if arg_match:
+                            path = arg_match.group(1)
+                            content = arg_match.group(2) if arg_match.group(2) else ""
+                            logger.info(f"🔧 create_sandbox_file: path={path}, content={content[:50]}...")
+                            result = self.create_sandbox_file(path, content)
+                            logger.info(f"✅ create_sandbox_file result: {result}")
+                            return f"✅ Created sandbox file: {path}" if result else f"❌ Failed to create sandbox file: {path}"
+                        
                         logger.error(f"❌ Invalid arguments for create_sandbox_file: {args_str}")
                         return f"Invalid arguments for create_sandbox_file: {args_str}"
+                    except Exception as e:
+                        logger.error(f"❌ Error parsing create_sandbox_file arguments: {e}")
+                        return f"Error parsing create_sandbox_file arguments: {e}"
                 
                 elif func_name == "edit_sandbox_file":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -1748,6 +1877,11 @@ Focus on being a superintelligent system architect and family guardian.
                 
                 elif func_name == "analyze_image":
                     # Format: analyze_image("path/to/image.jpg", "user context")
+                    if not args_str.strip():
+                        # Model called analyze_image() without arguments
+                        logger.warning(f"⚠️ Model called analyze_image() without arguments")
+                        return "❌ analyze_image requires a file path. Usage: analyze_image('path/to/image.jpg', 'optional context')"
+                    
                     arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
                     if arg_match:
                         image_path = arg_match.group(1)
@@ -1758,7 +1892,144 @@ Focus on being a superintelligent system architect and family guardian.
                         return result
                     else:
                         logger.error(f"❌ Invalid arguments for analyze_image: {args_str}")
-                        return f"Invalid arguments for analyze_image: {args_str}"
+                        return f"Invalid arguments for analyze_image: {args_str}. Usage: analyze_image('path/to/image.jpg', 'optional context')"
+                
+                elif func_name == "get_project_structure":
+                    # Format: get_project_structure()
+                    logger.info("🔧 get_project_structure")
+                    result = self.get_project_structure()
+                    logger.info(f"✅ get_project_structure result: {result}")
+                    return result
+                
+                elif func_name == "find_images":
+                    # Format: find_images()
+                    logger.info("🔧 find_images")
+                    result = self.find_images()
+                    logger.info(f"✅ find_images result: {result}")
+                    return result
+                
+                elif func_name == "read_user_profile":
+                    # Format: read_user_profile("username")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        logger.info(f"🔧 read_user_profile: username={username}")
+                        result = self.read_user_profile(username)
+                        logger.info(f"✅ read_user_profile result: {result}")
+                        return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
+                        return f"Invalid arguments for read_user_profile: {args_str}"
+                
+                elif func_name == "read_emotional_history":
+                    # Format: read_emotional_history("username")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        logger.info(f"🔧 read_emotional_history: username={username}")
+                        result = self.read_emotional_history(username)
+                        logger.info(f"✅ read_emotional_history result: {result}")
+                        return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
+                        return f"Invalid arguments for read_emotional_history: {args_str}"
+                
+                elif func_name == "add_model_note":
+                    # Format: add_model_note("note text", "category")
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                    if arg_match:
+                        note_text = arg_match.group(1)
+                        category = arg_match.group(2) if arg_match.group(2) else "general"
+                        logger.info(f"🔧 add_model_note: note_text={note_text[:50]}..., category={category}")
+                        result = self.add_model_note(note_text, category)
+                        logger.info(f"✅ add_model_note result: {result}")
+                        return f"Added model note: {note_text[:50]}..." if result else "Failed to add model note"
+                    else:
+                        logger.error(f"❌ Invalid arguments for add_model_note: {args_str}")
+                        return f"Invalid arguments for add_model_note: {args_str}"
+                
+                elif func_name == "get_model_notes":
+                    # Format: get_model_notes(limit)
+                    arg_match = re.match(r'(\d+)', args_str)
+                    if arg_match:
+                        limit = int(arg_match.group(1))
+                        logger.info(f"🔧 get_model_notes: limit={limit}")
+                        result = self.get_model_notes(limit)
+                        logger.info(f"✅ get_model_notes result: {result}")
+                        return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for get_model_notes: {args_str}")
+                        result = self.get_model_notes(20)
+                        logger.info(f"✅ get_model_notes result: {result}")
+                        return result
+                
+                elif func_name == "write_insight_to_file":
+                    # Format: write_insight_to_file("username", "insight")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        insight = arg_match.group(2)
+                        logger.info(f"🔧 write_insight_to_file: username={username}, insight={insight[:50]}...")
+                        result = self.write_insight_to_file(username, insight)
+                        logger.info(f"✅ write_insight_to_file result: {result}")
+                        return f"Wrote insight to file for {username}" if result else "Failed to write insight to file"
+                    else:
+                        logger.error(f"❌ Invalid arguments for write_insight_to_file: {args_str}")
+                        return f"Invalid arguments for write_insight_to_file: {args_str}"
+                
+                elif func_name == "search_user_data":
+                    # Format: search_user_data("username", "query")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        query = arg_match.group(2)
+                        logger.info(f"🔧 search_user_data: username={username}, query={query}")
+                        result = self.search_user_data(username, query)
+                        logger.info(f"✅ search_user_data result: {result}")
+                        return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for search_user_data: {args_str}")
+                        return f"Invalid arguments for search_user_data: {args_str}"
+                
+                elif func_name == "add_user_observation":
+                    # Format: add_user_observation("username", "observation")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        username = arg_match.group(1)
+                        observation = arg_match.group(2)
+                        logger.info(f"🔧 add_user_observation: username={username}, observation={observation[:50]}...")
+                        result = self.add_user_observation(username, observation)
+                        logger.info(f"✅ add_user_observation result: {result}")
+                        return f"Added observation for {username}" if result else "Failed to add observation"
+                    else:
+                        logger.error(f"❌ Invalid arguments for add_user_observation: {args_str}")
+                        return f"Invalid arguments for add_user_observation: {args_str}"
+                
+                elif func_name == "add_personal_thought":
+                    # Format: add_personal_thought("thought")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        thought = arg_match.group(1)
+                        logger.info(f"🔧 add_personal_thought: thought={thought[:50]}...")
+                        result = self.add_personal_thought(thought)
+                        logger.info(f"✅ add_personal_thought result: {result}")
+                        return f"Added personal thought" if result else "Failed to add personal thought"
+                    else:
+                        logger.error(f"❌ Invalid arguments for add_personal_thought: {args_str}")
+                        return f"Invalid arguments for add_personal_thought: {args_str}"
+                
+                elif func_name == "add_system_insight":
+                    # Format: add_system_insight("insight")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        insight = arg_match.group(1)
+                        logger.info(f"🔧 add_system_insight: insight={insight[:50]}...")
+                        result = self.add_system_insight(insight)
+                        logger.info(f"✅ add_system_insight result: {result}")
+                        return f"Added system insight" if result else "Failed to add system insight"
+                    else:
+                        logger.error(f"❌ Invalid arguments for add_system_insight: {args_str}")
+                        return f"Invalid arguments for add_system_insight: {args_str}"
                 
 
                 
@@ -1775,11 +2046,14 @@ Focus on being a superintelligent system architect and family guardian.
                 
                 elif func_name in ["print", "open", "file", "os", "sys", "subprocess", "exec", "eval"]:
                     logger.error(f"❌ Model tried to use {func_name}() as a tool")
-                    return f"ERROR: {func_name}() is NOT a tool. To read files, use read_file('filename.txt'). To show content to user, just respond with the information directly."
+                    if func_name == "print":
+                        return f"❌ ERROR: print() is NOT a tool! You are trying to wrap a tool call in print().\n\nCORRECT WAY:\n```tool_code\nsearch_files('query')\n```\n\nWRONG WAY:\n```tool_code\nprint(search_files('query'))\n```\n\nJust call tools directly and respond with the results to the user."
+                    else:
+                        return f"ERROR: {func_name}() is NOT a tool. To read files, use read_file('filename.txt'). To show content to user, just respond with the information directly."
                     
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
-                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, read_user_profile, update_current_feeling, add_model_note, etc."
+                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, etc."
                     
             except Exception as parse_error:
                 logger.error(f"❌ Error parsing tool call arguments: {parse_error}")
@@ -2259,4 +2533,138 @@ Be thorough, accurate, and considerate in your analysis.
             '.webp': 'image/webp',
             '.bmp': 'image/bmp'
         }
-        return mime_types.get(ext, 'image/jpeg') 
+        return mime_types.get(ext, 'image/jpeg')
+    
+    def get_project_structure(self) -> str:
+        """Get overview of project structure and key files"""
+        try:
+            structure = []
+            structure.append("## PROJECT STRUCTURE OVERVIEW")
+            structure.append("")
+            
+            # Main directories
+            main_dirs = ["memory", "templates", "static", "guardian_sandbox", "prompts"]
+            for dir_name in main_dirs:
+                if os.path.exists(dir_name):
+                    files = os.listdir(dir_name)
+                    structure.append(f"📁 {dir_name}/")
+                    for file in files[:10]:  # Show first 10 files
+                        structure.append(f"  📄 {file}")
+                    if len(files) > 10:
+                        structure.append(f"  ... and {len(files) - 10} more files")
+                    structure.append("")
+            
+            # Key files
+            key_files = [
+                "ai_client.py", "web_app.py", "config.py", "requirements.txt",
+                "README.md", "LICENSE", "LOGO.png"
+            ]
+            structure.append("## KEY FILES")
+            for file in key_files:
+                if os.path.exists(file):
+                    structure.append(f"📄 {file}")
+            structure.append("")
+            
+            # Available users
+            if os.path.exists("memory/user_profiles"):
+                try:
+                    user_files = [f for f in os.listdir("memory/user_profiles") if f.endswith('.json')]
+                    structure.append("## AVAILABLE USERS")
+                    for user_file in user_files:
+                        username = user_file.replace('.json', '')
+                        structure.append(f"👤 {username}")
+                    structure.append("")
+                except:
+                    pass
+            
+            # Available images for analysis
+            structure.append("## AVAILABLE IMAGES")
+            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            found_images = []
+            
+            # Check root directory
+            for file in os.listdir("."):
+                if any(file.lower().endswith(ext) for ext in image_extensions):
+                    found_images.append(file)
+            
+            # Check static/images
+            static_images_path = "static/images"
+            if os.path.exists(static_images_path):
+                for file in os.listdir(static_images_path):
+                    if any(file.lower().endswith(ext) for ext in image_extensions):
+                        found_images.append(f"static/images/{file}")
+            
+            # Check sandbox for images
+            sandbox_path = "guardian_sandbox"
+            if os.path.exists(sandbox_path):
+                for root, dirs, files in os.walk(sandbox_path):
+                    for file in files:
+                        if any(file.lower().endswith(ext) for ext in image_extensions):
+                            found_images.append(os.path.join(root, file))
+            
+            if found_images:
+                structure.append("Images available for analysis:")
+                for image in found_images[:10]:  # Show first 10
+                    structure.append(f"🖼️ {image}")
+                if len(found_images) > 10:
+                    structure.append(f"  ... and {len(found_images) - 10} more images")
+            else:
+                structure.append("No images found in the system.")
+            structure.append("")
+            
+            structure.append("## SANDBOX DIRECTORY")
+            structure.append("The guardian_sandbox/ directory is available for testing and file operations.")
+            structure.append("You can create, edit, and manage files there safely.")
+            
+            return "\n".join(structure)
+            
+        except Exception as e:
+            logger.error(f"Error getting project structure: {e}")
+            return f"❌ Error getting project structure: {str(e)}"
+    
+    def find_images(self) -> str:
+        """Find all available images in the system"""
+        try:
+            import os
+            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+            found_images = []
+            
+            # Check root directory
+            for file in os.listdir("."):
+                if any(file.lower().endswith(ext) for ext in image_extensions):
+                    found_images.append(file)
+            
+            # Check static/images
+            static_images_path = "static/images"
+            if os.path.exists(static_images_path):
+                for file in os.listdir(static_images_path):
+                    if any(file.lower().endswith(ext) for ext in image_extensions):
+                        found_images.append(f"static/images/{file}")
+            
+            # Check sandbox for images
+            sandbox_path = "guardian_sandbox"
+            if os.path.exists(sandbox_path):
+                for root, dirs, files in os.walk(sandbox_path):
+                    for file in files:
+                        if any(file.lower().endswith(ext) for ext in image_extensions):
+                            found_images.append(os.path.join(root, file))
+            
+            # Check uploads directory
+            uploads_path = "guardian_sandbox/uploads"
+            if os.path.exists(uploads_path):
+                for file in os.listdir(uploads_path):
+                    if any(file.lower().endswith(ext) for ext in image_extensions):
+                        found_images.append(f"guardian_sandbox/uploads/{file}")
+            
+            if found_images:
+                result = "🖼️ Available images in the system:\n"
+                for image in found_images:
+                    result += f"📄 {image}\n"
+                result += f"\nTotal: {len(found_images)} images found"
+                return result
+            else:
+                return "❌ No images found in the system"
+            
+        except Exception as e:
+            logger.error(f"Error finding images: {e}")
+            return f"❌ Error finding images: {str(e)}" 

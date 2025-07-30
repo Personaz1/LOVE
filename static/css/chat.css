@@ -87,7 +87,7 @@ body {
     color: #666;
 }
 
-.profile-btn, .diary-btn, .logout-btn, .guardian-btn, .model-status-btn {
+.profile-btn, .diary-btn, .logout-btn, .guardian-btn, .model-status-btn, .roadmap-btn {
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -104,7 +104,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.profile-btn:hover, .diary-btn:hover, .logout-btn:hover, .guardian-btn:hover, .model-status-btn:hover {
+.profile-btn:hover, .diary-btn:hover, .logout-btn:hover, .guardian-btn:hover, .model-status-btn:hover, .roadmap-btn:hover {
     background: rgba(255, 255, 255, 1);
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);

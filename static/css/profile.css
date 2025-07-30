@@ -333,6 +333,23 @@ body {
     box-shadow: 0 4px 12px rgba(255, 20, 147, 0.3);
 }
 
+.guardian-link, .roadmap-link {
+    background: #ff1493;
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+}
+
+.guardian-link:hover, .roadmap-link:hover {
+    background: #e01185;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 20, 147, 0.3);
+}
+
 /* Modals */
 .modal {
     display: none;

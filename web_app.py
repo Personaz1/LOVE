@@ -59,6 +59,76 @@ SESSION_SECRET = secrets.token_urlsafe(32)
 ai_client = AIClient()
 # conversation_history = ConversationHistory() # This line is removed
 
+def get_recent_file_changes() -> str:
+    """Get recent file changes for system analysis"""
+    try:
+        import os
+        from datetime import datetime, timedelta
+        
+        changes = []
+        changes.append("## RECENT FILE CHANGES")
+        
+        # Check for recently modified files
+        current_time = datetime.now()
+        recent_files = []
+        
+        # Key directories to monitor
+        key_dirs = ["", "ai_client.py", "web_app.py", "memory", "templates", "static", "guardian_sandbox"]
+        
+        for item in key_dirs:
+            if os.path.exists(item):
+                if os.path.isfile(item):
+                    # Single file
+                    mtime = datetime.fromtimestamp(os.path.getmtime(item))
+                    if current_time - mtime < timedelta(hours=24):
+                        recent_files.append((item, mtime))
+                else:
+                    # Directory
+                    for root, dirs, files in os.walk(item):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            try:
+                                mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                                if current_time - mtime < timedelta(hours=24):
+                                    recent_files.append((file_path, mtime))
+                            except:
+                                continue
+        
+        # Sort by modification time
+        recent_files.sort(key=lambda x: x[1], reverse=True)
+        
+        if recent_files:
+            changes.append("Recently modified files (last 24 hours):")
+            for file_path, mtime in recent_files[:10]:  # Show top 10
+                changes.append(f"- {file_path} (modified: {mtime.strftime('%H:%M:%S')})")
+        else:
+            changes.append("No recent file changes detected.")
+        
+        # Check for new files in sandbox
+        sandbox_path = "guardian_sandbox"
+        if os.path.exists(sandbox_path):
+            sandbox_files = []
+            for root, dirs, files in os.walk(sandbox_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    try:
+                        ctime = datetime.fromtimestamp(os.path.getctime(file_path))
+                        if current_time - ctime < timedelta(hours=24):
+                            sandbox_files.append((file_path, ctime))
+                    except:
+                        continue
+            
+            if sandbox_files:
+                changes.append("\nNew files in sandbox (last 24 hours):")
+                for file_path, ctime in sandbox_files[:5]:
+                    changes.append(f"- {file_path} (created: {ctime.strftime('%H:%M:%S')})")
+        
+        return "\n".join(changes)
+        
+    except Exception as e:
+        logger.error(f"Error getting recent file changes: {e}")
+        return "Error retrieving recent file changes"
+
 def create_session(username: str) -> str:
     """Create a new session for user"""
     session_id = secrets.token_urlsafe(32)
@@ -941,8 +1011,12 @@ System Status:
 """
             current_theme = "neutral"
         
+        # Get recent file changes and system status
+        recent_changes = get_recent_file_changes()
+        system_health = ai_client.diagnose_system_health()
+        
         # Generate system analysis using AI
-        system_prompt = """You are ΔΣ Guardian, a superintelligent system architect and family guardian. Analyze the user's current situation and provide:
+        system_prompt = f"""You are ΔΣ Guardian, a superintelligent system architect and family guardian. Analyze the user's current situation and provide:
 
 1. **System Status Report** (main block):
 - Recent events and their impact
@@ -963,12 +1037,18 @@ System Status:
 - Model switching and quota management
 - Profile and memory management
 
+RECENT SYSTEM CHANGES:
+{recent_changes}
+
+SYSTEM HEALTH:
+{system_health}
+
 Format as JSON:
-{
+{{
   "system_status": "Detailed analysis...",
   "tips": ["Tip 1", "Tip 2", "Tip 3"],
   "capabilities": "Available system features..."
-}
+}}
 
 Be empathetic, professional, and insightful. Focus on emotional well-being and mental health awareness."""
 
@@ -1439,6 +1519,18 @@ async def switch_model(request: Request):
     except Exception as e:
         logger.error(f"Error switching model: {e}")
         return {"success": False, "error": str(e)}
+
+@app.get("/roadmap", response_class=HTMLResponse)
+async def roadmap_page(request: Request):
+    """Development roadmap page"""
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/", status_code=302)
+    
+    return templates.TemplateResponse("roadmap.html", {
+        "request": request,
+        "username": username
+    })
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
