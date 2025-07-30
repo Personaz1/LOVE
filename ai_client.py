@@ -635,6 +635,8 @@ INSTRUCTIONS:
 17. To show information to user, just respond with the content directly
 18. NEVER wrap tool calls in print() - call them directly like: search_files("query")
 19. After executing tools, respond to user with the results directly
+20. NEVER use print() as a tool - it's not a valid tool
+21. ALWAYS call tools directly: search_files("query") NOT print(search_files("query"))
 
 AVAILABLE TOOLS:
 - read_file(path) - Read file content
@@ -1852,7 +1854,16 @@ Focus on being a superintelligent system architect and family guardian.
                 
                 # System diagnostics and debugging tools
                 elif func_name == "get_system_logs":
-                    arg_match = re.match(r'(\d+)', args_str)
+                    # Handle different argument formats
+                    if not args_str.strip():
+                        # No arguments - use default
+                        logger.info(f"🔧 get_system_logs: using default 50 lines")
+                        result = self.get_system_logs(50)
+                        logger.info(f"✅ get_system_logs result: {result}")
+                        return f"System logs (last 50 lines):\n{result}"
+                    
+                    # Try to extract number from various formats
+                    arg_match = re.search(r'(\d+)', args_str)
                     if arg_match:
                         lines = int(arg_match.group(1))
                         logger.info(f"🔧 get_system_logs: lines={lines}")
@@ -1882,6 +1893,7 @@ Focus on being a superintelligent system architect and family guardian.
                         logger.warning(f"⚠️ Model called analyze_image() without arguments")
                         return "❌ analyze_image requires a file path. Usage: analyze_image('path/to/image.jpg', 'optional context')"
                     
+                    # Try to extract path and context from various formats
                     arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
                     if arg_match:
                         image_path = arg_match.group(1)
@@ -1891,8 +1903,17 @@ Focus on being a superintelligent system architect and family guardian.
                         logger.info(f"✅ analyze_image result: {result}")
                         return result
                     else:
-                        logger.error(f"❌ Invalid arguments for analyze_image: {args_str}")
-                        return f"Invalid arguments for analyze_image: {args_str}. Usage: analyze_image('path/to/image.jpg', 'optional context')"
+                        # Try to extract just the path if no quotes
+                        path_match = re.search(r'([^\s,]+)', args_str)
+                        if path_match:
+                            image_path = path_match.group(1)
+                            logger.info(f"🔧 analyze_image: image_path={image_path} (no quotes)")
+                            result = self.analyze_image(image_path, "")
+                            logger.info(f"✅ analyze_image result: {result}")
+                            return result
+                        else:
+                            logger.error(f"❌ Invalid arguments for analyze_image: {args_str}")
+                            return f"Invalid arguments for analyze_image: {args_str}. Usage: analyze_image('path/to/image.jpg', 'optional context')"
                 
                 elif func_name == "get_project_structure":
                     # Format: get_project_structure()
@@ -2047,7 +2068,7 @@ Focus on being a superintelligent system architect and family guardian.
                 elif func_name in ["print", "open", "file", "os", "sys", "subprocess", "exec", "eval"]:
                     logger.error(f"❌ Model tried to use {func_name}() as a tool")
                     if func_name == "print":
-                        return f"❌ ERROR: print() is NOT a tool! You are trying to wrap a tool call in print().\n\nCORRECT WAY:\n```tool_code\nsearch_files('query')\n```\n\nWRONG WAY:\n```tool_code\nprint(search_files('query'))\n```\n\nJust call tools directly and respond with the results to the user."
+                        return f"❌ ERROR: print() is NOT a tool! You are trying to wrap a tool call in print().\n\nCORRECT WAY:\n```tool_code\nsearch_files('query')\n```\n\nWRONG WAY:\n```tool_code\nprint(search_files('query'))\n```\n\nJust call tools directly and respond with the results to the user.\n\nREMEMBER: NEVER use print() - call tools directly!"
                     else:
                         return f"ERROR: {func_name}() is NOT a tool. To read files, use read_file('filename.txt'). To show content to user, just respond with the information directly."
                     
