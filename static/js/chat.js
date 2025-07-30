@@ -17,6 +17,8 @@ let attachedFiles = []; // Track attached files for current message
 // Global variables for user avatars
 let userAvatars = {};
 
+let greetingShown = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     const messageForm = document.getElementById('messageForm');
     const messageInput = document.getElementById('messageInput');
@@ -41,6 +43,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initialize technical steps toggles
         initializeTechnicalSteps();
+        
+        // Start login greeting
+        startLoginGreeting();
     }).catch((error) => {
         console.error('Error during initialization:', error);
         hideLoadingBanner();
@@ -299,6 +304,9 @@ async function handleStreamData(data) {
             break;
             
         case 'chunk':
+            if (!currentStreamingMessage) {
+                currentStreamingMessage = addStreamingMessage();
+            }
             if (currentStreamingMessage && data.content) {
                 // Remove typing indicator when we start receiving content
                 const typingIndicator = document.querySelector('.typing-indicator');
@@ -321,6 +329,22 @@ async function handleStreamData(data) {
             if (currentStreamingMessage) {
                 currentStreamingMessage.textContent = 'Sorry, I encountered an error. Please try again.';
             }
+            break;
+        case 'message_complete':
+            if (currentStreamingMessage) {
+                finalizeStreamingMessage(currentStreamingMessage);
+                currentStreamingMessage = null;
+            }
+            break;
+        case 'greeting':
+            greetingShown = true;
+            addMessage(data.content, 'ai');
+            break;
+        case 'system_status':
+            addMessage(data.content, 'ai');
+            break;
+        case 'greeting_complete':
+            hideLoadingBanner();
             break;
     }
 }
@@ -727,8 +751,7 @@ async function loadConversationHistory() {
             // Display conversation history
             if (data.history && data.history.length > 0) {
                 displayConversationHistory(data.history);
-            } else {
-                // Show welcome message if no history
+            } else if (!greetingShown) {
                 showWelcomeMessage();
             }
             
@@ -1769,5 +1792,37 @@ async function switchModel(modelName) {
             modelItem.style.opacity = '1';
             modelItem.style.pointerEvents = 'auto';
         }
+    }
+} 
+
+async function startLoginGreeting() {
+    try {
+        const response = await fetch('/api/login-greeting', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!response.ok) return;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        await handleStreamData(data);
+                    } catch (e) {
+                        console.log('Error parsing greeting stream:', e);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error in login greeting:', error);
     }
 } 

@@ -252,6 +252,51 @@ async def login(
             "error": "Invalid credentials"
         })
 
+@app.post("/api/login-greeting")
+async def login_greeting(request: Request):
+    """Handle automatic greeting when user logs in"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    async def generate_greeting():
+        try:
+            # Get user profile
+            user_profile = UserProfile(username)
+            user_profile_dict = user_profile.get_profile()
+            user_profile_dict['username'] = username
+            
+            # Generate greeting using AI
+            greeting = ai_client._generate_login_greeting(user_profile_dict)
+            
+            # Send greeting
+            yield f"data: {json.dumps({'type': 'greeting', 'content': greeting})}\n\n"
+            
+            # Add system analysis
+            try:
+                system_analysis = ai_client.diagnose_system_health()
+                if system_analysis and "Error" not in system_analysis:
+                    yield f"data: {json.dumps({'type': 'system_status', 'content': f'System Status: {system_analysis[:200]}...'})}\n\n"
+            except Exception as e:
+                logger.warning(f"System analysis failed: {e}")
+            
+            # Send completion
+            yield f"data: {json.dumps({'type': 'greeting_complete', 'timestamp': datetime.now().isoformat()})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Error in login greeting: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate_greeting(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
+
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_page(request: Request):
     """Serve chat page"""
@@ -316,10 +361,11 @@ async def chat_stream_endpoint(
                     full_context += f"- User: {msg.get('message', '')}\n"
                     full_context += f"- AI: {msg.get('ai_response', '')}\n"
             
-            # Send initial status (optional - can be removed)
-            # yield f"data: {json.dumps({'type': 'status', 'message': 'Starting response generation...'})}\n\n"
+            # Track multiple messages
+            all_messages = []
+            current_message = ""
+            message_count = 0
             
-            full_response = ""
             async for chunk in ai_client.generate_streaming_response(
                 system_prompt=guardian_profile.get_system_prompt(),
                 user_message=message,
@@ -327,14 +373,29 @@ async def chat_stream_endpoint(
                 user_profile=user_profile_dict
             ):
                 if chunk:
-                    full_response += chunk
+                    current_message += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                    
+                    # Check if this chunk completes a message (ends with newline or punctuation)
+                    if chunk.strip().endswith(('.', '!', '?', '\n', '...')) or len(current_message) > 200:
+                        # Send message completion signal
+                        yield f"data: {json.dumps({'type': 'message_complete', 'message_index': message_count})}\n\n"
+                        all_messages.append(current_message)
+                        current_message = ""
+                        message_count += 1
+            
+            # Add final message if there's remaining content
+            if current_message.strip():
+                all_messages.append(current_message)
+            
+            # Combine all messages for conversation history
+            full_response = "\n\n".join(all_messages)
             
             # Add to conversation history
             conversation_history.add_message(username, message, full_response)
             
-            # Send completion signal (optional - can be removed)
-            # yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.now().isoformat()})}\n\n"
+            # Send final completion signal
+            yield f"data: {json.dumps({'type': 'complete', 'total_messages': len(all_messages), 'timestamp': datetime.now().isoformat()})}\n\n"
             
         except Exception as e:
             logger.error(f"Error in streaming chat: {e}")

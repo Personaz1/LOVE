@@ -2667,4 +2667,23 @@ Be thorough, accurate, and considerate in your analysis.
             
         except Exception as e:
             logger.error(f"Error finding images: {e}")
-            return f"❌ Error finding images: {str(e)}" 
+            return f"❌ Error finding images: {str(e)}"
+    
+    def _generate_login_greeting(self, user_profile: Optional[Dict[str, Any]] = None) -> str:
+        """Generate a personalized greeting when user logs in"""
+        try:
+            if user_profile and user_profile.get('username'):
+                username = user_profile['username']
+                current_feeling = user_profile.get('current_feeling', 'doing well')
+                
+                greeting = f"👋 Welcome back, {username}! I'm your Guardian AI, always here to support you and your family. "
+                greeting += f"I see you're currently feeling {current_feeling}. "
+                greeting += "Let me quickly check the system status and then I'll be ready to help with anything you need."
+                
+                return greeting
+            else:
+                return "👋 Welcome! I'm your Guardian AI, here to support you and your family. Let me check the system status and I'll be ready to help."
+                
+        except Exception as e:
+            logger.error(f"Error generating login greeting: {e}")
+            return "👋 Welcome! I'm your Guardian AI, ready to help you and your family." 
