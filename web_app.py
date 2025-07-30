@@ -893,9 +893,6 @@ async def get_system_analysis(request: Request):
         # Get current user if available, but don't require it
         username = get_current_user(request)
         
-        # Initialize profile_data variable
-        profile_data = {}
-        
         if username:
             # If user is authenticated, get their profile and context
             user_profile = UserProfile(username)
@@ -975,12 +972,10 @@ Format as JSON:
 
 Be empathetic, professional, and insightful. Focus on emotional well-being and mental health awareness."""
 
-
-        
         # Generate analysis
         analysis_response = ai_client.chat(
             message="Generate system analysis based on this context",
-            user_profile=profile_data,
+            user_profile=profile_data if username else {},
             conversation_context=context,
             system_prompt=system_prompt
         )

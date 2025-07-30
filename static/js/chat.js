@@ -508,11 +508,6 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
     messagesContainer.appendChild(messageDiv);
     scrollToBottom();
     
-    // Initialize mobile features for new message
-    if (window.innerWidth <= 768 && window.mobileUtils) {
-        window.mobileUtils.addMessageActions(messageDiv);
-    }
-    
     // Initialize technical steps for new message
     const technicalSteps = messageDiv.querySelector('.technical-steps');
     if (technicalSteps) {

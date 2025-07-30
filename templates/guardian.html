@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ΔΣ Guardian - Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/css/guardian.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/mobile.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -121,30 +120,6 @@
             </section>
         </div>
     </main>
-    
-    <!-- Mobile Navigation -->
-    <nav class="mobile-nav">
-        <a href="/chat" class="mobile-nav-item">
-            <span class="mobile-nav-icon">💬</span>
-            <span>Chat</span>
-        </a>
-        <a href="/profile" class="mobile-nav-item">
-            <span class="mobile-nav-icon">👤</span>
-            <span>Profile</span>
-        </a>
-        <a href="/guardian" class="mobile-nav-item active">
-            <span class="mobile-nav-icon">👼</span>
-            <span>Guardian</span>
-        </a>
-        <button class="mobile-nav-item" onclick="loadConversationArchive()">
-            <span class="mobile-nav-icon">📚</span>
-            <span>Archive</span>
-        </button>
-        <button class="mobile-nav-item" onclick="showModelStatus()">
-            <span class="mobile-nav-icon">🤖</span>
-            <span>Models</span>
-        </button>
-    </nav>
 
     <!-- Success Modal -->
     <div id="success-modal" class="modal">
@@ -177,7 +152,6 @@
     </div>
 
     <script src="{{ url_for('static', path='/js/guardian.js') }}"></script>
-    <script src="{{ url_for('static', path='/js/mobile.js') }}"></script>
     <script>
 document.getElementById('resetPromptBtn').onclick = async function() {
     const resp = await fetch('/api/guardian/prompt/reset', {method: 'POST'});

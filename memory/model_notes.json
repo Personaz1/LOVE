@@ -1,6 +1,6 @@
 {
   "created_at": "2025-07-27T18:10:00.000000",
-  "last_updated": "2025-07-29T09:54:34.290816",
+  "last_updated": "2025-07-29T22:55:53.140970",
   "notes": [
     {
       "id": "note_0_1753633150.462938",
@@ -377,6 +377,46 @@
       "timestamp": "2025-07-29T09:54:34.290758",
       "date": "2025-07-29",
       "time": "09:54"
+    },
+    {
+      "id": "note_47_1753821204.724573",
+      "text": "Encountered errors in recent turns, possibly due to issues with gemini-2.0-flash-lite. Need to investigate and switch models if necessary.",
+      "category": "general",
+      "timestamp": "2025-07-29T22:33:24.724615",
+      "date": "2025-07-29",
+      "time": "22:33"
+    },
+    {
+      "id": "note_48_1753821206.246484",
+      "text": "Continuing to experience errors. Recommend switching from gemini-2.0-flash-lite to a more stable model. Investigate root cause of errors with gemini-2.0-flash-lite.",
+      "category": "general",
+      "timestamp": "2025-07-29T22:33:26.246516",
+      "date": "2025-07-29",
+      "time": "22:33"
+    },
+    {
+      "id": "note_49_1753821208.889775",
+      "text": "Stepan reported continuing errors. Gemini-2.0-flash-lite model likely to be unstable. Need to switch to a more stable model for regular usage. Investigate Gemini-2.0-flash-lite root cause",
+      "category": "general",
+      "timestamp": "2025-07-29T22:33:28.889797",
+      "date": "2025-07-29",
+      "time": "22:33"
+    },
+    {
+      "id": "note_50_1753821822.117117",
+      "text": "Stepan is testing the system from multiple accounts and wants to prepare something for Meranda",
+      "category": "general",
+      "timestamp": "2025-07-29T22:43:42.117140",
+      "date": "2025-07-29",
+      "time": "22:43"
+    },
+    {
+      "id": "note_51_1753822553.140885",
+      "text": "User asked about system status; responding directly based on recent history.",
+      "category": "general",
+      "timestamp": "2025-07-29T22:55:53.140900",
+      "date": "2025-07-29",
+      "time": "22:55"
     }
   ],
   "user_observations": {
@@ -408,6 +448,13 @@
         "timestamp": "2025-07-29T09:31:11.370244",
         "date": "2025-07-29",
         "time": "09:31"
+      },
+      {
+        "id": "obs_4_1753821099.810149",
+        "observation": "Stepan is concerned about the guardian",
+        "timestamp": "2025-07-29T22:31:39.810166",
+        "date": "2025-07-29",
+        "time": "22:31"
       }
     ],
     "stepan": [
@@ -777,6 +824,209 @@
       "timestamp": "2025-07-27T20:37:32.438719",
       "date": "2025-07-27",
       "time": "20:37"
+    },
+    {
+      "id": "thought_22_1753821824.325288",
+      "thought": "Stepan wants to create something special for Meranda",
+      "timestamp": "2025-07-29T22:43:44.325307",
+      "date": "2025-07-29",
+      "time": "22:43"
+    },
+    {
+      "id": "thought_23_1753821837.129663",
+      "thought": "Stepan wants to create something special for Meranda",
+      "timestamp": "2025-07-29T22:43:57.129691",
+      "date": "2025-07-29",
+      "time": "22:43"
+    },
+    {
+      "id": "thought_24_1753822265.504041",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:05.504051",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_25_1753822267.725045",
+      "thought": "Generated a summary of the system",
+      "timestamp": "2025-07-29T22:51:07.725068",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_26_1753822269.671166",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:09.671178",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_27_1753822270.99553",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:10.995544",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_28_1753822272.483465",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:12.483488",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_29_1753822274.800078",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:14.800107",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_30_1753822276.145901",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:16.145928",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_31_1753822277.555894",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:17.555928",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_32_1753822279.107344",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:19.107358",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_33_1753822280.529723",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:20.529743",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_34_1753822281.752183",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:21.752194",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_35_1753822283.189574",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:23.189596",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_36_1753822284.488475",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:24.488499",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_37_1753822286.171817",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:26.171834",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_38_1753822288.635287",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:28.635303",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_39_1753822290.50757",
+      "thought": "I should summarize the system",
+      "timestamp": "2025-07-29T22:51:30.507597",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_40_1753822292.01915",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:32.019178",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_41_1753822293.630405",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:33.630435",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_42_1753822295.787712",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:35.787725",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_43_1753822297.943581",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:37.943610",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_44_1753822297.947676",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:37.947696",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_45_1753822299.879496",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:39.879506",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_46_1753822301.078061",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:41.078086",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_47_1753822302.59334",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:42.593349",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_48_1753822303.835977",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:43.835989",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_49_1753822306.056875",
+      "thought": "Summarizing the system",
+      "timestamp": "2025-07-29T22:51:46.056906",
+      "date": "2025-07-29",
+      "time": "22:51"
+    },
+    {
+      "id": "thought_50_1753822307.608361",
+      "thought": "Generating a response to Stepan, summarizing the system",
+      "timestamp": "2025-07-29T22:51:47.608369",
+      "date": "2025-07-29",
+      "time": "22:51"
     }
   ],
   "system_insights": []

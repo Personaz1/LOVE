@@ -180,6 +180,8 @@ class AIClient:
         try:
             # Multi-step execution loop
             max_steps = 666  # Maximum number of thinking-execution cycles
+            # RECOMMENDED: Use 10-20 steps maximum for most tasks
+            # Only use more steps if absolutely necessary for complex system analysis
             all_tool_results = []
             current_context = context or ""
             
@@ -258,10 +260,34 @@ class AIClient:
                     logger.info(f"🎯 No more tools needed after {step + 1} steps")
                     break
                 
-                # If no tools were called, assume Guardian is ready to respond
-                if not tool_calls:
-                    logger.info(f"🎯 No more tools needed after {step + 1} steps")
-                    break
+                # Check for infinite loop - if we're calling the same tools repeatedly
+                if step > 3:  # After 3 steps, check for loops (reduced from 5)
+                    recent_tool_calls = []
+                    for prev_step in range(max(0, step - 2), step):  # Check last 2 steps
+                        if prev_step < len(all_tool_results):
+                            recent_tool_calls.append(all_tool_results[prev_step])
+                    
+                    # If we're calling the same tools repeatedly, break the loop
+                    if len(recent_tool_calls) >= 2:  # Reduced threshold
+                        unique_tools = set()
+                        for tool_result in recent_tool_calls:
+                            if "add_personal_thought" in tool_result:
+                                unique_tools.add("add_personal_thought")
+                            elif "add_model_note" in tool_result:
+                                unique_tools.add("add_model_note")
+                            elif "add_relationship_insight" in tool_result:
+                                unique_tools.add("add_relationship_insight")
+                        
+                        if len(unique_tools) <= 1:  # Only calling one type of tool repeatedly
+                            logger.warning(f"⚠️ Detected potential infinite loop after {step + 1} steps. Breaking cycle.")
+                            break
+                        
+                        # Additional check: if the same tool call is repeated exactly
+                        if len(recent_tool_calls) >= 2:
+                            # Check if the last two tool calls are identical
+                            if len(recent_tool_calls) >= 2 and recent_tool_calls[-1] == recent_tool_calls[-2]:
+                                logger.warning(f"⚠️ Detected identical tool calls repeated. Breaking cycle.")
+                                break
             
             # Generate final response with all tool results
             final_prompt = self._build_final_prompt(
@@ -1321,7 +1347,11 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"File content for {path}: {result[:200]}..." if len(result) > 200 else result
                     else:
                         logger.error(f"❌ Invalid arguments for read_file: {args_str}")
-                        return ("Ошибка: read_file требует путь к файлу. Пример: read_file(\"memory/guardian_profile.json\"). "
+                        return ("❌ Ошибка: read_file требует конкретный путь к файлу. "
+                                "Примеры правильного использования:\n"
+                                "- read_file(\"config.py\")\n"
+                                "- read_file(\"memory/guardian_profile.json\")\n"
+                                "- read_file(\"web_app.py\")\n\n"
                                 "Для поиска файлов используй list_files(\"директория\") или уточни путь у пользователя.")
                 
                 elif func_name == "write_file":
@@ -1645,10 +1675,14 @@ Focus on being a superintelligent system architect and family guardian.
                 elif func_name in ["elements", "effort", "earlier", "stabilization", "stable", "state"]:
                     logger.warning(f"⚠️ Model attempted to call non-existent tool: {func_name}")
                     return f"Tool '{func_name}' does not exist. Available tools: update_current_feeling, read_user_profile, add_model_note, etc."
+                
+                elif func_name in ["print", "open", "file", "os", "sys", "subprocess", "exec", "eval"]:
+                    logger.error(f"❌ Model tried to use {func_name}() as a tool")
+                    return f"ERROR: {func_name}() is NOT a tool - it's a Python function that doesn't work here. Use the available tools: read_file('path') to read files, write_file('path', 'content') to write files, etc."
                     
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
-                    return f"Unknown tool: {func_name}"
+                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, read_user_profile, update_current_feeling, add_model_note, etc."
                     
             except Exception as parse_error:
                 logger.error(f"❌ Error parsing tool call arguments: {parse_error}")
