@@ -6,8 +6,10 @@ from typing import Optional, Dict, Any, AsyncGenerator, List
 from datetime import datetime
 import json
 from dotenv import load_dotenv
+import base64
 
 import google.generativeai as genai
+from google.cloud import vision
 
 # Load environment variables
 load_dotenv()
@@ -27,32 +29,35 @@ class AIClient:
         
         genai.configure(api_key=api_key)
         
-        # Define available models with their quotas
+        # Initialize Google Cloud Vision client
+        self.vision_client = None
+        try:
+            # For Google Cloud Vision API, we need to use the API key directly
+            vision_api_key = os.getenv('GOOGLE_CLOUD_VISION_API_KEY', 'AIzaSyCxdKfHptmqDDdLHSx8C2xOhjg9RLjCm_w')
+            if vision_api_key:
+                # Create a custom client with API key
+                from google.cloud import vision_v1
+                from google.cloud.vision_v1 import ImageAnnotatorClient
+                
+                # Set up credentials with API key
+                import google.auth.credentials
+                from google.auth.transport.requests import Request
+                
+                # For now, we'll use a simpler approach with REST API
+                self.vision_api_key = vision_api_key
+                logger.info("✅ Google Cloud Vision API key configured")
+            else:
+                logger.warning("⚠️ No Google Cloud Vision API key provided")
+        except Exception as e:
+            logger.warning(f"⚠️ Google Cloud Vision API not available: {e}")
+        
+        # Define available models with their quotas - MOST POWERFUL FIRST
         self.models = [
-            {
-                'name': 'gemini-2.0-flash-lite',
-                'quota': 1000,
-                'model': None  # Will be initialized on first use
-            },
-            {
-                'name': 'gemini-2.0-flash', 
-                'quota': 200,
-                'model': None
-            },
-            {
-                'name': 'gemini-2.5-flash-lite',
-                'quota': 1000,
-                'model': None
-            },
-            {
-                'name': 'gemini-2.5-flash',
-                'quota': 250,
-                'model': None
-            },
             {
                 'name': 'gemini-2.5-pro',
                 'quota': 100,
-                'model': None
+                'model': None,
+                'vision': True  # Pro models have vision capabilities
             },
             {
                 'name': 'gemini-1.5-pro',
@@ -61,10 +66,34 @@ class AIClient:
                 'vision': True  # This model has vision capabilities
             },
             {
+                'name': 'gemini-2.5-flash',
+                'quota': 250,
+                'model': None,
+                'vision': True  # Flash models have vision capabilities
+            },
+            {
                 'name': 'gemini-1.5-flash',
                 'quota': 500,
                 'model': None,
                 'vision': True  # This model has vision capabilities
+            },
+            {
+                'name': 'gemini-2.0-flash', 
+                'quota': 200,
+                'model': None,
+                'vision': True  # Flash models have vision capabilities
+            },
+            {
+                'name': 'gemini-2.0-flash-lite',
+                'quota': 1000,
+                'model': None,
+                'vision': False  # Lite models may not have vision
+            },
+            {
+                'name': 'gemini-2.5-flash-lite',
+                'quota': 1000,
+                'model': None,
+                'vision': False  # Lite models may not have vision
             }
         ]
         
@@ -134,10 +163,12 @@ class AIClient:
             'model_index': self.current_model_index,
             'total_models': len(self.models),
             'model_errors': len(self.model_errors),
+            'vision_client_available': hasattr(self, 'vision_api_key'),
             'available_models': [
                 {
                     'name': model['name'],
                     'quota': model['quota'],
+                    'vision': model.get('vision', False),
                     'has_error': model['name'] in self.model_errors
                 }
                 for model in self.models
@@ -147,6 +178,135 @@ class AIClient:
     def _get_profile_manager(self, username: str) -> UserProfile:
         """Get or create profile manager for specific user"""
         return UserProfile(username)
+
+    def _extract_text_from_response(self, response) -> str:
+        """Extract text from Gemini response - handles new API format"""
+        try:
+            # Try the new format first
+            if hasattr(response, 'parts') and response.parts:
+                text_parts = []
+                for part in response.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                if text_parts:
+                    return "".join(text_parts)
+            
+            # Try candidates format
+            if hasattr(response, 'candidates') and response.candidates:
+                for candidate in response.candidates:
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        text_parts = []
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                text_parts.append(part.text)
+                        if text_parts:
+                            return "".join(text_parts)
+            
+            # Fallback to old format
+            if hasattr(response, 'text') and response.text:
+                return response.text
+            
+            # Last resort - convert to string
+            return str(response)
+            
+        except Exception as e:
+            logger.error(f"Error extracting text from response: {e}")
+            return str(response)
+
+    def _analyze_image_with_vision_api(self, image_path: str) -> str:
+        """Analyze image using Google Cloud Vision API via REST"""
+        if not hasattr(self, 'vision_api_key'):
+            return "❌ Google Cloud Vision API not available"
+        
+        try:
+            import requests
+            import base64
+            
+            # Read image file
+            with open(image_path, 'rb') as image_file:
+                content = image_file.read()
+            
+            # Encode image to base64
+            image_base64 = base64.b64encode(content).decode('utf-8')
+            
+            # Prepare request
+            url = f"https://vision.googleapis.com/v1/images:annotate?key={self.vision_api_key}"
+            
+            # Request body for multiple analyses
+            request_body = {
+                "requests": [
+                    {
+                        "image": {
+                            "content": image_base64
+                        },
+                        "features": [
+                            {
+                                "type": "LABEL_DETECTION",
+                                "maxResults": 10
+                            },
+                            {
+                                "type": "TEXT_DETECTION"
+                            },
+                            {
+                                "type": "FACE_DETECTION"
+                            },
+                            {
+                                "type": "SAFE_SEARCH_DETECTION"
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            # Make request
+            response = requests.post(url, json=request_body)
+            
+            if response.status_code != 200:
+                logger.error(f"Vision API request failed: {response.status_code} - {response.text}")
+                return f"❌ Vision API request failed: {response.status_code}"
+            
+            result = response.json()
+            analyses = []
+            
+            # Process label detection
+            if 'responses' in result and result['responses']:
+                response_data = result['responses'][0]
+                
+                # Labels
+                if 'labelAnnotations' in response_data:
+                    labels = [f"{label['description']} ({label['score']:.2f})" 
+                             for label in response_data['labelAnnotations']]
+                    if labels:
+                        analyses.append(f"**Objects detected:** {', '.join(labels)}")
+                
+                # Text
+                if 'textAnnotations' in response_data and response_data['textAnnotations']:
+                    text = response_data['textAnnotations'][0]['description']
+                    if text.strip():
+                        analyses.append(f"**Text found:** {text}")
+                
+                # Faces
+                if 'faceAnnotations' in response_data:
+                    face_count = len(response_data['faceAnnotations'])
+                    if face_count > 0:
+                        analyses.append(f"**Faces detected:** {face_count}")
+                
+                # Safe search
+                if 'safeSearchAnnotation' in response_data:
+                    safe_search = response_data['safeSearchAnnotation']
+                    if any([safe_search.get('adult') == 'LIKELY' or safe_search.get('adult') == 'VERY_LIKELY',
+                           safe_search.get('violence') == 'LIKELY' or safe_search.get('violence') == 'VERY_LIKELY',
+                           safe_search.get('racy') == 'LIKELY' or safe_search.get('racy') == 'VERY_LIKELY']):
+                        analyses.append("**Content warning:** Image may contain sensitive content")
+            
+            if analyses:
+                return "\n\n".join(analyses)
+            else:
+                return "No specific features detected in the image"
+                
+        except Exception as e:
+            logger.error(f"Vision API analysis failed: {e}")
+            return f"❌ Vision API analysis failed: {str(e)}"
 
     async def generate_streaming_response(
         self, 
@@ -180,8 +340,6 @@ class AIClient:
         try:
             # Multi-step execution loop
             max_steps = 666  # Maximum number of thinking-execution cycles
-            # RECOMMENDED: Use 10-20 steps maximum for most tasks
-            # Only use more steps if absolutely necessary for complex system analysis
             all_tool_results = []
             current_context = context or ""
             
@@ -196,25 +354,7 @@ class AIClient:
                 # Get thinking response that may contain tool calls
                 try:
                     initial_response = self._get_current_model().generate_content(thinking_prompt)
-                    
-                    # Handle different response formats
-                    if hasattr(initial_response, 'text') and initial_response.text:
-                        initial_text = initial_response.text
-                    elif hasattr(initial_response, 'parts') and initial_response.parts:
-                        initial_text = ""
-                        for part in initial_response.parts:
-                            if hasattr(part, 'text') and part.text:
-                                initial_text += part.text
-                    elif hasattr(initial_response, 'candidates') and initial_response.candidates:
-                        initial_text = ""
-                        for candidate in initial_response.candidates:
-                            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
-                                for part in candidate.content.parts:
-                                    if hasattr(part, 'text') and part.text:
-                                        initial_text += part.text
-                    else:
-                        initial_text = str(initial_response)
-                        
+                    initial_text = self._extract_text_from_response(initial_response)
                 except Exception as e:
                     error_msg = str(e)
                     if self._handle_quota_error(error_msg):
@@ -260,34 +400,10 @@ class AIClient:
                     logger.info(f"🎯 No more tools needed after {step + 1} steps")
                     break
                 
-                # Check for infinite loop - if we're calling the same tools repeatedly
-                if step > 3:  # After 3 steps, check for loops (reduced from 5)
-                    recent_tool_calls = []
-                    for prev_step in range(max(0, step - 2), step):  # Check last 2 steps
-                        if prev_step < len(all_tool_results):
-                            recent_tool_calls.append(all_tool_results[prev_step])
-                    
-                    # If we're calling the same tools repeatedly, break the loop
-                    if len(recent_tool_calls) >= 2:  # Reduced threshold
-                        unique_tools = set()
-                        for tool_result in recent_tool_calls:
-                            if "add_personal_thought" in tool_result:
-                                unique_tools.add("add_personal_thought")
-                            elif "add_model_note" in tool_result:
-                                unique_tools.add("add_model_note")
-                            elif "add_relationship_insight" in tool_result:
-                                unique_tools.add("add_relationship_insight")
-                        
-                        if len(unique_tools) <= 1:  # Only calling one type of tool repeatedly
-                            logger.warning(f"⚠️ Detected potential infinite loop after {step + 1} steps. Breaking cycle.")
-                            break
-                        
-                        # Additional check: if the same tool call is repeated exactly
-                        if len(recent_tool_calls) >= 2:
-                            # Check if the last two tool calls are identical
-                            if len(recent_tool_calls) >= 2 and recent_tool_calls[-1] == recent_tool_calls[-2]:
-                                logger.warning(f"⚠️ Detected identical tool calls repeated. Breaking cycle.")
-                                break
+                # Simple check to prevent infinite loops
+                if step > 10:  # Maximum 10 steps
+                    logger.warning(f"⚠️ Reached maximum steps ({step + 1}). Stopping.")
+                    break
             
             # Generate final response with all tool results
             final_prompt = self._build_final_prompt(
@@ -320,30 +436,10 @@ class AIClient:
                 chunk_count += 1
                 try:
                     # Handle different response formats
-                    if hasattr(chunk, 'text') and chunk.text:
-                        chunk_text = chunk.text
+                    chunk_text = self._extract_text_from_response(chunk)
+                    if chunk_text and chunk_text != "None":
                         logger.debug(f"📄 Received chunk {chunk_count}: {len(chunk_text)} chars")
                         yield chunk_text
-                    elif hasattr(chunk, 'parts') and chunk.parts:
-                        for part in chunk.parts:
-                            if hasattr(part, 'text') and part.text:
-                                part_text = part.text
-                                logger.debug(f"📄 Received part {chunk_count}: {len(part_text)} chars")
-                                yield part_text
-                    elif hasattr(chunk, 'candidates') and chunk.candidates:
-                        for candidate in chunk.candidates:
-                            if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
-                                for part in candidate.content.parts:
-                                    if hasattr(part, 'text') and part.text:
-                                        part_text = part.text
-                                        logger.debug(f"📄 Received candidate part {chunk_count}: {len(part_text)} chars")
-                                        yield part_text
-                    else:
-                        # Fallback: try to get text from any available attribute
-                        chunk_text = str(chunk)
-                        if chunk_text and chunk_text != "None":
-                            logger.debug(f"📄 Received fallback chunk {chunk_count}: {len(chunk_text)} chars")
-                            yield chunk_text
                 except Exception as chunk_error:
                     logger.warning(f"⚠️ Error processing chunk {chunk_count}: {chunk_error}")
                     continue
@@ -390,7 +486,7 @@ class AIClient:
             # Step 1: Get thinking response
             try:
                 initial_response = self._get_current_model().generate_content(thinking_prompt)
-                initial_text = initial_response.text if hasattr(initial_response, 'text') else str(initial_response)
+                initial_text = self._extract_text_from_response(initial_response)
             except Exception as e:
                 error_msg = str(e)
                 if self._handle_quota_error(error_msg):
@@ -421,7 +517,7 @@ class AIClient:
             
             try:
                 response = self._get_current_model().generate_content(final_prompt)
-                return response.text
+                return self._extract_text_from_response(response)
             except Exception as e:
                 error_msg = str(e)
                 if self._handle_quota_error(error_msg):
@@ -521,6 +617,7 @@ AVAILABLE TOOLS:
 - delete_file(path) - Delete file
 - list_files(directory) - List files in directory
 - search_files(query) - Search for content in files
+- analyze_image(path, user_context) - Analyze image with vision model
 
 
 Think through this step by step and execute any necessary tools."""
@@ -1678,7 +1775,7 @@ Focus on being a superintelligent system architect and family guardian.
                 
                 elif func_name in ["print", "open", "file", "os", "sys", "subprocess", "exec", "eval"]:
                     logger.error(f"❌ Model tried to use {func_name}() as a tool")
-                    return f"ERROR: {func_name}() is NOT a tool - it's a Python function that doesn't work here. Use the available tools: read_file('path') to read files, write_file('path', 'content') to write files, etc."
+                    return f"ERROR: {func_name}() is NOT a tool. To read files, use read_file('filename.txt'). To show content to user, just respond with the information directly."
                     
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
@@ -2082,23 +2179,84 @@ Focus on being a superintelligent system architect and family guardian.
             return f"Error during health check: {e}"
 
     def analyze_image(self, image_path: str, user_context: str = "") -> str:
-        """Analyze an image using dedicated vision analyzer"""
+        """Analyze an image using the best available method"""
         try:
-            from image_analyzer import image_analyzer
+            if not os.path.exists(image_path):
+                return f"❌ Image file not found: {image_path}"
             
-            logger.info(f"🔍 Using dedicated image analyzer for: {image_path}")
-            result = image_analyzer.analyze_image(image_path, user_context)
+            logger.info(f"🔍 Analyzing image: {image_path}")
             
-            if result.startswith("❌"):
-                logger.error(f"Image analysis failed: {result}")
-                return result
-            else:
-                logger.info(f"✅ Image analysis completed successfully")
-                return result
+            # First, try to use current Gemini model if it has vision capabilities
+            current_model_config = self.models[self.current_model_index]
+            if current_model_config.get('vision', False):
+                try:
+                    logger.info(f"🔍 Using Gemini model for vision: {current_model_config['name']}")
+                    
+                    # Read image file
+                    with open(image_path, 'rb') as image_file:
+                        image_data = image_file.read()
+                    
+                    # Create image part for Gemini
+                    image_part = {
+                        "mime_type": self._get_mime_type(image_path),
+                        "data": image_data
+                    }
+                    
+                    # Build prompt
+                    vision_prompt = f"""
+You are an expert image analyzer. Analyze this image and provide:
+
+1. **DETAILED DESCRIPTION** - What you see in the image
+2. **KEY ELEMENTS** - Important objects, people, text, colors, layout
+3. **CONTEXT & MEANING** - What the image conveys or represents
+4. **EMOTIONAL IMPACT** - How the image might make someone feel
+5. **RELATIONSHIP RELEVANCE** - How this might relate to family relationships
+
+USER CONTEXT: {user_context}
+
+Be thorough, accurate, and considerate in your analysis.
+"""
+                    
+                    # Generate analysis
+                    model = self._get_current_model()
+                    response = model.generate_content([vision_prompt, image_part])
+                    result = self._extract_text_from_response(response)
+                    
+                    if result and not result.startswith("❌"):
+                        logger.info(f"✅ Gemini vision analysis completed using {current_model_config['name']}")
+                        return result
+                    else:
+                        logger.warning(f"⚠️ Gemini vision analysis failed, trying Vision API")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Gemini vision analysis failed: {e}, trying Vision API")
+            
+            # Fallback to Google Cloud Vision API
+            if hasattr(self, 'vision_api_key'):
+                logger.info("🔍 Using Google Cloud Vision API as fallback")
+                vision_result = self._analyze_image_with_vision_api(image_path)
                 
-        except ImportError:
-            logger.error("❌ Image analyzer module not available")
-            return "❌ Image analysis module not available"
+                # Add user context to Vision API result
+                if user_context:
+                    vision_result += f"\n\n**User Context:** {user_context}\n\nPlease consider this context when interpreting the image analysis above."
+                
+                return vision_result
+            else:
+                return "❌ No vision capabilities available. Please try a different model or upload a text-based file."
+                
         except Exception as e:
             logger.error(f"❌ Image analysis failed: {str(e)}")
-            return f"❌ Image analysis failed: {str(e)}" 
+            return f"❌ Image analysis failed: {str(e)}"
+    
+    def _get_mime_type(self, file_path: str) -> str:
+        """Get MIME type based on file extension"""
+        ext = os.path.splitext(file_path)[1].lower()
+        mime_types = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+            '.bmp': 'image/bmp'
+        }
+        return mime_types.get(ext, 'image/jpeg') 

@@ -1201,6 +1201,7 @@ async def analyze_image(request: Request):
         data = await request.json()
         file_path = data.get("file_path")
         file_name = data.get("file_name")
+        user_context = data.get("user_context", "")
         
         if not file_path or not file_name:
             return JSONResponse({
@@ -1217,25 +1218,14 @@ async def analyze_image(request: Request):
                 "error": "File not found"
             })
         
-        # Generate analysis using AI
-        analysis_prompt = f"""
-        Analyze this image: {file_name}
-        File path: {file_path}
-        
-        Please provide a detailed analysis including:
-        1. What you see in the image
-        2. Any emotions or feelings it conveys
-        3. How it might relate to Meranda and Stepan's relationship
-        4. Any insights or observations that could be helpful
-        
-        Be thoughtful and considerate in your analysis.
-        """
-        
-        analysis = ai_client.chat(analysis_prompt)
+        # Use the new integrated image analysis
+        analysis = ai_client.analyze_image(fs_path, user_context)
         
         return JSONResponse({
             "success": True,
-            "analysis": analysis
+            "analysis": analysis,
+            "model_used": ai_client.models[ai_client.current_model_index]['name'],
+            "vision_api_available": ai_client.vision_client is not None
         })
         
     except Exception as e:
@@ -1416,8 +1406,8 @@ async def archive_conversation(request: Request):
 async def get_image_analyzer_status(request: Request):
     """Get image analyzer status"""
     try:
-        from image_analyzer import image_analyzer
-        status = image_analyzer.get_status()
+        # Image analysis is now integrated into ai_client
+        status = ai_client.get_model_status()
         return {"success": True, "status": status}
     except Exception as e:
         logger.error(f"Error getting image analyzer status: {e}")
