@@ -361,10 +361,8 @@ async def chat_stream_endpoint(
                     full_context += f"- User: {msg.get('message', '')}\n"
                     full_context += f"- AI: {msg.get('ai_response', '')}\n"
             
-            # Track multiple messages
-            all_messages = []
-            current_message = ""
-            message_count = 0
+            # Track the complete response
+            full_response = ""
             
             async for chunk in ai_client.generate_streaming_response(
                 system_prompt=guardian_profile.get_system_prompt(),
@@ -373,29 +371,17 @@ async def chat_stream_endpoint(
                 user_profile=user_profile_dict
             ):
                 if chunk:
-                    current_message += chunk
+                    full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-                    
-                    # Check if this chunk completes a message (ends with newline or punctuation)
-                    if chunk.strip().endswith(('.', '!', '?', '\n', '...')) or len(current_message) > 200:
-                        # Send message completion signal
-                        yield f"data: {json.dumps({'type': 'message_complete', 'message_index': message_count})}\n\n"
-                        all_messages.append(current_message)
-                        current_message = ""
-                        message_count += 1
             
-            # Add final message if there's remaining content
-            if current_message.strip():
-                all_messages.append(current_message)
-            
-            # Combine all messages for conversation history
-            full_response = "\n\n".join(all_messages)
+            # Send final completion signal
+            yield f"data: {json.dumps({'type': 'message_complete'})}\n\n"
             
             # Add to conversation history
             conversation_history.add_message(username, message, full_response)
             
             # Send final completion signal
-            yield f"data: {json.dumps({'type': 'complete', 'total_messages': len(all_messages), 'timestamp': datetime.now().isoformat()})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.now().isoformat()})}\n\n"
             
         except Exception as e:
             logger.error(f"Error in streaming chat: {e}")
