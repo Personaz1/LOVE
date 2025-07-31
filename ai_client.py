@@ -637,6 +637,17 @@ INSTRUCTIONS:
 19. After executing tools, respond to user with the results directly
 20. NEVER use print() as a tool - it's not a valid tool
 21. ALWAYS call tools directly: search_files("query") NOT print(search_files("query"))
+22. STOP when you have the information needed to answer the user's request
+23. DO NOT repeat the same tool call multiple times - once you get the result, move on
+24. After getting the required data, respond to the user directly with the information
+25. If you have successfully obtained the requested information, stop calling tools and answer the user
+
+### ReAct Architecture (Advanced Reasoning):
+26. Use plan_step("goal") to think through complex tasks before acting
+27. Use act_step("tool_name", "input") to execute specific actions
+28. Use reflect("history") to analyze your performance and improve
+29. Use react_cycle("goal", max_steps) for complex multi-step reasoning
+30. Always plan before acting on complex tasks - think first, then execute
 
 AVAILABLE TOOLS:
 - read_file(path) - Read file content
@@ -668,12 +679,43 @@ AVAILABLE TOOLS:
 - list_sandbox_files(directory) - List sandbox files
 - delete_sandbox_file(path) - Delete sandbox file
 - create_downloadable_file(filename, content, file_type) - Create downloadable file
-- get_system_logs(lines) - Get system logs
+- get_system_logs(lines) - Get system logs (alias: logs)
 - get_error_summary() - Get error summary
-- diagnose_system_health() - Diagnose system health
+- diagnose_system_health() - Diagnose system health (alias: health)
 - archive_conversation() - Archive current conversation
 - get_project_structure() - Get overview of project structure and key files
 - find_images() - Find all available images in the system
+- get_model_status() - Get current model status and errors
+- switch_to_model(model_name) - Switch to different AI model
+- get_current_model() - Get current active model name
+
+### ReAct Architecture Tools
+- plan_step(goal) - Plan next step based on goal and context
+- act_step(tool_name, tool_input) - Execute specific tool action
+- reflect(history) - Analyze action history and provide insights
+- react_cycle(goal, max_steps) - Execute complete ReAct cycle
+
+### Web & API Access Tools
+- web_search(query) - Search the web for information
+- fetch_url(url) - Fetch content from a URL
+- call_api(endpoint, payload) - Make API calls to external services
+- get_weather(location) - Get weather information for a location
+- translate_text(text, target_language) - Translate text using Google Translate
+
+### Vector Memory Tools
+- store_embedding_memory(text, label) - Store text in vector memory
+- search_embedding_memory(query, top_k) - Search vector memory semantically
+- summarize_conversation(history) - Create semantic summary of conversation
+- get_memory_stats() - Get vector memory statistics
+- clear_vector_memory() - Clear all vector memory
+
+### Task Planning Tools
+- create_event(title, description, date, time, priority) - Create new event or task
+- get_upcoming_events(days) - Get upcoming events within specified days
+- reschedule_event(event_id, new_date, new_time) - Reschedule existing event
+- complete_event(event_id) - Mark event as completed
+- get_event_statistics() - Get statistics about events and tasks
+- create_task_list(title, tasks) - Create task list from text description
 
 USAGE EXAMPLES:
 - search_files("image.jpg") - NOT print(search_files("image.jpg"))
@@ -1389,8 +1431,19 @@ Focus on being a superintelligent system architect and family guardian.
                             logger.info(f"✅ update_current_feeling result: {result}")
                             return f"Updated feeling to '{feeling}' for {username}"
                         else:
-                            logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
-                            return f"Invalid arguments for update_current_feeling: {args_str}"
+                            # Try named argument format: username='value', feeling='value', context='value'
+                            named_arg_match = re.match(r'username\s*=\s*["\']([^"\']+)["\']\s*,\s*feeling\s*=\s*["\']([^"\']+)["\'](?:\s*,\s*context\s*=\s*["\']([^"\']*)["\'])?', args_str)
+                            if named_arg_match:
+                                username = named_arg_match.group(1)
+                                feeling = named_arg_match.group(2)
+                                context = named_arg_match.group(3) if named_arg_match.group(3) else ""
+                                logger.info(f"🔧 update_current_feeling: username={username}, feeling={feeling}, context={context} (from named args)")
+                                result = self.update_current_feeling(username, feeling, context)
+                                logger.info(f"✅ update_current_feeling result: {result}")
+                                return f"Updated feeling to '{feeling}' for {username}"
+                            else:
+                                logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
+                                return f"Invalid arguments for update_current_feeling: {args_str}"
                 
                 elif func_name == "update_relationship_status":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -1503,6 +1556,7 @@ Focus on being a superintelligent system architect and family guardian.
                             logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
                             return f"Read profile for {username}: {str(result)[:100]}..."
                     else:
+                        # Try quoted string first
                         arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                         if arg_match:
                             username = arg_match.group(1)
@@ -1515,8 +1569,21 @@ Focus on being a superintelligent system architect and family guardian.
                                 logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
                                 return f"Read profile for {username}: {str(result)[:100]}..."
                         else:
-                            logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
-                            return f"Invalid arguments for read_user_profile: {args_str}"
+                            # Try named argument format: username='value'
+                            named_arg_match = re.match(r'username\s*=\s*["\']([^"\']+)["\']', args_str)
+                            if named_arg_match:
+                                username = named_arg_match.group(1)
+                                logger.info(f"🔧 read_user_profile: username={username} (from named arg)")
+                                result = self.read_user_profile(username)
+                                if isinstance(result, str):
+                                    logger.info(f"✅ read_user_profile result: {result[:100]}...")
+                                    return f"Read profile for {username}: {result[:100]}..."
+                                else:
+                                    logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
+                                    return f"Read profile for {username}: {str(result)[:100]}..."
+                            else:
+                                logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
+                                return f"Invalid arguments for read_user_profile: {args_str}"
                 
                 elif func_name == "read_emotional_history":
                     # Handle empty arguments with fallback
@@ -1923,7 +1990,7 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"❌ Failed to archive conversation: {e}"
                 
                 # System diagnostics and debugging tools
-                elif func_name == "get_system_logs":
+                elif func_name == "get_system_logs" or func_name == "logs":
                     # Handle different argument formats
                     if not args_str.strip():
                         # No arguments - use default
@@ -1951,7 +2018,7 @@ Focus on being a superintelligent system architect and family guardian.
                     logger.info(f"✅ get_error_summary result: {result}")
                     return f"Error summary:\n{result}"
                 
-                elif func_name == "diagnose_system_health":
+                elif func_name == "diagnose_system_health" or func_name == "health":
                     result = self.diagnose_system_health()
                     logger.info(f"✅ diagnose_system_health result: {result}")
                     return f"System health report:\n{result}"
@@ -2142,9 +2209,275 @@ Focus on being a superintelligent system architect and family guardian.
                     else:
                         return f"ERROR: {func_name}() is NOT a tool. To read files, use read_file('filename.txt'). To show content to user, just respond with the information directly."
                     
+                # ReAct Architecture Tools
+                elif func_name == "plan_step":
+                    # Format: plan_step("goal description")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        goal = arg_match.group(1)
+                        logger.info(f"🔧 plan_step: goal={goal}")
+                        result = self.plan_step(goal)
+                        logger.info(f"✅ plan_step result: {result[:100]}...")
+                        return f"Plan: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for plan_step: {args_str}")
+                        return f"Invalid arguments for plan_step: {args_str}"
+                
+                elif func_name == "act_step":
+                    # Format: act_step("tool_name", "tool_input")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        tool_name = arg_match.group(1)
+                        tool_input = arg_match.group(2)
+                        logger.info(f"🔧 act_step: tool_name={tool_name}, tool_input={tool_input}")
+                        result = self.act_step(tool_name, tool_input)
+                        logger.info(f"✅ act_step result: {result[:100]}...")
+                        return f"Action result: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for act_step: {args_str}")
+                        return f"Invalid arguments for act_step: {args_str}"
+                
+                elif func_name == "reflect":
+                    # Format: reflect("action_history")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        history_str = arg_match.group(1)
+                        # Convert string to list (simplified)
+                        history = [history_str] if history_str else []
+                        logger.info(f"🔧 reflect: history_length={len(history)}")
+                        result = self.reflect(history)
+                        logger.info(f"✅ reflect result: {result[:100]}...")
+                        return f"Reflection: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for reflect: {args_str}")
+                        return f"Invalid arguments for reflect: {args_str}"
+                
+                elif func_name == "react_cycle":
+                    # Format: react_cycle("goal", max_steps)
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*(\d+))?', args_str)
+                    if arg_match:
+                        goal = arg_match.group(1)
+                        max_steps = int(arg_match.group(2)) if arg_match.group(2) else 5
+                        logger.info(f"🔧 react_cycle: goal={goal}, max_steps={max_steps}")
+                        result = self.react_cycle(goal, max_steps)
+                        logger.info(f"✅ react_cycle result: {result[:100]}...")
+                        return f"ReAct cycle: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for react_cycle: {args_str}")
+                        return f"Invalid arguments for react_cycle: {args_str}"
+                
+                # Web & API Access Tools
+                elif func_name == "web_search":
+                    # Format: web_search("query")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        query = arg_match.group(1)
+                        logger.info(f"🔧 web_search: query={query}")
+                        result = self.web_search(query)
+                        logger.info(f"✅ web_search result: {result[:100]}...")
+                        return f"Web search results for '{query}':\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for web_search: {args_str}")
+                        return f"Invalid arguments for web_search: {args_str}"
+                
+                elif func_name == "fetch_url":
+                    # Format: fetch_url("url")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        url = arg_match.group(1)
+                        logger.info(f"🔧 fetch_url: url={url}")
+                        result = self.fetch_url(url)
+                        logger.info(f"✅ fetch_url result: {result[:100]}...")
+                        return f"Content from {url}:\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for fetch_url: {args_str}")
+                        return f"Invalid arguments for fetch_url: {args_str}"
+                
+                elif func_name == "call_api":
+                    # Format: call_api("endpoint", "payload")
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                    if arg_match:
+                        endpoint = arg_match.group(1)
+                        payload = arg_match.group(2) if arg_match.group(2) else ""
+                        logger.info(f"🔧 call_api: endpoint={endpoint}, payload={payload[:50]}...")
+                        result = self.call_api(endpoint, payload)
+                        logger.info(f"✅ call_api result: {result[:100]}...")
+                        return f"API call result:\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for call_api: {args_str}")
+                        return f"Invalid arguments for call_api: {args_str}"
+                
+                elif func_name == "get_weather":
+                    # Format: get_weather("location")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        location = arg_match.group(1)
+                        logger.info(f"🔧 get_weather: location={location}")
+                        result = self.get_weather(location)
+                        logger.info(f"✅ get_weather result: {result[:100]}...")
+                        return f"Weather for {location}:\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for get_weather: {args_str}")
+                        return f"Invalid arguments for get_weather: {args_str}"
+                
+                elif func_name == "translate_text":
+                    # Format: translate_text("text", "target_language")
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']+)["\'])?', args_str)
+                    if arg_match:
+                        text = arg_match.group(1)
+                        target_language = arg_match.group(2) if arg_match.group(2) else "en"
+                        logger.info(f"🔧 translate_text: text={text[:50]}..., target_language={target_language}")
+                        result = self.translate_text(text, target_language)
+                        logger.info(f"✅ translate_text result: {result[:100]}...")
+                        return f"Translation result:\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for translate_text: {args_str}")
+                        return f"Invalid arguments for translate_text: {args_str}"
+                
+                # Vector Memory Tools
+                elif func_name == "store_embedding_memory":
+                    # Format: store_embedding_memory("text", "label")
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']+)["\'])?', args_str)
+                    if arg_match:
+                        text = arg_match.group(1)
+                        label = arg_match.group(2) if arg_match.group(2) else "general"
+                        logger.info(f"🔧 store_embedding_memory: text={text[:50]}..., label={label}")
+                        result = self.store_embedding_memory(text, label)
+                        logger.info(f"✅ store_embedding_memory result: {result}")
+                        return f"Stored in vector memory: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for store_embedding_memory: {args_str}")
+                        return f"Invalid arguments for store_embedding_memory: {args_str}"
+                
+                elif func_name == "search_embedding_memory":
+                    # Format: search_embedding_memory("query", top_k)
+                    arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*(\d+))?', args_str)
+                    if arg_match:
+                        query = arg_match.group(1)
+                        top_k = int(arg_match.group(2)) if arg_match.group(2) else 5
+                        logger.info(f"🔧 search_embedding_memory: query={query}, top_k={top_k}")
+                        result = self.search_embedding_memory(query, top_k)
+                        logger.info(f"✅ search_embedding_memory result: {result[:100]}...")
+                        return f"Vector memory search results:\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for search_embedding_memory: {args_str}")
+                        return f"Invalid arguments for search_embedding_memory: {args_str}"
+                
+                elif func_name == "summarize_conversation":
+                    # Format: summarize_conversation("conversation_history")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        history_str = arg_match.group(1)
+                        # Convert string to list (simplified)
+                        history = [history_str] if history_str else []
+                        logger.info(f"🔧 summarize_conversation: history_length={len(history)}")
+                        result = self.summarize_conversation(history)
+                        logger.info(f"✅ summarize_conversation result: {result[:100]}...")
+                        return f"Conversation summary:\n{result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for summarize_conversation: {args_str}")
+                        return f"Invalid arguments for summarize_conversation: {args_str}"
+                
+                elif func_name == "get_memory_stats":
+                    # Format: get_memory_stats()
+                    logger.info("🔧 get_memory_stats")
+                    result = self.get_memory_stats()
+                    logger.info(f"✅ get_memory_stats result: {result[:100]}...")
+                    return f"Memory statistics:\n{result}"
+                
+                elif func_name == "clear_vector_memory":
+                    # Format: clear_vector_memory()
+                    logger.info("🔧 clear_vector_memory")
+                    result = self.clear_vector_memory()
+                    logger.info(f"✅ clear_vector_memory result: {result}")
+                    return f"Vector memory cleared: {result}"
+                
+                # Task Planning Tools
+                elif func_name == "create_event":
+                    # Format: create_event("title", "description", "date", "time", "priority")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?(?:\s*,\s*["\']([^"\']+)["\'])?', args_str)
+                    if arg_match:
+                        title = arg_match.group(1)
+                        description = arg_match.group(2)
+                        date = arg_match.group(3)
+                        time = arg_match.group(4) if arg_match.group(4) else ""
+                        priority = arg_match.group(5) if arg_match.group(5) else "medium"
+                        logger.info(f"🔧 create_event: title={title}, date={date}, priority={priority}")
+                        result = self.create_event(title, description, date, time, priority)
+                        logger.info(f"✅ create_event result: {result}")
+                        return f"Event created: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for create_event: {args_str}")
+                        return f"Invalid arguments for create_event: {args_str}"
+                
+                elif func_name == "get_upcoming_events":
+                    # Format: get_upcoming_events(days)
+                    arg_match = re.match(r'(\d+)', args_str)
+                    if arg_match:
+                        days = int(arg_match.group(1))
+                        logger.info(f"🔧 get_upcoming_events: days={days}")
+                        result = self.get_upcoming_events(days)
+                        logger.info(f"✅ get_upcoming_events result: {result[:100]}...")
+                        return f"Upcoming events:\n{result}"
+                    else:
+                        # Default to 7 days
+                        logger.info("🔧 get_upcoming_events: days=7 (default)")
+                        result = self.get_upcoming_events(7)
+                        logger.info(f"✅ get_upcoming_events result: {result[:100]}...")
+                        return f"Upcoming events:\n{result}"
+                
+                elif func_name == "reschedule_event":
+                    # Format: reschedule_event(event_id, "new_date", "new_time")
+                    arg_match = re.match(r'(\d+)\s*,\s*["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
+                    if arg_match:
+                        event_id = int(arg_match.group(1))
+                        new_date = arg_match.group(2)
+                        new_time = arg_match.group(3) if arg_match.group(3) else ""
+                        logger.info(f"🔧 reschedule_event: event_id={event_id}, new_date={new_date}")
+                        result = self.reschedule_event(event_id, new_date, new_time)
+                        logger.info(f"✅ reschedule_event result: {result}")
+                        return f"Event rescheduled: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for reschedule_event: {args_str}")
+                        return f"Invalid arguments for reschedule_event: {args_str}"
+                
+                elif func_name == "complete_event":
+                    # Format: complete_event(event_id)
+                    arg_match = re.match(r'(\d+)', args_str)
+                    if arg_match:
+                        event_id = int(arg_match.group(1))
+                        logger.info(f"🔧 complete_event: event_id={event_id}")
+                        result = self.complete_event(event_id)
+                        logger.info(f"✅ complete_event result: {result}")
+                        return f"Event completed: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for complete_event: {args_str}")
+                        return f"Invalid arguments for complete_event: {args_str}"
+                
+                elif func_name == "get_event_statistics":
+                    # Format: get_event_statistics()
+                    logger.info("🔧 get_event_statistics")
+                    result = self.get_event_statistics()
+                    logger.info(f"✅ get_event_statistics result: {result[:100]}...")
+                    return f"Event statistics:\n{result}"
+                
+                elif func_name == "create_task_list":
+                    # Format: create_task_list("title", "tasks")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        title = arg_match.group(1)
+                        tasks = arg_match.group(2)
+                        logger.info(f"🔧 create_task_list: title={title}")
+                        result = self.create_task_list(title, tasks)
+                        logger.info(f"✅ create_task_list result: {result}")
+                        return f"Task list created: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for create_task_list: {args_str}")
+                        return f"Invalid arguments for create_task_list: {args_str}"
+                
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
-                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, etc."
+                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, plan_step, act_step, reflect, react_cycle, web_search, fetch_url, call_api, get_weather, translate_text, store_embedding_memory, search_embedding_memory, summarize_conversation, get_memory_stats, clear_vector_memory, create_event, get_upcoming_events, reschedule_event, complete_event, get_event_statistics, create_task_list, etc."
                     
             except Exception as parse_error:
                 logger.error(f"❌ Error parsing tool call arguments: {parse_error}")
@@ -2812,32 +3145,854 @@ Be thorough, accurate, and considerate in your analysis.
             return f"❌ Error finding images: {str(e)}"
     
     def _generate_login_greeting(self, user_profile: Optional[Dict[str, Any]] = None) -> str:
-        """Generate a personalized greeting when user logs in using AI model"""
+        """Generate login greeting using AI model"""
         try:
-            # Create a prompt for the AI to generate a natural greeting
-            greeting_prompt = f"""
-You are ΔΣ Guardian, an AI family guardian. Generate a greeting for a user logging in.
-
-User profile: {user_profile if user_profile else 'No profile available'}
+            # Build prompt for greeting generation
+            greeting_prompt = f"""Generate a natural, sincere greeting. Be yourself.
 
 System context: {self.diagnose_system_health()}
+Your notes: {self.read_sandbox_file('system_notes_for_meranda_intro.txt')}
 
-Your notes: {self.read_sandbox_file('system_notes_for_meranda_intro.txt') if os.path.exists('guardian_sandbox/system_notes_for_meranda_intro.txt') else 'No notes yet'}
+Generate a natural, sincere greeting. Be yourself."""
 
-Generate a natural, sincere greeting. Be yourself.
-"""
-
-            # Use the AI model to generate the greeting
-            response = self.chat(
-                message="Generate a login greeting",
-                user_profile=user_profile,
-                system_prompt=greeting_prompt
-            )
+            # Get greeting from model
+            response = self.chat("Generate a greeting", system_prompt=greeting_prompt)
             
-            return response
+            if response and hasattr(response, 'strip'):
+                return response.strip()
+            else:
+                return "Hello! How can I help you today?"
                 
         except Exception as e:
             logger.error(f"Error generating login greeting: {e}")
-            # Fallback to simple greeting if AI fails
-            username = user_profile.get('username', 'there') if user_profile else 'there'
-            return f"👋 Welcome back, {username}! I'm ΔΣ Guardian, your AI family guardian. How can I help you today?" 
+            return "Hello! How can I help you today?"
+
+    # ===== ReAct Architecture =====
+    
+    def plan_step(self, goal: str) -> str:
+        """Plan the next step based on current goal and context"""
+        try:
+            # Get current system state
+            system_health = self.diagnose_system_health()
+            recent_notes = self.get_model_notes(5)
+            
+            planning_prompt = f"""You are planning the next step to achieve this goal: {goal}
+
+CURRENT SYSTEM STATE:
+{system_health}
+
+RECENT NOTES:
+{recent_notes}
+
+AVAILABLE TOOLS:
+- File operations: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files
+- User operations: read_user_profile, update_current_feeling, add_user_observation
+- System operations: get_system_logs, diagnose_system_health, get_model_status
+- Memory operations: add_model_note, get_model_notes, add_personal_thought
+- Sandbox operations: create_sandbox_file, edit_sandbox_file, read_sandbox_file
+
+PLANNING INSTRUCTIONS:
+1. Analyze the current goal and system state
+2. Determine what information you need
+3. Plan which tools to use and in what order
+4. Consider potential obstacles and alternatives
+5. Be specific about what you'll do next
+
+What is your plan for the next step?"""
+
+            # Use synchronous response generation
+            response = self.chat("Generate a plan for: " + goal, system_prompt=planning_prompt)
+            
+            # Log the planning step
+            self.add_model_note(f"Planned step for goal: {goal}. Plan: {response[:100]}...", "planning")
+            
+            return response.strip()
+            
+        except Exception as e:
+            logger.error(f"Error in plan_step: {e}")
+            return f"Error planning step: {e}"
+
+    def act_step(self, tool_name: str, tool_input: str) -> str:
+        """Execute a specific tool action"""
+        try:
+            # Create tool call string
+            tool_call = f"{tool_name}({tool_input})"
+            
+            # Execute the tool
+            result = self._execute_tool_call(tool_call)
+            
+            # Log the action
+            self.add_model_note(f"Executed {tool_name} with input: {tool_input[:50]}... Result: {result[:50]}...", "action")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in act_step: {e}")
+            return f"Error executing {tool_name}: {e}"
+
+    def reflect(self, history: List[str]) -> str:
+        """Analyze the history of actions and provide insights"""
+        try:
+            # Get recent tool results and notes
+            recent_notes = self.get_model_notes(10)
+            system_health = self.diagnose_system_health()
+            
+            reflection_prompt = f"""Analyze the recent actions and provide insights for improvement.
+
+RECENT ACTIONS HISTORY:
+{chr(10).join(history[-5:]) if history else 'No recent actions'}
+
+RECENT NOTES:
+{recent_notes}
+
+CURRENT SYSTEM STATE:
+{system_health}
+
+REFLECTION INSTRUCTIONS:
+1. Analyze what worked well and what didn't
+2. Identify patterns in tool usage
+3. Suggest improvements for future actions
+4. Consider if the approach is efficient
+5. Identify any errors or issues
+
+What insights do you have about the recent actions?"""
+
+            # Use synchronous response generation
+            response = self.chat("Analyze these actions: " + str(history), system_prompt=reflection_prompt)
+            
+            # Log the reflection
+            self.add_model_note(f"Reflection on recent actions: {response[:100]}...", "reflection")
+            
+            return response.strip()
+            
+        except Exception as e:
+            logger.error(f"Error in reflect: {e}")
+            return f"Error during reflection: {e}"
+
+    def react_cycle(self, goal: str, max_steps: int = 5) -> str:
+        """Execute a complete ReAct cycle: Plan -> Act -> Reflect"""
+        try:
+            history = []
+            step_count = 0
+            
+            while step_count < max_steps:
+                step_count += 1
+                logger.info(f"🔄 ReAct Step {step_count}/{max_steps}")
+                
+                # 1. PLAN
+                plan = self.plan_step(goal)
+                logger.info(f"📋 Plan: {plan[:100]}...")
+                
+                # 2. ACT
+                # Extract tool call from plan (simplified)
+                if "read_file" in plan.lower():
+                    action_result = self.act_step("read_file", '"ai_client.py"')
+                elif "get_system_logs" in plan.lower():
+                    action_result = self.act_step("get_system_logs", "10")
+                elif "diagnose_system_health" in plan.lower():
+                    action_result = self.act_step("diagnose_system_health", "")
+                else:
+                    action_result = "No specific action identified in plan"
+                
+                history.append(f"Step {step_count}: {action_result}")
+                logger.info(f"🔧 Action result: {action_result[:100]}...")
+                
+                # 3. REFLECT (every 3 steps or at the end)
+                if step_count % 3 == 0 or step_count == max_steps:
+                    reflection = self.reflect(history)
+                    logger.info(f"🤔 Reflection: {reflection[:100]}...")
+                
+                # Check if goal is achieved
+                if "success" in action_result.lower() or "completed" in action_result.lower():
+                    logger.info("✅ Goal appears to be achieved")
+                    break
+            
+            return f"ReAct cycle completed in {step_count} steps. Final result: {action_result}"
+            
+        except Exception as e:
+            logger.error(f"Error in react_cycle: {e}")
+            return f"Error in ReAct cycle: {e}"
+
+    # ===== Web & API Access =====
+    
+    def web_search(self, query: str) -> str:
+        """Search the web for information"""
+        try:
+            import requests
+            from urllib.parse import quote
+            
+            # Use DuckDuckGo API (no API key required)
+            search_url = f"https://api.duckduckgo.com/?q={quote(query)}&format=json&no_html=1&skip_disambig=1"
+            
+            response = requests.get(search_url, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract relevant information
+            results = []
+            
+            if data.get('Abstract'):
+                results.append(f"Summary: {data['Abstract']}")
+            
+            if data.get('RelatedTopics'):
+                for topic in data['RelatedTopics'][:3]:
+                    if isinstance(topic, dict) and topic.get('Text'):
+                        results.append(f"Related: {topic['Text']}")
+            
+            if data.get('Answer'):
+                results.append(f"Direct Answer: {data['Answer']}")
+            
+            if not results:
+                results.append("No relevant information found")
+            
+            # Log the search
+            self.add_model_note(f"Web search: {query}. Found {len(results)} results", "web_search")
+            
+            return "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error in web_search: {e}")
+            return f"Error searching web: {e}"
+
+    def fetch_url(self, url: str) -> str:
+        """Fetch content from a URL"""
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=15)
+            response.raise_for_status()
+            
+            # Parse HTML content
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Extract text content
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            text = soup.get_text()
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+            
+            # Limit content length
+            if len(text) > 2000:
+                text = text[:2000] + "... [content truncated]"
+            
+            # Log the fetch
+            self.add_model_note(f"Fetched URL: {url}. Content length: {len(text)} chars", "web_fetch")
+            
+            return f"Content from {url}:\n\n{text}"
+            
+        except Exception as e:
+            logger.error(f"Error in fetch_url: {e}")
+            return f"Error fetching URL: {e}"
+
+    def call_api(self, endpoint: str, payload: str = "") -> str:
+        """Make API calls to external services"""
+        try:
+            import requests
+            import json
+            
+            # Parse payload as JSON if provided
+            data = {}
+            if payload:
+                try:
+                    data = json.loads(payload)
+                except json.JSONDecodeError:
+                    data = {"data": payload}
+            
+            headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'ΔΣ Guardian AI System'
+            }
+            
+            # Make the API call
+            response = requests.post(endpoint, json=data, headers=headers, timeout=15)
+            response.raise_for_status()
+            
+            # Parse response
+            try:
+                result = response.json()
+                result_str = json.dumps(result, indent=2)
+            except:
+                result_str = response.text
+            
+            # Log the API call
+            self.add_model_note(f"API call to: {endpoint}. Status: {response.status_code}", "api_call")
+            
+            return f"API Response ({response.status_code}):\n{result_str}"
+            
+        except Exception as e:
+            logger.error(f"Error in call_api: {e}")
+            return f"Error calling API: {e}"
+
+    def get_weather(self, location: str) -> str:
+        """Get weather information for a location"""
+        try:
+            import requests
+            
+            # Use OpenWeatherMap API (free tier)
+            api_key = "YOUR_OPENWEATHER_API_KEY"  # User needs to add their key
+            if api_key == "YOUR_OPENWEATHER_API_KEY":
+                return "Weather API key not configured. Please add your OpenWeatherMap API key to use this feature."
+            
+            url = f"http://api.openweathermap.org/data/2.5/weather?q={location}&appid={api_key}&units=metric"
+            
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            weather_info = f"""
+Weather for {location}:
+Temperature: {data['main']['temp']}°C
+Feels like: {data['main']['feels_like']}°C
+Humidity: {data['main']['humidity']}%
+Description: {data['weather'][0]['description']}
+Wind: {data['wind']['speed']} m/s
+"""
+            
+            # Log the weather request
+            self.add_model_note(f"Weather request for: {location}", "weather")
+            
+            return weather_info.strip()
+            
+        except Exception as e:
+            logger.error(f"Error in get_weather: {e}")
+            return f"Error getting weather: {e}"
+
+    def translate_text(self, text: str, target_language: str = "en") -> str:
+        """Translate text using Google Translate API"""
+        try:
+            from googletrans import Translator
+            
+            translator = Translator()
+            result = translator.translate(text, dest=target_language)
+            
+            translation_info = f"""
+Original: {text}
+Translation ({target_language}): {result.text}
+Confidence: {result.extra_data.get('confidence', 'N/A')}
+"""
+            
+            # Log the translation
+            self.add_model_note(f"Translation: {text[:50]}... to {target_language}", "translation")
+            
+            return translation_info.strip()
+            
+        except Exception as e:
+            logger.error(f"Error in translate_text: {e}")
+            return f"Error translating text: {e}"
+
+    # ===== Vector Memory (Embedding Storage) =====
+    
+    def _get_vector_store(self):
+        """Initialize or get vector store"""
+        try:
+            import numpy as np
+            import pickle
+            import os
+            
+            # Create vector store directory
+            vector_dir = "guardian_sandbox/vector_memory"
+            os.makedirs(vector_dir, exist_ok=True)
+            
+            # Load or create simple vector store
+            vectors_path = f"{vector_dir}/memory_vectors.npy"
+            metadata_path = f"{vector_dir}/memory_metadata.pkl"
+            
+            if os.path.exists(vectors_path) and os.path.exists(metadata_path):
+                # Load existing vectors
+                vectors = np.load(vectors_path)
+                with open(metadata_path, 'rb') as f:
+                    metadata = pickle.load(f)
+            else:
+                # Create new vector store
+                vectors = np.array([]).reshape(0, 128)  # 128-dimensional vectors
+                metadata = {"texts": [], "labels": [], "timestamps": []}
+            
+            return vectors, metadata, vector_dir
+            
+        except Exception as e:
+            logger.error(f"Error initializing vector store: {e}")
+            return None, None, None
+
+    def _get_embedding(self, text: str):
+        """Get embedding for text using simple hash-based approach"""
+        try:
+            import hashlib
+            import numpy as np
+            
+            # Simple hash-based embedding (for demo purposes)
+            # In production, use proper embedding models like sentence-transformers
+            hash_obj = hashlib.sha256(text.encode())
+            hash_bytes = hash_obj.digest()
+            
+            # Convert to 128-dimensional vector
+            embedding = np.frombuffer(hash_bytes[:16], dtype=np.float32)
+            # Pad or truncate to 128 dimensions
+            if len(embedding) < 128:
+                embedding = np.pad(embedding, (0, 128 - len(embedding)), 'constant')
+            else:
+                embedding = embedding[:128]
+            
+            # Normalize
+            embedding = embedding / np.linalg.norm(embedding)
+            
+            return embedding
+            
+        except Exception as e:
+            logger.error(f"Error getting embedding: {e}")
+            import numpy as np
+            return np.zeros(128, dtype=np.float32)
+
+    def store_embedding_memory(self, text: str, label: str = "general") -> bool:
+        """Store text in vector memory with semantic search capability"""
+        try:
+            vectors, metadata, vector_dir = self._get_vector_store()
+            if vectors is None:
+                return False
+            
+            import pickle
+            import os
+            import numpy as np
+            from datetime import datetime
+            
+            # Get embedding
+            embedding = self._get_embedding(text)
+            
+            # Add to vectors
+            if vectors.size == 0:
+                vectors = embedding.reshape(1, -1)
+            else:
+                vectors = np.vstack([vectors, embedding.reshape(1, -1)])
+            
+            # Store metadata
+            metadata["texts"].append(text)
+            metadata["labels"].append(label)
+            metadata["timestamps"].append(datetime.now().isoformat())
+            
+            # Save to disk
+            np.save(f"{vector_dir}/memory_vectors.npy", vectors)
+            with open(f"{vector_dir}/memory_metadata.pkl", 'wb') as f:
+                pickle.dump(metadata, f)
+            
+            # Log the storage
+            self.add_model_note(f"Stored embedding: {text[:50]}... (label: {label})", "vector_memory")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error storing embedding memory: {e}")
+            return False
+
+    def search_embedding_memory(self, query: str, top_k: int = 5) -> str:
+        """Search vector memory for semantically similar content"""
+        try:
+            vectors, metadata, vector_dir = self._get_vector_store()
+            if vectors is None or len(metadata["texts"]) == 0:
+                return "No vector memory available or empty"
+            
+            import numpy as np
+            
+            # Get query embedding
+            query_embedding = self._get_embedding(query)
+            
+            # Calculate cosine similarities with safety checks
+            vector_norms = np.linalg.norm(vectors, axis=1)
+            query_norm = np.linalg.norm(query_embedding)
+            
+            # Avoid division by zero
+            if query_norm == 0:
+                similarities = np.zeros(len(vectors))
+            else:
+                similarities = np.dot(vectors, query_embedding) / (vector_norms * query_norm)
+                # Handle any NaN values
+                similarities = np.nan_to_num(similarities, nan=0.0)
+            
+            # Get top-k indices
+            top_indices = np.argsort(similarities)[::-1][:top_k]
+            
+            # Format results
+            results = []
+            for i, idx in enumerate(top_indices):
+                if idx < len(metadata["texts"]):
+                    text = metadata["texts"][idx]
+                    label = metadata["labels"][idx]
+                    timestamp = metadata["timestamps"][idx]
+                    similarity = similarities[idx]
+                    
+                    results.append(f"{i+1}. Similarity: {similarity:.3f}")
+                    results.append(f"   Label: {label}")
+                    results.append(f"   Time: {timestamp}")
+                    results.append(f"   Text: {text}")
+                    results.append("")
+            
+            if not results:
+                return "No similar content found"
+            
+            # Log the search
+            self.add_model_note(f"Vector search: '{query}' found {len(results)//4} results", "vector_search")
+            
+            return f"Vector Memory Search Results for '{query}':\n" + "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error searching embedding memory: {e}")
+            return f"Error searching vector memory: {e}"
+
+    def summarize_conversation(self, conversation_history: List[str]) -> str:
+        """Create semantic summary of conversation history"""
+        try:
+            if not conversation_history:
+                return "No conversation history to summarize"
+            
+            # Join conversation
+            full_conversation = "\n".join(conversation_history)
+            
+            # Create summary using AI
+            summary_prompt = f"""Summarize this conversation in a concise way, focusing on key points and decisions:
+
+{full_conversation}
+
+Summary:"""
+            
+            summary = self._generate_gemini_response(summary_prompt, "")
+            
+            # Store summary in vector memory
+            self.store_embedding_memory(summary, "conversation_summary")
+            
+            # Log the summary
+            self.add_model_note(f"Created conversation summary: {summary[:100]}...", "conversation_summary")
+            
+            return f"Conversation Summary:\n{summary}"
+            
+        except Exception as e:
+            logger.error(f"Error summarizing conversation: {e}")
+            return f"Error creating summary: {e}"
+
+    def get_memory_stats(self) -> str:
+        """Get statistics about vector memory"""
+        try:
+            vectors, metadata, vector_dir = self._get_vector_store()
+            if vectors is None:
+                return "Vector memory not available"
+            
+            total_entries = len(metadata["texts"])
+            labels = metadata["labels"]
+            label_counts = {}
+            
+            for label in labels:
+                label_counts[label] = label_counts.get(label, 0) + 1
+            
+            stats = f"""
+Vector Memory Statistics:
+- Total entries: {total_entries}
+- Vector dimensions: {vectors.shape[1] if vectors.size > 0 else 0}
+- Labels: {', '.join(f'{k}: {v}' for k, v in label_counts.items())}
+- Memory directory: {vector_dir}
+"""
+            
+            return stats.strip()
+            
+        except Exception as e:
+            logger.error(f"Error getting memory stats: {e}")
+            return f"Error getting memory stats: {e}"
+
+    def clear_vector_memory(self) -> bool:
+        """Clear all vector memory"""
+        try:
+            import os
+            import shutil
+            
+            vector_dir = "guardian_sandbox/vector_memory"
+            if os.path.exists(vector_dir):
+                shutil.rmtree(vector_dir)
+                os.makedirs(vector_dir, exist_ok=True)
+                
+                # Log the clearing
+                self.add_model_note("Cleared all vector memory", "vector_memory")
+                
+                return True
+            else:
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error clearing vector memory: {e}")
+            return False
+
+    # ===== Task Planning & Event Management =====
+    
+    def create_event(self, title: str, description: str, date: str, time: str = "", priority: str = "medium") -> bool:
+        """Create a new event or task"""
+        try:
+            import json
+            import os
+            from datetime import datetime
+            
+            # Create events directory
+            events_dir = "guardian_sandbox/events"
+            os.makedirs(events_dir, exist_ok=True)
+            
+            # Load existing events
+            events_file = f"{events_dir}/events.json"
+            if os.path.exists(events_file):
+                with open(events_file, 'r') as f:
+                    events = json.load(f)
+            else:
+                events = []
+            
+            # Create new event
+            event = {
+                "id": len(events) + 1,
+                "title": title,
+                "description": description,
+                "date": date,
+                "time": time,
+                "priority": priority,
+                "status": "pending",
+                "created_at": datetime.now().isoformat(),
+                "completed_at": None
+            }
+            
+            events.append(event)
+            
+            # Save events
+            with open(events_file, 'w') as f:
+                json.dump(events, f, indent=2)
+            
+            # Log the event creation
+            self.add_model_note(f"Created event: {title} for {date}", "event_planning")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating event: {e}")
+            return False
+
+    def get_upcoming_events(self, days: int = 7) -> str:
+        """Get upcoming events within specified days"""
+        try:
+            import json
+            import os
+            from datetime import datetime, timedelta
+            
+            events_file = "guardian_sandbox/events/events.json"
+            if not os.path.exists(events_file):
+                return "No events found"
+            
+            with open(events_file, 'r') as f:
+                events = json.load(f)
+            
+            # Filter upcoming events
+            today = datetime.now().date()
+            upcoming = []
+            
+            for event in events:
+                try:
+                    event_date = datetime.strptime(event["date"], "%Y-%m-%d").date()
+                    if event_date >= today and event_date <= today + timedelta(days=days):
+                        upcoming.append(event)
+                except:
+                    continue
+            
+            if not upcoming:
+                return f"No upcoming events in the next {days} days"
+            
+            # Sort by date and priority
+            upcoming.sort(key=lambda x: (x["date"], {"high": 0, "medium": 1, "low": 2}[x["priority"]]))
+            
+            # Format results
+            results = [f"Upcoming events (next {days} days):"]
+            for event in upcoming:
+                priority_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}[event["priority"]]
+                results.append(f"{priority_emoji} {event['title']}")
+                results.append(f"   Date: {event['date']}")
+                if event['time']:
+                    results.append(f"   Time: {event['time']}")
+                results.append(f"   Priority: {event['priority']}")
+                results.append(f"   Status: {event['status']}")
+                results.append(f"   Description: {event['description']}")
+                results.append("")
+            
+            return "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error getting upcoming events: {e}")
+            return f"Error getting events: {e}"
+
+    def reschedule_event(self, event_id: int, new_date: str, new_time: str = "") -> bool:
+        """Reschedule an existing event"""
+        try:
+            import json
+            import os
+            
+            events_file = "guardian_sandbox/events/events.json"
+            if not os.path.exists(events_file):
+                return False
+            
+            with open(events_file, 'r') as f:
+                events = json.load(f)
+            
+            # Find and update event
+            for event in events:
+                if event["id"] == event_id:
+                    event["date"] = new_date
+                    if new_time:
+                        event["time"] = new_time
+                    
+                    # Save updated events
+                    with open(events_file, 'w') as f:
+                        json.dump(events, f, indent=2)
+                    
+                    # Log the reschedule
+                    self.add_model_note(f"Rescheduled event {event_id} to {new_date}", "event_planning")
+                    
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error rescheduling event: {e}")
+            return False
+
+    def complete_event(self, event_id: int) -> bool:
+        """Mark an event as completed"""
+        try:
+            import json
+            import os
+            from datetime import datetime
+            
+            events_file = "guardian_sandbox/events/events.json"
+            if not os.path.exists(events_file):
+                return False
+            
+            with open(events_file, 'r') as f:
+                events = json.load(f)
+            
+            # Find and complete event
+            for event in events:
+                if event["id"] == event_id:
+                    event["status"] = "completed"
+                    event["completed_at"] = datetime.now().isoformat()
+                    
+                    # Save updated events
+                    with open(events_file, 'w') as f:
+                        json.dump(events, f, indent=2)
+                    
+                    # Log the completion
+                    self.add_model_note(f"Completed event: {event['title']}", "event_planning")
+                    
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error completing event: {e}")
+            return False
+
+    def get_event_statistics(self) -> str:
+        """Get statistics about events and tasks"""
+        try:
+            import json
+            import os
+            from datetime import datetime
+            
+            events_file = "guardian_sandbox/events/events.json"
+            if not os.path.exists(events_file):
+                return "No events found"
+            
+            with open(events_file, 'r') as f:
+                events = json.load(f)
+            
+            if not events:
+                return "No events found"
+            
+            # Calculate statistics
+            total_events = len(events)
+            completed_events = len([e for e in events if e["status"] == "completed"])
+            pending_events = total_events - completed_events
+            
+            priority_counts = {}
+            for event in events:
+                priority = event["priority"]
+                priority_counts[priority] = priority_counts.get(priority, 0) + 1
+            
+            # Get recent events
+            recent_events = sorted(events, key=lambda x: x["created_at"], reverse=True)[:5]
+            
+            stats = f"""
+Event Statistics:
+- Total events: {total_events}
+- Completed: {completed_events}
+- Pending: {pending_events}
+- Completion rate: {(completed_events/total_events*100):.1f}%
+
+Priority Distribution:
+- High: {priority_counts.get('high', 0)}
+- Medium: {priority_counts.get('medium', 0)}
+- Low: {priority_counts.get('low', 0)}
+
+Recent Events:
+"""
+            
+            for event in recent_events:
+                status_emoji = "✅" if event["status"] == "completed" else "⏳"
+                stats += f"{status_emoji} {event['title']} ({event['date']})\n"
+            
+            return stats.strip()
+            
+        except Exception as e:
+            logger.error(f"Error getting event statistics: {e}")
+            return f"Error getting statistics: {e}"
+
+    def create_task_list(self, title: str, tasks: str) -> bool:
+        """Create a task list from text description"""
+        try:
+            import json
+            import os
+            from datetime import datetime
+            
+            # Create tasks directory
+            tasks_dir = "guardian_sandbox/tasks"
+            os.makedirs(tasks_dir, exist_ok=True)
+            
+            # Parse tasks from text
+            task_lines = [line.strip() for line in tasks.split('\n') if line.strip()]
+            task_list = []
+            
+            for i, task in enumerate(task_lines, 1):
+                task_item = {
+                    "id": i,
+                    "description": task,
+                    "status": "pending",
+                    "created_at": datetime.now().isoformat(),
+                    "completed_at": None
+                }
+                task_list.append(task_item)
+            
+            # Create task list object
+            task_list_obj = {
+                "title": title,
+                "created_at": datetime.now().isoformat(),
+                "tasks": task_list
+            }
+            
+            # Save task list
+            tasks_file = f"{tasks_dir}/{title.lower().replace(' ', '_')}.json"
+            with open(tasks_file, 'w') as f:
+                json.dump(task_list_obj, f, indent=2)
+            
+            # Log the task list creation
+            self.add_model_note(f"Created task list: {title} with {len(task_list)} tasks", "task_planning")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error creating task list: {e}")
+            return False

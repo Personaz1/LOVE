@@ -17,4 +17,7 @@ python-multipart==0.0.6
 pytest==7.4.3
 black==23.11.0
 isort==5.12.0
-mypy==1.7.1 
+mypy==1.7.1
+beautifulsoup4==4.12.2
+googletrans==4.0.0rc1
+numpy>=1.24.0 
