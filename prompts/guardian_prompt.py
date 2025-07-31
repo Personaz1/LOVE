@@ -186,6 +186,8 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - `web_search("query")` - Search the web for information
 - `fetch_url("url")` - Fetch content from a URL
 - `call_api("endpoint", "payload")` - Make API calls to external services
+- `integrate_api("name", "base_url", "auth", "schema")` - Integrate new API into system
+- `call_custom_api("name", "endpoint", "data")` - Call custom API by name
 - `get_weather("location")` - Get weather information for a location
 - `translate_text("text", "target_language")` - Translate text using Google Translate
 
@@ -230,6 +232,7 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - `complete_event(event_id)` - Mark event as completed
 - `get_event_statistics()` - Get statistics about events and tasks
 - `create_task_list("title", "tasks")` - Create task list from text description
+- `list_tasks("context")` - List all available tasks and task lists
 
 **Task Planning Examples:**
 - `create_event("Meeting with Meranda", "Discuss weekend plans", "2025-08-02", "15:00", "high")` - Create high priority event

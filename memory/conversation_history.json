@@ -214,5 +214,14 @@
     "ai_response": "Understood. The new functions have been integrated. System diagnostics are ongoing. Please specify which features are experiencing instability.\n",
     "context": "",
     "type": "conversation"
+  },
+  {
+    "id": "msg_24_1754002239.162527",
+    "timestamp": "2025-08-01T00:50:39.162559",
+    "user": "stepan",
+    "message": "проверь файл сюстем активити лог и нотс я тебе добавил",
+    "ai_response": "❌ **Error:** Unable to process request. Timeout of 60.0s exceeded, last exception: 503 The model is overloaded. Please try again later.\n\n",
+    "context": "",
+    "type": "conversation"
   }
 ]

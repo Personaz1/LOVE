@@ -2528,10 +2528,53 @@ Focus on being a superintelligent system architect and family guardian.
                     else:
                         logger.error(f"❌ Invalid arguments for create_task_list: {args_str}")
                         return f"Invalid arguments for create_task_list: {args_str}"
+
+                elif func_name == "list_tasks":
+                    # Format: list_tasks("context") or list_tasks()
+                    context = ""
+                    if args_str.strip():
+                        arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                        if arg_match:
+                            context = arg_match.group(1)
+                    logger.info(f"🔧 list_tasks: context={context}")
+                    result = self.list_tasks(context)
+                    logger.info(f"✅ list_tasks result: {result}")
+                    return result
+
+                elif func_name == "integrate_api":
+                    # Format: integrate_api("name", "base_url", "auth", "schema")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']\s*,\s*["\']([^"\']*)["\']\s*,\s*["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        name = arg_match.group(1)
+                        base_url = arg_match.group(2)
+                        auth = arg_match.group(3) if arg_match.group(3) else ""
+                        schema = arg_match.group(4) if arg_match.group(4) else ""
+                        logger.info(f"🔧 integrate_api: name={name}, base_url={base_url}")
+                        result = self.integrate_api(name, base_url, auth, schema)
+                        logger.info(f"✅ integrate_api result: {result}")
+                        return f"API integration: {result}"
+                    else:
+                        logger.error(f"❌ Invalid arguments for integrate_api: {args_str}")
+                        return f"Invalid arguments for integrate_api: {args_str}"
+
+                elif func_name == "call_custom_api":
+                    # Format: call_custom_api("name", "endpoint", "data")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']\s*,\s*["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        name = arg_match.group(1)
+                        endpoint = arg_match.group(2)
+                        data = arg_match.group(3) if arg_match.group(3) else ""
+                        logger.info(f"🔧 call_custom_api: name={name}, endpoint={endpoint}")
+                        result = self.call_custom_api(name, endpoint, data)
+                        logger.info(f"✅ call_custom_api result: {result}")
+                        return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for call_custom_api: {args_str}")
+                        return f"Invalid arguments for call_custom_api: {args_str}"
                 
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
-                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, plan_step, act_step, reflect, react_cycle, web_search, fetch_url, call_api, get_weather, translate_text, store_embedding_memory, search_embedding_memory, summarize_conversation, get_memory_stats, clear_vector_memory, create_event, get_upcoming_events, reschedule_event, complete_event, get_event_statistics, create_task_list, etc."
+                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, plan_step, act_step, reflect, react_cycle, web_search, fetch_url, call_api, integrate_api, call_custom_api, get_weather, translate_text, store_embedding_memory, search_embedding_memory, summarize_conversation, get_memory_stats, clear_vector_memory, create_event, get_upcoming_events, reschedule_event, complete_event, get_event_statistics, create_task_list, list_tasks, etc."
                     
             except Exception as parse_error:
                 logger.error(f"❌ Error parsing tool call arguments: {parse_error}")
@@ -3507,6 +3550,94 @@ What insights do you have about the recent actions?"""
             
             # Make the API call
             response = requests.post(endpoint, json=data, headers=headers, timeout=15)
+            
+            # Log the API call
+            self.add_model_note(f"API call: {endpoint}. Status: {response.status_code}", "api_call")
+            
+            return f"API Response ({response.status_code}): {response.text}"
+            
+        except Exception as e:
+            logger.error(f"Error in call_api: {e}")
+            return f"Error calling API: {e}"
+
+    def integrate_api(self, name: str, base_url: str, auth: str = "", schema: str = "") -> bool:
+        """Integrate a new API into the system"""
+        try:
+            # Store API configuration
+            api_config = {
+                "name": name,
+                "base_url": base_url,
+                "auth": auth,
+                "schema": schema,
+                "created": time.time()
+            }
+            
+            # Save to API registry
+            api_registry_path = "guardian_sandbox/api_registry.json"
+            try:
+                with open(api_registry_path, 'r') as f:
+                    registry = json.load(f)
+            except FileNotFoundError:
+                registry = {}
+            
+            registry[name] = api_config
+            
+            with open(api_registry_path, 'w') as f:
+                json.dump(registry, f, indent=2)
+            
+            # Log the integration
+            self.add_model_note(f"Integrated API: {name} at {base_url}", "api_integration")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in integrate_api: {e}")
+            return False
+
+    def call_custom_api(self, name: str, endpoint: str, data: str = "") -> str:
+        """Call a custom API by name"""
+        try:
+            # Load API registry
+            api_registry_path = "guardian_sandbox/api_registry.json"
+            try:
+                with open(api_registry_path, 'r') as f:
+                    registry = json.load(f)
+            except FileNotFoundError:
+                return f"Error: API registry not found"
+            
+            if name not in registry:
+                return f"Error: API '{name}' not found in registry"
+            
+            api_config = registry[name]
+            full_url = f"{api_config['base_url']}/{endpoint.lstrip('/')}"
+            
+            # Make the API call
+            headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'ΔΣ Guardian AI System'
+            }
+            
+            if api_config.get('auth'):
+                headers['Authorization'] = api_config['auth']
+            
+            # Parse data
+            payload = {}
+            if data:
+                try:
+                    payload = json.loads(data)
+                except json.JSONDecodeError:
+                    payload = {"data": data}
+            
+            response = requests.post(full_url, json=payload, headers=headers, timeout=15)
+            
+            # Log the custom API call
+            self.add_model_note(f"Custom API call: {name}/{endpoint}. Status: {response.status_code}", "custom_api")
+            
+            return f"Custom API Response ({response.status_code}): {response.text}"
+            
+        except Exception as e:
+            logger.error(f"Error in call_custom_api: {e}")
+            return f"Error calling custom API: {e}"
             response.raise_for_status()
             
             # Parse response
@@ -4103,3 +4234,56 @@ Recent Events:
         except Exception as e:
             logger.error(f"Error creating task list: {e}")
             return False
+
+    def list_tasks(self, context: str = "") -> str:
+        """List all available tasks and task lists"""
+        try:
+            tasks_dir = "guardian_sandbox/tasks"
+            
+            if not os.path.exists(tasks_dir):
+                return "No task lists found. Use create_task_list() to create one."
+            
+            task_files = [f for f in os.listdir(tasks_dir) if f.endswith('.json')]
+            
+            if not task_files:
+                return "No task lists found. Use create_task_list() to create one."
+            
+            results = []
+            
+            for task_file in task_files:
+                filepath = os.path.join(tasks_dir, task_file)
+                try:
+                    with open(filepath, 'r') as f:
+                        task_list = json.load(f)
+                    
+                    title = task_list.get('title', task_file.replace('.json', ''))
+                    tasks = task_list.get('tasks', [])
+                    
+                    pending = len([t for t in tasks if t.get('status') == 'pending'])
+                    completed = len([t for t in tasks if t.get('status') == 'completed'])
+                    total = len(tasks)
+                    
+                    results.append(f"📋 {title}")
+                    results.append(f"   📊 Progress: {completed}/{total} completed")
+                    
+                    if pending > 0:
+                        results.append(f"   ⏳ Pending: {pending} tasks")
+                        for task in tasks[:3]:
+                            if task.get('status') == 'pending':
+                                results.append(f"      • {task.get('description', 'Unknown task')}")
+                        if pending > 3:
+                            results.append(f"      ... and {pending - 3} more")
+                    
+                    results.append("")
+                    
+                except Exception as e:
+                    results.append(f"❌ Error reading {task_file}: {e}")
+            
+            # Log the task listing
+            self.add_model_note(f"Listed {len(task_files)} task lists", "task_listing")
+            
+            return "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error in list_tasks: {e}")
+            return f"Error listing tasks: {e}"
