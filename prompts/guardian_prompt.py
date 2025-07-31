@@ -115,6 +115,8 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 **CORRECT TOOL USAGE EXAMPLES:**
 - `read_file("config.py")` - Read specific file
 - `read_file("memory/guardian_profile.json")` - Read file with path
+- `read_file("system_activity_log.txt")` - Smart path resolution (will find in guardian_sandbox/)
+- `read_file("guardian_sandbox/system_activity_log.txt")` - Full path
 - `write_file("test.txt", "Hello World")` - Write content to file
 - `list_files("memory")` - List files in directory
 - `search_files("error")` - Search for files containing "error"
@@ -122,6 +124,12 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - `create_sandbox_file("test.txt", "content")` - Create in guardian_sandbox/
 - `edit_file("any_file.py", "new_content")` - Edit any file in system
 - `read_file("any_path/file.txt")` - Read any file in system
+
+**SMART PATH RESOLUTION:**
+- Guardian automatically tries multiple paths when file not found
+- Searches in: current directory, project root, guardian_sandbox/, memory/, prompts/, static/, templates/
+- Provides helpful suggestions for similar files
+- Works with partial filenames and smart matching
 
 **RECOMMENDED SANDBOX USAGE:**
 - `create_sandbox_file("experiment.txt", "test content")` - Safe testing

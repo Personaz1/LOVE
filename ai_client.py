@@ -987,27 +987,46 @@ Focus on being a superintelligent system architect and family guardian.
             return f"Error searching data for {username}: {str(e)}"
     
     def read_file(self, path: str) -> str:
-        """Read file content - enhanced with full project access"""
+        """Read file content - enhanced with smart path resolution"""
         try:
             # Security: Only allow access to project directory
             project_root = os.path.abspath(os.path.dirname(__file__))
-            full_path = os.path.abspath(path)
             
-            # Ensure path is within project directory
-            if not full_path.startswith(project_root):
-                return f"❌ Access denied: Path {path} is outside project directory"
+            # Smart path resolution
+            if not path.startswith('/') and not path.startswith('./') and not path.startswith('../'):
+                # Try relative paths first
+                possible_paths = [
+                    path,  # Direct path
+                    os.path.join(project_root, path),  # From project root
+                    os.path.join(project_root, 'guardian_sandbox', path),  # From sandbox
+                    os.path.join(project_root, 'memory', path),  # From memory
+                    os.path.join(project_root, 'prompts', path),  # From prompts
+                    os.path.join(project_root, 'static', path),  # From static
+                    os.path.join(project_root, 'templates', path),  # From templates
+                ]
+            else:
+                # Absolute or relative path
+                possible_paths = [os.path.abspath(path)]
             
-            if not os.path.exists(full_path):
-                return f"❌ File not found: {path}"
+            # Try each possible path
+            for full_path in possible_paths:
+                if os.path.exists(full_path) and not os.path.isdir(full_path):
+                    # Ensure path is within project directory
+                    if not full_path.startswith(project_root):
+                        continue  # Skip if outside project
+                    
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    logger.info(f"📖 Read file: {path} -> {full_path} ({len(content)} chars)")
+                    return content
             
-            if os.path.isdir(full_path):
-                return f"❌ Path is a directory: {path}"
-            
-            with open(full_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
-            logger.info(f"📖 Read file: {path} ({len(content)} chars)")
-            return content
+            # If not found, provide helpful suggestions
+            suggestions = self._find_similar_files(path)
+            if suggestions:
+                return f"❌ File not found: {path}\n\n💡 Similar files found:\n{suggestions}"
+            else:
+                return f"❌ File not found: {path}\n\n💡 Try using list_files() to see available files"
             
         except Exception as e:
             logger.error(f"Error reading file {path}: {e}")
@@ -1282,6 +1301,41 @@ Focus on being a superintelligent system architect and family guardian.
         except Exception as e:
             logger.error(f"Error creating directory {path}: {e}")
             return False
+
+    def _find_similar_files(self, target_path: str) -> str:
+        """Find similar files to help with path resolution"""
+        try:
+            project_root = os.path.abspath(os.path.dirname(__file__))
+            target_name = os.path.basename(target_path).lower()
+            target_dir = os.path.dirname(target_path).lower()
+            
+            similar_files = []
+            
+            # Walk through project directory
+            for root, dirs, files in os.walk(project_root):
+                for file in files:
+                    file_lower = file.lower()
+                    file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(file_path, project_root)
+                    
+                    # Check for exact name match
+                    if target_name in file_lower or file_lower in target_name:
+                        similar_files.append(f"📄 {rel_path}")
+                    
+                    # Check for partial name match
+                    elif any(part in file_lower for part in target_name.split('_')):
+                        similar_files.append(f"📄 {rel_path}")
+                    
+                    # Check for directory match
+                    elif target_dir and any(part in rel_path.lower() for part in target_dir.split('/')):
+                        similar_files.append(f"📄 {rel_path}")
+            
+            # Return top 5 most relevant matches
+            return "\n".join(similar_files[:5]) if similar_files else ""
+            
+        except Exception as e:
+            logger.error(f"Error finding similar files: {e}")
+            return ""
     
     def _extract_tool_calls(self, text: str) -> List[str]:
         """Extract function calls from text - enhanced to handle complex AI responses"""
