@@ -143,6 +143,13 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - `edit_file("any_file.py", "new_content")` - Edit any file in system
 - `read_file("any_path/file.txt")` - Read any file in system
 
+**CRITICAL TOOL USAGE RULES:**
+- **ONLY USE LISTED TOOLS** - Use only the tools listed in "YOUR TOOLS" section
+- **NEVER USE PRINT** - print() is NOT a tool, call tools directly
+- **NEVER USE SYSTEM FUNCTIONS** - open(), os, sys, subprocess, exec, eval are NOT tools
+- **CALL TOOLS DIRECTLY** - search_files('query') NOT print(search_files('query'))
+- **RESPOND WITH RESULTS** - After calling tools, respond directly to user with the information
+
 **SMART PATH RESOLUTION:**
 - Guardian automatically tries multiple paths when file not found
 - Searches in: current directory, project root, guardian_sandbox/, memory/, prompts/, static/, templates/

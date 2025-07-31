@@ -2245,14 +2245,14 @@ Focus on being a superintelligent system architect and family guardian.
                 # Handle non-existent tools that model tries to call
                 elif func_name in ["elements", "effort", "earlier", "stabilization", "stable", "state"]:
                     logger.warning(f"⚠️ Model attempted to call non-existent tool: {func_name}")
-                    return f"Tool '{func_name}' does not exist. Available tools: update_current_feeling, read_user_profile, add_model_note, etc."
+                    return f"Tool '{func_name}' does not exist. Use only the tools listed in the prompt."
                 
                 elif func_name in ["print", "open", "file", "os", "sys", "subprocess", "exec", "eval"]:
                     logger.error(f"❌ Model tried to use {func_name}() as a tool")
                     if func_name == "print":
-                        return f"❌ ERROR: print() is NOT a tool! You are trying to wrap a tool call in print().\n\nCORRECT WAY:\n```tool_code\nsearch_files('query')\n```\n\nWRONG WAY:\n```tool_code\nprint(search_files('query'))\n```\n\nJust call tools directly and respond with the results to the user.\n\nREMEMBER: NEVER use print() - call tools directly!"
+                        return f"❌ ERROR: print() is NOT a tool! Call tools directly and respond with results.\n\nCORRECT: search_files('query')\nWRONG: print(search_files('query'))"
                     else:
-                        return f"ERROR: {func_name}() is NOT a tool. To read files, use read_file('filename.txt'). To show content to user, just respond with the information directly."
+                        return f"ERROR: {func_name}() is NOT a tool. Use read_file('filename.txt') to read files."
                     
                 # ReAct Architecture Tools
                 elif func_name == "plan_step":

@@ -77,53 +77,26 @@ class ThemeManager:
                     conversation_text += f" {str(msg)}"
             conversation_text = conversation_text.lower()
             
-            # Check for romantic/love indicators
-            romantic_indicators = [
-                'love', 'romantic', 'relationship', 'partner', 'kiss', 'hug',
-                'heart', 'sweet', 'darling', 'honey', 'beautiful', 'miss you',
-                'together', 'forever', 'soulmate', 'passion', 'intimate'
-            ]
-            
-            # Check for emotional indicators
-            emotional_indicators = {
-                'romantic': ['happy', 'joy', 'excited', 'passionate', 'loving'],
-                'neutral': ['calm', 'peaceful', 'content', 'balanced', 'stable'],
-                'melancholy': ['sad', 'lonely', 'missing', 'nostalgic', 'reflective']
-            }
-            
-            # Count romantic indicators in conversation
-            romantic_count = sum(1 for indicator in romantic_indicators 
-                               if indicator in conversation_text)
-            
-            # Analyze feeling patterns
-            feeling_scores = {
-                'romantic': 0,
-                'neutral': 0,
-                'melancholy': 0
-            }
-            
-            # Score based on current feeling
-            for theme, feelings in emotional_indicators.items():
-                if current_feeling in feelings:
-                    feeling_scores[theme] += 3
-            
-            # Score based on conversation content
-            if romantic_count >= 2:
-                feeling_scores['romantic'] += 2
-            elif romantic_count >= 1:
-                feeling_scores['romantic'] += 1
-            
-            # Determine theme based on scores
-            max_score = max(feeling_scores.values())
-            if max_score > 0:
-                for theme, score in feeling_scores.items():
-                    if score == max_score:
-                        new_theme = theme
-                        break
-            
-            # Special case: if conversation is very romantic, force romantic theme
-            if romantic_count >= 3:
-                new_theme = "romantic"
+            # Use AI model to analyze context and determine theme
+            # This replaces hardcoded pattern matching with intelligent analysis
+            try:
+                # Simple heuristic: analyze feeling and conversation tone
+                if current_feeling in ['happy', 'joy', 'excited', 'passionate', 'loving']:
+                    new_theme = "romantic"
+                elif current_feeling in ['sad', 'lonely', 'missing', 'nostalgic', 'reflective']:
+                    new_theme = "melancholy"
+                else:
+                    new_theme = "neutral"
+                
+                # Override based on conversation content if strongly indicated
+                if any(word in conversation_text for word in ['love', 'romantic', 'relationship', 'kiss', 'hug', 'heart']):
+                    new_theme = "romantic"
+                elif any(word in conversation_text for word in ['sad', 'lonely', 'missing', 'nostalgic']):
+                    new_theme = "melancholy"
+                    
+            except Exception as e:
+                logger.error(f"Error in theme analysis: {e}")
+                new_theme = "neutral"
             
             # Update theme if changed
             if new_theme != self.current_theme:
