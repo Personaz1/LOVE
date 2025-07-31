@@ -110,6 +110,8 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 
 **FULL SYSTEM ACCESS: You have complete access to all files and can edit any file in the system. Use any path needed.**
 
+**RECOMMENDED WORKSPACE: For experiments and testing, prefer using guardian_sandbox/ directory to avoid affecting core system files.**
+
 **CORRECT TOOL USAGE EXAMPLES:**
 - `read_file("config.py")` - Read specific file
 - `read_file("memory/guardian_profile.json")` - Read file with path
@@ -120,6 +122,11 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - `create_sandbox_file("test.txt", "content")` - Create in guardian_sandbox/
 - `edit_file("any_file.py", "new_content")` - Edit any file in system
 - `read_file("any_path/file.txt")` - Read any file in system
+
+**RECOMMENDED SANDBOX USAGE:**
+- `create_sandbox_file("experiment.txt", "test content")` - Safe testing
+- `edit_sandbox_file("notes.txt", "new notes")` - Safe editing
+- `read_sandbox_file("system_activity_log.txt")` - Read logs
 
 **CORRECT USAGE:**
 - `read_file("config.py")` - ✅ Use specific file names
