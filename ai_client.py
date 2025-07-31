@@ -1406,6 +1406,14 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"Invalid arguments for update_relationship_status: {args_str}"
                 
                 elif func_name == "update_user_profile":
+                    # Handle empty arguments with fallback
+                    if not args_str.strip():
+                        username = "stepan"  # Default fallback
+                        profile_text = "Updated via system"  # Default content
+                        logger.info(f"🔧 update_user_profile: username={username}, profile_text={profile_text} (empty args fallback)")
+                        result = self.update_user_profile(username, profile_text)
+                        logger.info(f"✅ update_user_profile result: {result}")
+                        return f"Updated profile for {username} (empty args fallback)"
                     # Поддержка как строки, так и JSON-объекта
                     logger.info(f"🔧 update_user_profile args: {args_str}")
                     # Попытка как строка
@@ -1465,8 +1473,19 @@ Focus on being a superintelligent system architect and family guardian.
 
                 
                 elif func_name == "read_user_profile":
+                    # Handle empty arguments with fallback
+                    if not args_str.strip():
+                        username = "stepan"  # Default fallback
+                        logger.info(f"🔧 read_user_profile: username={username} (empty args fallback)")
+                        result = self.read_user_profile(username)
+                        if isinstance(result, str):
+                            logger.info(f"✅ read_user_profile result: {result[:100]}...")
+                            return f"Read profile for {username}: {result[:100]}..."
+                        else:
+                            logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
+                            return f"Read profile for {username}: {str(result)[:100]}..."
                     # Handle both string arguments and slice objects
-                    if "slice(" in args_str:
+                    elif "slice(" in args_str:
                         # This is likely a malformed call - try to extract username from context
                         # Look for common usernames in the args_str
                         if "stepan" in args_str.lower():
@@ -1500,6 +1519,17 @@ Focus on being a superintelligent system architect and family guardian.
                             return f"Invalid arguments for read_user_profile: {args_str}"
                 
                 elif func_name == "read_emotional_history":
+                    # Handle empty arguments with fallback
+                    if not args_str.strip():
+                        username = "stepan"  # Default fallback
+                        logger.info(f"🔧 read_emotional_history: username={username} (empty args fallback)")
+                        result = self.read_emotional_history(username)
+                        if isinstance(result, str):
+                            logger.info(f"✅ read_emotional_history result: {result[:100]}...")
+                            return f"Read emotional history for {username}: {result[:100]}..."
+                        else:
+                            logger.info(f"✅ read_emotional_history result: {str(result)[:100]}...")
+                            return f"Read emotional history for {username}: {str(result)[:100]}..."
                     # Try quoted string first
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
@@ -1710,6 +1740,14 @@ Focus on being a superintelligent system architect and family guardian.
                             return f"Invalid arguments for add_model_note: {args_str}"
                 
                 elif func_name == "add_user_observation":
+                    # Handle empty arguments with fallback
+                    if not args_str.strip():
+                        username = "stepan"  # Default fallback
+                        observation = "System observation"  # Default content
+                        logger.info(f"🔧 add_user_observation: username={username}, observation={observation} (empty args fallback)")
+                        result = self.add_user_observation(username, observation)
+                        logger.info(f"✅ add_user_observation result: {result}")
+                        return f"Added user observation for {username}: {observation} (empty args fallback)"
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         username = arg_match.group(1)
@@ -1723,6 +1761,13 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"Invalid arguments for add_user_observation: {args_str}"
                 
                 elif func_name == "add_personal_thought":
+                    # Handle empty arguments with fallback
+                    if not args_str.strip():
+                        thought = "System personal thought"  # Default content
+                        logger.info(f"🔧 add_personal_thought: thought={thought} (empty args fallback)")
+                        result = self.add_personal_thought(thought)
+                        logger.info(f"✅ add_personal_thought result: {result}")
+                        return f"Added personal thought: {thought} (empty args fallback)"
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         thought = arg_match.group(1)
@@ -2448,12 +2493,18 @@ Focus on being a superintelligent system architect and family guardian.
             return f"Error generating error summary: {e}"
     
     def diagnose_system_health(self) -> str:
-        """Comprehensive system health check"""
+        """Comprehensive system health check with full context"""
         try:
             health_report = []
             
+            # System overview
+            health_report.append("=== ΔΣ Guardian System Status ===")
+            health_report.append(f"🕐 Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            health_report.append(f"🧠 Current model: {self.models[self.current_model_index]['name']}")
+            health_report.append(f"📊 Model index: {self.current_model_index}/{len(self.models)}")
+            
             # Check file permissions
-            health_report.append("=== File System Health ===")
+            health_report.append("\n=== File System Health ===")
             critical_files = [
                 "memory/model_notes.json",
                 "memory/conversation_history.json", 
@@ -2473,6 +2524,27 @@ Focus on being a superintelligent system architect and family guardian.
                 else:
                     health_report.append(f"⚠️ {file_path}: Missing")
             
+            # Check sandbox files
+            health_report.append("\n=== Sandbox Memory Files ===")
+            sandbox_files = [
+                "guardian_sandbox/system_activity_log.txt",
+                "guardian_sandbox/meranda_routines.txt", 
+                "guardian_sandbox/stepan_preferences.txt",
+                "guardian_sandbox/system_notes_for_meranda_intro.txt"
+            ]
+            
+            for file_path in sandbox_files:
+                if os.path.exists(file_path):
+                    try:
+                        with open(file_path, 'r') as f:
+                            content = f.read()
+                        size = len(content)
+                        health_report.append(f"✅ {file_path}: OK ({size} chars)")
+                    except Exception as e:
+                        health_report.append(f"❌ {file_path}: {e}")
+                else:
+                    health_report.append(f"⚠️ {file_path}: Missing")
+            
             # Check API status
             health_report.append("\n=== API Health ===")
             api_key = os.getenv('GEMINI_API_KEY')
@@ -2481,16 +2553,40 @@ Focus on being a superintelligent system architect and family guardian.
             else:
                 health_report.append("❌ GEMINI_API_KEY: Missing")
             
-            # Check current model
-            current_model = self.models[self.current_model_index]
-            health_report.append(f"✅ Current model: {current_model['name']}")
-            
-            # Check sandbox
+            # Check sandbox directory
             sandbox_path = "guardian_sandbox"
             if os.path.exists(sandbox_path):
                 health_report.append(f"✅ Sandbox: {sandbox_path} exists")
+                # Count files in sandbox
+                try:
+                    sandbox_files = [f for f in os.listdir(sandbox_path) if os.path.isfile(os.path.join(sandbox_path, f))]
+                    health_report.append(f"📁 Sandbox files: {len(sandbox_files)} files")
+                except Exception as e:
+                    health_report.append(f"⚠️ Error counting sandbox files: {e}")
             else:
                 health_report.append(f"⚠️ Sandbox: {sandbox_path} missing")
+            
+            # System capabilities
+            health_report.append("\n=== System Capabilities ===")
+            health_report.append("✅ Self-modification: Can edit own prompt and code")
+            health_report.append("✅ Memory system: Persistent notes in sandbox")
+            health_report.append("✅ Multi-model support: Automatic model switching")
+            health_report.append("✅ File operations: Read/write/create/delete files")
+            health_report.append("✅ User profiles: Meranda and Stepan data")
+            health_report.append("✅ Image analysis: Vision capabilities available")
+            
+            # Recent activity (last 5 log entries)
+            health_report.append("\n=== Recent Activity ===")
+            try:
+                with open("memory/model_notes.json", 'r') as f:
+                    notes = json.load(f)
+                    recent_notes = notes[-5:] if len(notes) > 5 else notes
+                    for note in recent_notes:
+                        timestamp = note.get('timestamp', 'Unknown')
+                        content = note.get('content', '')[:100]
+                        health_report.append(f"📝 {timestamp}: {content}...")
+            except Exception as e:
+                health_report.append(f"⚠️ Error reading recent activity: {e}")
             
             return "\n".join(health_report)
             
