@@ -400,35 +400,9 @@ class AIClient:
                     logger.info(f"🎯 No more tools needed after {step + 1} steps")
                     break
                 
-                # Check for final response indicators
-                final_response_indicators = [
-                    "FINAL RESPONSE:", "FINAL ANSWER:", "RESPONSE:", "ANSWER:", 
-                    "Here's what I found:", "Here's the result:", "Here's what I did:",
-                    "I have completed", "I have finished", "The task is complete",
-                    "Based on the information", "The information shows", "Here's what I discovered",
-                    "I can see that", "The data indicates", "From the results"
-                ]
-                
-                has_final_response = any(indicator.lower() in initial_text.lower() for indicator in final_response_indicators)
-                
-                # If model provides a final response, break the loop
-                if has_final_response:
-                    logger.info(f"🎯 Model provided final response after {step + 1} steps")
-                    break
-                
-                # Check if we have enough information to answer the user's request
-                # Look for common patterns that indicate the model has what it needs
-                information_indicators = [
-                    "file content", "file found", "system logs", "user profile", 
-                    "system health", "model notes", "error summary", "project structure",
-                    "directory listing", "file information", "search results"
-                ]
-                
-                has_information = any(indicator.lower() in str(all_tool_results).lower() for indicator in information_indicators)
-                
-                # If we have information and no more tools are being called, stop
-                if has_information and not tool_calls:
-                    logger.info(f"🎯 Have sufficient information after {step + 1} steps, stopping")
+                # Check if Guardian wants to continue with more tools or give final response
+                if not tool_calls:
+                    logger.info(f"🎯 No more tools needed after {step + 1} steps")
                     break
                 
                 # Simple check to prevent infinite loops
