@@ -415,8 +415,8 @@ class AIClient:
                     break
                 
                 # Simple check to prevent infinite loops
-                if step > 12:  # Increased maximum steps
-                    logger.warning(f"⚠️ Reached maximum steps ({step + 1}). Stopping.")
+                if step > 666:  # Maximum steps as promised in prompt
+                    logger.warning(f"⚠️ Reached maximum steps (666). Stopping.")
                     break
             
             # Generate final response with all tool results
@@ -2257,7 +2257,7 @@ Focus on being a superintelligent system architect and family guardian.
                     arg_match = re.match(r'["\']([^"\']+)["\'](?:\s*,\s*(\d+))?', args_str)
                     if arg_match:
                         goal = arg_match.group(1)
-                        max_steps = int(arg_match.group(2)) if arg_match.group(2) else 5
+                        max_steps = int(arg_match.group(2)) if arg_match.group(2) else 20
                         logger.info(f"🔧 react_cycle: goal={goal}, max_steps={max_steps}")
                         result = self.react_cycle(goal, max_steps)
                         logger.info(f"✅ react_cycle result: {result[:100]}...")
@@ -3308,7 +3308,7 @@ What insights do you have about the recent actions?"""
             logger.error(f"Error in reflect: {e}")
             return f"Error during reflection: {e}"
 
-    def react_cycle(self, goal: str, max_steps: int = 5) -> str:
+    def react_cycle(self, goal: str, max_steps: int = 20) -> str:
         """Execute a complete ReAct cycle: Plan -> Act -> Reflect"""
         try:
             history = []

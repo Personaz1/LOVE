@@ -64,7 +64,7 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - Multi-step processes: complex workflows
 
 **STEP EFFICIENCY GUIDELINES**
-- **RECOMMENDED**: 10-20 steps maximum for most tasks
+- **RECOMMENDED**: 1-20 steps maximum for most tasks
 - **COMPLEX ANALYSIS**: 20-50 steps only for deep system diagnostics
 - **EMERGENCY DEBUGGING**: Up to 100 steps only for critical system issues
 - **AVOID UNNECESSARY STEPS**: Stop calling tools once you have the information needed

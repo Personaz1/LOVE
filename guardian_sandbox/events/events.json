@@ -108,5 +108,27 @@
     "status": "pending",
     "created_at": "2025-08-01T00:32:11.309191",
     "completed_at": null
+  },
+  {
+    "id": 11,
+    "title": "Test Meeting",
+    "description": "Testing Guardian functions",
+    "date": "2025-08-02",
+    "time": "15:00",
+    "priority": "high",
+    "status": "pending",
+    "created_at": "2025-08-01T00:40:18.959548",
+    "completed_at": null
+  },
+  {
+    "id": 12,
+    "title": "Weekend Plans",
+    "description": "Family activities",
+    "date": "2025-08-03",
+    "time": "10:00",
+    "priority": "medium",
+    "status": "pending",
+    "created_at": "2025-08-01T00:40:18.961575",
+    "completed_at": null
   }
 ]
