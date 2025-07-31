@@ -272,14 +272,6 @@ async def login_greeting(request: Request):
             # Send greeting
             yield f"data: {json.dumps({'type': 'greeting', 'content': greeting})}\n\n"
             
-            # Add system analysis
-            try:
-                system_analysis = ai_client.diagnose_system_health()
-                if system_analysis and "Error" not in system_analysis:
-                    yield f"data: {json.dumps({'type': 'system_status', 'content': f'System Status: {system_analysis[:200]}...'})}\n\n"
-            except Exception as e:
-                logger.warning(f"System analysis failed: {e}")
-            
             # Send completion
             yield f"data: {json.dumps({'type': 'greeting_complete', 'timestamp': datetime.now().isoformat()})}\n\n"
             
@@ -1269,7 +1261,7 @@ async def guardian_profile_page(request: Request):
 @app.get("/sw.js")
 async def service_worker(request: Request):
     """Service Worker for PWA functionality"""
-    return FileResponse("sw.js", media_type="application/javascript")
+    return FileResponse("static/sw.js", media_type="application/javascript")
 
 # File upload and management endpoints
 @app.post("/api/upload-file")

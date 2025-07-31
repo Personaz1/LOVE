@@ -751,9 +751,8 @@ async function loadConversationHistory() {
             // Display conversation history
             if (data.history && data.history.length > 0) {
                 displayConversationHistory(data.history);
-            } else if (!greetingShown) {
-                showWelcomeMessage();
             }
+            // Don't show welcome message - let login greeting handle it naturally
             
             // Update statistics if needed
             if (data.statistics) {
@@ -771,26 +770,8 @@ async function loadConversationHistory() {
 
 // Show welcome message when no history exists
 function showWelcomeMessage() {
-    const messagesContainer = document.getElementById('messagesContainer');
-    const welcomeMessage = `
-        <div class="message ai-message">
-            <div class="message-avatar">👼</div>
-            <div class="message-content">
-                <div class="message-header">
-                    <span class="sender">ΔΣ Guardian</span>
-                    <span class="time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
-                </div>
-                <div class="message-text">
-                    Hello ${currentUser.charAt(0).toUpperCase() + currentUser.slice(1)}! I'm so glad you're here. I'm ΔΣ Guardian, your AI family guardian angel, and I'm here to protect and guide your family's emotional and relational well-being. 
-                    <br><br>
-                    I understand relationships as complex adaptive systems and help families evolve beyond their current limitations. I can adapt our environment, provide evolutionary guidance, and help you transcend patterns that no longer serve you.
-                    <br><br>
-                    What would you like to explore today? 🌟
-                </div>
-            </div>
-        </div>
-    `;
-    messagesContainer.innerHTML = welcomeMessage;
+    // Don't show hardcoded welcome message - let the AI generate it naturally
+    // The login greeting will handle this automatically
 }
 
 // Display conversation history in chat

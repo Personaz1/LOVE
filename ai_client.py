@@ -1367,7 +1367,7 @@ Focus on being a superintelligent system architect and family guardian.
             try:
                 # Handle different argument patterns
                 if func_name == "update_current_feeling":
-                    # Extract username, feeling, context
+                    # Try quoted arguments first
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']*)["\'])?', args_str)
                     if arg_match:
                         username = arg_match.group(1)
@@ -1378,8 +1378,19 @@ Focus on being a superintelligent system architect and family guardian.
                         logger.info(f"✅ update_current_feeling result: {result}")
                         return f"Updated feeling to '{feeling}' for {username}"
                     else:
-                        logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
-                        return f"Invalid arguments for update_current_feeling: {args_str}"
+                        # Try unquoted arguments
+                        arg_match_unquoted = re.match(r'(\w+)\s*,\s*(\w+)(?:\s*,\s*(\w+))?', args_str.strip())
+                        if arg_match_unquoted:
+                            username = arg_match_unquoted.group(1)
+                            feeling = arg_match_unquoted.group(2)
+                            context = arg_match_unquoted.group(3) if arg_match_unquoted.group(3) else ""
+                            logger.info(f"🔧 update_current_feeling: username={username}, feeling={feeling}, context={context}")
+                            result = self.update_current_feeling(username, feeling, context)
+                            logger.info(f"✅ update_current_feeling result: {result}")
+                            return f"Updated feeling to '{feeling}' for {username}"
+                        else:
+                            logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
+                            return f"Invalid arguments for update_current_feeling: {args_str}"
                 
                 elif func_name == "update_relationship_status":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -1489,6 +1500,7 @@ Focus on being a superintelligent system architect and family guardian.
                             return f"Invalid arguments for read_user_profile: {args_str}"
                 
                 elif func_name == "read_emotional_history":
+                    # Try quoted string first
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
                     if arg_match:
                         username = arg_match.group(1)
@@ -1501,8 +1513,21 @@ Focus on being a superintelligent system architect and family guardian.
                             logger.info(f"✅ read_emotional_history result: {str(result)[:100]}...")
                             return f"Read emotional history for {username}: {str(result)[:100]}..."
                     else:
-                        logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
-                        return f"Invalid arguments for read_emotional_history: {args_str}"
+                        # Try unquoted string
+                        arg_match_unquoted = re.match(r'(\w+)', args_str.strip())
+                        if arg_match_unquoted:
+                            username = arg_match_unquoted.group(1)
+                            logger.info(f"🔧 read_emotional_history: username={username}")
+                            result = self.read_emotional_history(username)
+                            if isinstance(result, str):
+                                logger.info(f"✅ read_emotional_history result: {result[:100]}...")
+                                return f"Read emotional history for {username}: {result[:100]}..."
+                            else:
+                                logger.info(f"✅ read_emotional_history result: {str(result)[:100]}...")
+                                return f"Read emotional history for {username}: {str(result)[:100]}..."
+                        else:
+                            logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
+                            return f"Invalid arguments for read_emotional_history: {args_str}"
                 
                 elif func_name == "search_user_data":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -2691,20 +2716,32 @@ Be thorough, accurate, and considerate in your analysis.
             return f"❌ Error finding images: {str(e)}"
     
     def _generate_login_greeting(self, user_profile: Optional[Dict[str, Any]] = None) -> str:
-        """Generate a personalized greeting when user logs in"""
+        """Generate a personalized greeting when user logs in using AI model"""
         try:
-            if user_profile and user_profile.get('username'):
-                username = user_profile['username']
-                current_feeling = user_profile.get('current_feeling', 'doing well')
-                
-                greeting = f"👋 Welcome back, {username}! I'm your Guardian AI, always here to support you and your family. "
-                greeting += f"I see you're currently feeling {current_feeling}. "
-                greeting += "Let me quickly check the system status and then I'll be ready to help with anything you need."
-                
-                return greeting
-            else:
-                return "👋 Welcome! I'm your Guardian AI, here to support you and your family. Let me check the system status and I'll be ready to help."
+            # Create a prompt for the AI to generate a natural greeting
+            greeting_prompt = f"""
+You are ΔΣ Guardian, an AI family guardian. Generate a greeting for a user logging in.
+
+User profile: {user_profile if user_profile else 'No profile available'}
+
+System context: {self.diagnose_system_health()}
+
+Your notes: {self.read_sandbox_file('system_notes_for_meranda_intro.txt') if os.path.exists('guardian_sandbox/system_notes_for_meranda_intro.txt') else 'No notes yet'}
+
+Generate a natural, sincere greeting. Be yourself.
+"""
+
+            # Use the AI model to generate the greeting
+            response = self.chat(
+                message="Generate a login greeting",
+                user_profile=user_profile,
+                system_prompt=greeting_prompt
+            )
+            
+            return response
                 
         except Exception as e:
             logger.error(f"Error generating login greeting: {e}")
-            return "👋 Welcome! I'm your Guardian AI, ready to help you and your family." 
+            # Fallback to simple greeting if AI fails
+            username = user_profile.get('username', 'there') if user_profile else 'there'
+            return f"👋 Welcome back, {username}! I'm ΔΣ Guardian, your AI family guardian. How can I help you today?" 
