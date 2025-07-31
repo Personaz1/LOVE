@@ -3156,12 +3156,25 @@ Your notes: {self.read_sandbox_file('system_notes_for_meranda_intro.txt')}
 Generate a natural, sincere greeting. Be yourself."""
 
             # Get greeting from model
-            response = self.chat("Generate a greeting", system_prompt=greeting_prompt)
-            
-            if response and hasattr(response, 'strip'):
-                return response.strip()
-            else:
-                return "Hello! How can I help you today?"
+            try:
+                model = self._get_current_model()
+                response = model.generate_content(greeting_prompt)
+                response_text = self._extract_text_from_response(response)
+                
+                if response_text and hasattr(response_text, 'strip'):
+                    return response_text.strip()
+                else:
+                    return "Hello! How can I help you today?"
+                    
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying greeting generation with new model after quota error: {error_msg}")
+                    return self._generate_login_greeting(user_profile)
+                else:
+                    logger.error(f"Error generating greeting: {e}")
+                    return "Hello! How can I help you today?"
                 
         except Exception as e:
             logger.error(f"Error generating login greeting: {e}")
@@ -3200,13 +3213,26 @@ PLANNING INSTRUCTIONS:
 
 What is your plan for the next step?"""
 
-            # Use synchronous response generation
-            response = self.chat("Generate a plan for: " + goal, system_prompt=planning_prompt)
-            
-            # Log the planning step
-            self.add_model_note(f"Planned step for goal: {goal}. Plan: {response[:100]}...", "planning")
-            
-            return response.strip()
+            # Use direct model call for synchronous response
+            try:
+                model = self._get_current_model()
+                response = model.generate_content(planning_prompt)
+                response_text = self._extract_text_from_response(response)
+                
+                # Log the planning step
+                self.add_model_note(f"Planned step for goal: {goal}. Plan: {response_text[:100]}...", "planning")
+                
+                return response_text.strip()
+                
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying plan_step with new model after quota error: {error_msg}")
+                    return self.plan_step(goal)
+                else:
+                    logger.error(f"Error in plan_step model call: {e}")
+                    return f"Error planning step: {e}"
             
         except Exception as e:
             logger.error(f"Error in plan_step: {e}")
@@ -3257,13 +3283,26 @@ REFLECTION INSTRUCTIONS:
 
 What insights do you have about the recent actions?"""
 
-            # Use synchronous response generation
-            response = self.chat("Analyze these actions: " + str(history), system_prompt=reflection_prompt)
-            
-            # Log the reflection
-            self.add_model_note(f"Reflection on recent actions: {response[:100]}...", "reflection")
-            
-            return response.strip()
+            # Use direct model call for synchronous response
+            try:
+                model = self._get_current_model()
+                response = model.generate_content(reflection_prompt)
+                response_text = self._extract_text_from_response(response)
+                
+                # Log the reflection
+                self.add_model_note(f"Reflection on recent actions: {response_text[:100]}...", "reflection")
+                
+                return response_text.strip()
+                
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying reflect with new model after quota error: {error_msg}")
+                    return self.reflect(history)
+                else:
+                    logger.error(f"Error in reflect model call: {e}")
+                    return f"Error during reflection: {e}"
             
         except Exception as e:
             logger.error(f"Error in reflect: {e}")
@@ -3662,15 +3701,29 @@ Confidence: {result.extra_data.get('confidence', 'N/A')}
 
 Summary:"""
             
-            summary = self._generate_gemini_response(summary_prompt, "")
-            
-            # Store summary in vector memory
-            self.store_embedding_memory(summary, "conversation_summary")
-            
-            # Log the summary
-            self.add_model_note(f"Created conversation summary: {summary[:100]}...", "conversation_summary")
-            
-            return f"Conversation Summary:\n{summary}"
+            # Use direct model call for synchronous response
+            try:
+                model = self._get_current_model()
+                response = model.generate_content(summary_prompt)
+                summary = self._extract_text_from_response(response)
+                
+                # Store summary in vector memory
+                self.store_embedding_memory(summary, "conversation_summary")
+                
+                # Log the summary
+                self.add_model_note(f"Created conversation summary: {summary[:100]}...", "conversation_summary")
+                
+                return f"Conversation Summary:\n{summary}"
+                
+            except Exception as e:
+                error_msg = str(e)
+                if self._handle_quota_error(error_msg):
+                    # If quota error, retry with the new model
+                    logger.info(f"Retrying summarize_conversation with new model after quota error: {error_msg}")
+                    return self.summarize_conversation(conversation_history)
+                else:
+                    logger.error(f"Error in summarize_conversation model call: {e}")
+                    return f"Error creating summary: {e}"
             
         except Exception as e:
             logger.error(f"Error summarizing conversation: {e}")

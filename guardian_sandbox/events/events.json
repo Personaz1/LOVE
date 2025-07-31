@@ -64,5 +64,49 @@
     "status": "pending",
     "created_at": "2025-08-01T00:26:44.808776",
     "completed_at": null
+  },
+  {
+    "id": 7,
+    "title": "Test Meeting",
+    "description": "Testing Guardian functions",
+    "date": "2025-08-02",
+    "time": "15:00",
+    "priority": "high",
+    "status": "pending",
+    "created_at": "2025-08-01T00:30:18.704525",
+    "completed_at": null
+  },
+  {
+    "id": 8,
+    "title": "Weekend Plans",
+    "description": "Family activities",
+    "date": "2025-08-03",
+    "time": "10:00",
+    "priority": "medium",
+    "status": "pending",
+    "created_at": "2025-08-01T00:30:18.706057",
+    "completed_at": null
+  },
+  {
+    "id": 9,
+    "title": "Test Meeting",
+    "description": "Testing Guardian functions",
+    "date": "2025-08-02",
+    "time": "15:00",
+    "priority": "high",
+    "status": "pending",
+    "created_at": "2025-08-01T00:32:11.307511",
+    "completed_at": null
+  },
+  {
+    "id": 10,
+    "title": "Weekend Plans",
+    "description": "Family activities",
+    "date": "2025-08-03",
+    "time": "10:00",
+    "priority": "medium",
+    "status": "pending",
+    "created_at": "2025-08-01T00:32:11.309191",
+    "completed_at": null
   }
 ]
