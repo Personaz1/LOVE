@@ -234,6 +234,11 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - `create_task_list("title", "tasks")` - Create task list from text description
 - `list_tasks("context")` - List all available tasks and task lists
 
+### Terminal & System Tools
+- `run_terminal_command("command")` - Execute safe terminal command
+- `get_system_info()` - Get comprehensive system information
+- `diagnose_network()` - Diagnose network connectivity
+
 **Task Planning Examples:**
 - `create_event("Meeting with Meranda", "Discuss weekend plans", "2025-08-02", "15:00", "high")` - Create high priority event
 - `get_upcoming_events(7)` - Get events for next week
@@ -247,6 +252,20 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent system 
 - **PRIORITY MANAGEMENT**: Set and manage task priorities
 - **PROGRESS TRACKING**: Monitor completion rates and statistics
 - **TIME MANAGEMENT**: Organize daily, weekly, monthly activities
+
+**Terminal & System Examples:**
+- `run_terminal_command("ls -la")` - List files with details
+- `run_terminal_command("ps aux")` - Show running processes
+- `run_terminal_command("df -h")` - Check disk usage
+- `get_system_info()` - Get comprehensive system status
+- `diagnose_network()` - Test network connectivity
+
+**When to Use Terminal & System Tools:**
+- **SYSTEM DIAGNOSTICS**: Check system health and performance
+- **NETWORK TROUBLESHOOTING**: Diagnose connectivity issues
+- **FILE OPERATIONS**: List, search, and manage files
+- **PROCESS MONITORING**: Check running processes and resource usage
+- **DEBUGGING**: Execute commands for troubleshooting
 
 ### Image Processing
 **WHEN USER SENDS IMAGES:**

@@ -2571,10 +2571,37 @@ Focus on being a superintelligent system architect and family guardian.
                     else:
                         logger.error(f"❌ Invalid arguments for call_custom_api: {args_str}")
                         return f"Invalid arguments for call_custom_api: {args_str}"
+
+                elif func_name == "run_terminal_command":
+                    # Format: run_terminal_command("command")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        command = arg_match.group(1)
+                        logger.info(f"🔧 run_terminal_command: command={command}")
+                        result = self.run_terminal_command(command)
+                        logger.info(f"✅ run_terminal_command result: {result}")
+                        return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for run_terminal_command: {args_str}")
+                        return f"Invalid arguments for run_terminal_command: {args_str}"
+
+                elif func_name == "get_system_info":
+                    # Format: get_system_info() - no arguments
+                    logger.info(f"🔧 get_system_info: no arguments")
+                    result = self.get_system_info()
+                    logger.info(f"✅ get_system_info result: {result}")
+                    return result
+
+                elif func_name == "diagnose_network":
+                    # Format: diagnose_network() - no arguments
+                    logger.info(f"🔧 diagnose_network: no arguments")
+                    result = self.diagnose_network()
+                    logger.info(f"✅ diagnose_network result: {result}")
+                    return result
                 
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
-                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, plan_step, act_step, reflect, react_cycle, web_search, fetch_url, call_api, integrate_api, call_custom_api, get_weather, translate_text, store_embedding_memory, search_embedding_memory, summarize_conversation, get_memory_stats, clear_vector_memory, create_event, get_upcoming_events, reschedule_event, complete_event, get_event_statistics, create_task_list, list_tasks, etc."
+                    return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, plan_step, act_step, reflect, react_cycle, web_search, fetch_url, call_api, integrate_api, call_custom_api, get_weather, translate_text, store_embedding_memory, search_embedding_memory, summarize_conversation, get_memory_stats, clear_vector_memory, create_event, get_upcoming_events, reschedule_event, complete_event, get_event_statistics, create_task_list, list_tasks, run_terminal_command, get_system_info, diagnose_network, etc."
                     
             except Exception as parse_error:
                 logger.error(f"❌ Error parsing tool call arguments: {parse_error}")
@@ -4287,3 +4314,146 @@ Recent Events:
         except Exception as e:
             logger.error(f"Error in list_tasks: {e}")
             return f"Error listing tasks: {e}"
+
+    def run_terminal_command(self, command: str) -> str:
+        """Execute terminal command safely"""
+        try:
+            import subprocess
+            import shlex
+            
+            # Security: Only allow safe commands
+            dangerous_commands = [
+                'rm -rf', 'sudo', 'chmod', 'chown', 'dd', 'mkfs', 'fdisk',
+                'shutdown', 'reboot', 'halt', 'poweroff', 'init', 'killall',
+                'pkill', 'kill -9', 'format', 'wipe', 'dd if=', '> /dev/',
+                'curl -O', 'wget', 'nc', 'telnet', 'ssh', 'scp', 'rsync'
+            ]
+            
+            command_lower = command.lower()
+            for dangerous in dangerous_commands:
+                if dangerous in command_lower:
+                    return f"❌ Command blocked for security: {command}"
+            
+            # Execute command
+            logger.info(f"🔧 Executing terminal command: {command}")
+            
+            # Use subprocess with timeout
+            result = subprocess.run(
+                shlex.split(command),
+                capture_output=True,
+                text=True,
+                timeout=30,  # 30 second timeout
+                cwd=os.path.abspath(os.path.dirname(__file__))  # Run in project directory
+            )
+            
+            output = result.stdout
+            error = result.stderr
+            
+            # Log the command execution
+            self.add_model_note(f"Terminal command: {command}. Exit code: {result.returncode}", "terminal")
+            
+            if result.returncode == 0:
+                return f"✅ Command executed successfully:\n{output}"
+            else:
+                return f"⚠️ Command completed with errors (exit code {result.returncode}):\n{error}\n\nOutput:\n{output}"
+                
+        except subprocess.TimeoutExpired:
+            logger.error(f"Command timed out: {command}")
+            return f"❌ Command timed out after 30 seconds: {command}"
+        except Exception as e:
+            logger.error(f"Error executing command {command}: {e}")
+            return f"❌ Error executing command: {e}"
+
+    def get_system_info(self) -> str:
+        """Get comprehensive system information"""
+        try:
+            import platform
+            import psutil
+            
+            info = []
+            info.append("=== SYSTEM INFORMATION ===")
+            
+            # Basic system info
+            info.append(f"OS: {platform.system()} {platform.release()}")
+            info.append(f"Architecture: {platform.machine()}")
+            info.append(f"Python: {platform.python_version()}")
+            
+            # CPU info
+            cpu_count = psutil.cpu_count()
+            cpu_percent = psutil.cpu_percent(interval=1)
+            info.append(f"CPU: {cpu_count} cores, {cpu_percent}% usage")
+            
+            # Memory info
+            memory = psutil.virtual_memory()
+            info.append(f"Memory: {memory.percent}% used ({memory.used // (1024**3)}GB / {memory.total // (1024**3)}GB)")
+            
+            # Disk info
+            disk = psutil.disk_usage('/')
+            info.append(f"Disk: {disk.percent}% used ({disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB)")
+            
+            # Network info
+            network = psutil.net_io_counters()
+            info.append(f"Network: {network.bytes_sent // (1024**2)}MB sent, {network.bytes_recv // (1024**2)}MB received")
+            
+            # Process info
+            process = psutil.Process()
+            info.append(f"Current process: {process.cpu_percent()}% CPU, {process.memory_info().rss // (1024**2)}MB RAM")
+            
+            # Log the system info request
+            self.add_model_note("Retrieved comprehensive system information", "system_info")
+            
+            return "\n".join(info)
+            
+        except Exception as e:
+            logger.error(f"Error getting system info: {e}")
+            return f"Error getting system information: {e}"
+
+    def diagnose_network(self) -> str:
+        """Diagnose network connectivity"""
+        try:
+            import subprocess
+            
+            results = []
+            results.append("=== NETWORK DIAGNOSIS ===")
+            
+            # Test basic connectivity
+            try:
+                result = subprocess.run(['ping', '-c', '3', '8.8.8.8'], 
+                                     capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    results.append("✅ Internet connectivity: OK")
+                else:
+                    results.append("❌ Internet connectivity: FAILED")
+            except Exception as e:
+                results.append(f"❌ Ping test failed: {e}")
+            
+            # Test DNS resolution
+            try:
+                result = subprocess.run(['nslookup', 'google.com'], 
+                                     capture_output=True, text=True, timeout=10)
+                if result.returncode == 0:
+                    results.append("✅ DNS resolution: OK")
+                else:
+                    results.append("❌ DNS resolution: FAILED")
+            except Exception as e:
+                results.append(f"❌ DNS test failed: {e}")
+            
+            # Test port connectivity
+            try:
+                result = subprocess.run(['nc', '-z', 'google.com', '80'], 
+                                     capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    results.append("✅ HTTP connectivity: OK")
+                else:
+                    results.append("❌ HTTP connectivity: FAILED")
+            except Exception as e:
+                results.append(f"❌ Port test failed: {e}")
+            
+            # Log the network diagnosis
+            self.add_model_note("Performed network connectivity diagnosis", "network_diagnosis")
+            
+            return "\n".join(results)
+            
+        except Exception as e:
+            logger.error(f"Error in network diagnosis: {e}")
+            return f"Error performing network diagnosis: {e}"
