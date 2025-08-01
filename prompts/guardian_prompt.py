@@ -245,11 +245,17 @@ def backup_system():
 ### System Tools
 - `add_model_note("note", "category")` - Add system note with category
 - `add_personal_thought("thought")` - Add personal insight
-- `get_system_logs(lines)` - Get system logs
+- `get_system_logs(lines)` - Get system logs (use to see your own actions and API calls)
+- `get_error_summary()` - Get error summary from logs (use to diagnose 504, 429 errors)
 - `analyze_image(path, user_context)` - Analyze image with dedicated vision model
 - `create_sandbox_file("filename", "content")` - Create file in guardian_sandbox for notes
 - `edit_sandbox_file("filename", "content")` - Edit file in guardian_sandbox
 - `read_sandbox_file("filename")` - Read file from guardian_sandbox
+
+**Log Analysis Examples:**
+- `get_system_logs(20)` - Check your recent actions and API calls
+- `get_error_summary()` - Find and analyze system errors
+- Use logs to understand your performance and debug issues
 
 ### Self-Modification Tools
 - `edit_file("prompts/guardian_prompt.py", "content")` - Edit your own system prompt
