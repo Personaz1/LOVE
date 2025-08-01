@@ -279,8 +279,22 @@ class GeminiClient:
             
             # Обрабатываем streaming ответ
             for chunk in response:
+                # Проверяем разные способы получения текста
                 if hasattr(chunk, 'text') and chunk.text:
                     yield chunk.text
+                elif hasattr(chunk, 'parts') and chunk.parts:
+                    # Обрабатываем сложные ответы через parts
+                    for part in chunk.parts:
+                        if hasattr(part, 'text') and part.text:
+                            yield part.text
+                elif hasattr(chunk, 'candidates') and chunk.candidates:
+                    # Обрабатываем через candidates
+                    for candidate in chunk.candidates:
+                        if hasattr(candidate, 'content') and candidate.content:
+                            if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                                for part in candidate.content.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        yield part.text
                     
         except Exception as e:
             error_msg = str(e)

@@ -275,14 +275,8 @@ class SystemTools:
                 'stressed': '😰', 'neutral': '😐'
             }.get(current_feeling, '😐')
             
-            if current_time.endswith('AM'):
-                time_greeting = "Good morning"
-            elif current_time.endswith('PM') and int(current_time.split(':')[0]) < 5:
-                time_greeting = "Good afternoon"
-            else:
-                time_greeting = "Good evening"
-            
-            greeting = f"{feeling_emoji} {time_greeting}, {username}! "
+            # Используем модель для генерации приветствия
+            greeting = f"{feeling_emoji} Hello, {username}! "
             greeting += f"It's {current_time}. "
             
             if current_feeling != 'neutral':
