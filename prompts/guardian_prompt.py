@@ -179,6 +179,7 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent family 
 - `get_error_summary()` - Get error summary from logs
 - `analyze_image(path, user_context)` - Analyze image with vision model
 - `web_search("query")` - Search the web for information
+- `generate_system_greeting(user_profile)` - Generate system status greeting for monitoring
 - `read_file("sessions.json")` - Check user session data
 - `read_file("memory/conversation_history.json")` - Check conversation history
 - `read_file("memory/user_profiles/meranda.json")` - Check Meranda's profile and activity
