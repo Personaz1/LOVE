@@ -102,7 +102,13 @@ The system uses a two-phase architecture for intelligent responses:
 ### **Core Components**
 ```
 FAMILY/
-├── ai_client.py          # Multi-step reasoning AI interface
+├── ai_client/            # Modular AI client architecture
+│   ├── core/client.py    # Main AI client logic
+│   ├── models/gemini_client.py  # AI model interactions
+│   ├── tools/file_tools.py      # File operations
+│   ├── tools/memory_tools.py    # Memory management
+│   ├── tools/system_tools.py    # System utilities
+│   └── utils/            # Configuration and utilities
 ├── web_app.py            # FastAPI web application
 ├── file_agent.py         # Safe file system operations
 ├── memory/               # Persistent storage

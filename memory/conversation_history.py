@@ -30,13 +30,13 @@ def _load_ai_client():
         sys.path.append(parent_dir)
         logger.info(f"🔍 Added {parent_dir} to Python path")
         
-        # Check if ai_client.py exists
-        ai_client_path = os.path.join(parent_dir, 'ai_client.py')
+        # Check if ai_client module exists
+        ai_client_path = os.path.join(parent_dir, 'ai_client')
         if os.path.exists(ai_client_path):
-            logger.info(f"✅ Found ai_client.py at {ai_client_path}")
+            logger.info(f"✅ Found ai_client module at {ai_client_path}")
         else:
-            logger.error(f"❌ ai_client.py not found at {ai_client_path}")
-            raise FileNotFoundError(f"ai_client.py not found at {ai_client_path}")
+            logger.error(f"❌ ai_client module not found at {ai_client_path}")
+            raise FileNotFoundError(f"ai_client module not found at {ai_client_path}")
         
         from ai_client import AIClient as AIClientClass
         AIClient = AIClientClass
