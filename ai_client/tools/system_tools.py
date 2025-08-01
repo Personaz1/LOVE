@@ -316,10 +316,47 @@ class SystemTools:
     
     # Web инструменты
     def web_search(self, query: str) -> str:
-        """Веб-поиск"""
+        """Веб-поиск через Google Custom Search API"""
         try:
-            # TODO: Реализовать веб-поиск
-            return f"🔍 Web search for: {query} (not implemented)"
+            import requests
+            import os
+            
+            api_key = os.getenv('GOOGLE_CUSTOM_SEARCH_API_KEY')
+            engine_id = os.getenv('GOOGLE_CUSTOM_SEARCH_ENGINE_ID')
+            
+            if not api_key:
+                return "❌ Google Custom Search API key not configured"
+            
+            if not engine_id or engine_id == "test_engine_id":
+                return "❌ Google Custom Search Engine ID not configured. Please create one at https://programmablesearchengine.google.com/"
+            
+            url = "https://www.googleapis.com/customsearch/v1"
+            params = {
+                'key': api_key,
+                'cx': engine_id,
+                'q': query,
+                'num': 5  # Количество результатов
+            }
+            
+            response = requests.get(url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if 'items' in data and data['items']:
+                    results = []
+                    for item in data['items']:
+                        title = item.get('title', 'No title')
+                        snippet = item.get('snippet', 'No description')
+                        link = item.get('link', 'No link')
+                        results.append(f"📄 {title}\n{snippet}\n🔗 {link}\n")
+                    
+                    return f"🔍 Результаты поиска для '{query}':\n\n" + "\n".join(results)
+                else:
+                    return f"🔍 Поиск для '{query}': результатов не найдено"
+            else:
+                return f"❌ Ошибка API: {response.status_code} - {response.text}"
+                
         except Exception as e:
             logger.error(f"Error in web search: {e}")
             return f"❌ Error in web search: {str(e)}"
