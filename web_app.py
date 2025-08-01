@@ -484,8 +484,8 @@ async def chat_stream_endpoint(
                         tool_result = ai_client._execute_tool_call(tool_call)
                         logger.info(f"✅ STREAMING CHAT: Tool result: {tool_result[:200]}..." if len(tool_result) > 200 else tool_result)
                         
-                        # Отправляем результат tool call
-                        yield f"data: {json.dumps({'type': 'tool_result', 'tool': tool_call, 'result': tool_result})}\n\n"
+                        # Отправляем результат tool call в чат
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': f'\n\n**Результат выполнения:**\n{tool_result}\n\n'})}\n\n"
                         
                         # Заменяем tool call на результат в полном ответе
                         full_response = full_response.replace(tool_call, tool_result)
@@ -493,7 +493,7 @@ async def chat_stream_endpoint(
                     except Exception as e:
                         logger.error(f"❌ STREAMING CHAT: Error executing tool call {tool_call}: {e}")
                         error_msg = f"❌ Error executing {tool_call}: {str(e)}"
-                        yield f"data: {json.dumps({'type': 'tool_error', 'tool': tool_call, 'error': error_msg})}\n\n"
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': f'\n\n**Ошибка:**\n{error_msg}\n\n'})}\n\n"
                         full_response = full_response.replace(tool_call, error_msg)
             else:
                 logger.info(f"🔧 STREAMING CHAT: No tool calls found in response")

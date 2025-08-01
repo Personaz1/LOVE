@@ -52,18 +52,25 @@ class SystemCache:
             # Проверяем файл
             cache_file = os.path.join(self.cache_dir, f"{cache_key}.json")
             if os.path.exists(cache_file):
-                with open(cache_file, 'r', encoding='utf-8') as f:
-                    cached_data = json.load(f)
-                
-                if time.time() - cached_data["timestamp"] < ttl_seconds:
-                    # Загружаем в память
-                    self.memory_cache[cache_key] = cached_data
-                    logger.info(f"✅ Cache HIT (file): {operation}")
-                    return cached_data["data"]
-                else:
-                    # Удаляем устаревший файл
-                    os.remove(cache_file)
-                    logger.info(f"🗑️ Removed expired cache: {operation}")
+                try:
+                    with open(cache_file, 'r', encoding='utf-8') as f:
+                        cached_data = json.load(f)
+                    
+                    if time.time() - cached_data["timestamp"] < ttl_seconds:
+                        # Загружаем в память
+                        self.memory_cache[cache_key] = cached_data
+                        logger.info(f"✅ Cache HIT (file): {operation}")
+                        return cached_data["data"]
+                    else:
+                        # Удаляем устаревший файл
+                        os.remove(cache_file)
+                        logger.info(f"🗑️ Removed expired cache: {operation}")
+                except (json.JSONDecodeError, IOError) as e:
+                    logger.warning(f"⚠️ Corrupted cache file {cache_file}: {e}")
+                    try:
+                        os.remove(cache_file)
+                    except:
+                        pass
             
             logger.info(f"❌ Cache MISS: {operation}")
             return None
