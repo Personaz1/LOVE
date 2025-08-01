@@ -336,8 +336,19 @@ class GeminiClient:
             model_name = self._get_current_model()
             model = genai.GenerativeModel(model_name)
             
+            # Устанавливаем таймаут и ограничения
+            generation_config = {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 2048,
+            }
+            
             # Генерируем ответ
-            response = model.generate_content(full_prompt)
+            response = model.generate_content(
+                full_prompt,
+                generation_config=generation_config
+            )
             
             if response.text:
                 return response.text
@@ -347,6 +358,12 @@ class GeminiClient:
         except Exception as e:
             error_msg = str(e)
             logger.error(f"❌ Sync generation error: {error_msg}")
+            
+            # Если таймаут - пробуем другую модель
+            if "504" in error_msg or "Deadline" in error_msg:
+                logger.warning("⚠️ Таймаут API, пробуем другую модель...")
+                return self._try_fallback_model_sync(system_prompt, user_message, conversation_context, user_profile)
+            
             return f"❌ Error: {error_msg}"
 
     def _build_prompt_sync(
@@ -372,6 +389,51 @@ class GeminiClient:
         prompt_parts.append("\nAssistant:")
         
         return "\n".join(prompt_parts)
+
+    def _try_fallback_model_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Пробуем другую модель при таймауте"""
+        try:
+            # Получаем следующую модель
+            current_index = self._get_current_model_index()
+            next_index = (current_index + 1) % len(self.models)
+            fallback_model = self.models[next_index]
+            
+            logger.info(f"🔄 Переключаемся на модель: {fallback_model}")
+            
+            # Формируем промпт
+            full_prompt = self._build_prompt_sync(system_prompt, user_message, conversation_context, user_profile)
+            
+            # Создаем модель с fallback
+            model = genai.GenerativeModel(fallback_model)
+            
+            # Генерируем с более строгими ограничениями
+            generation_config = {
+                "temperature": 0.5,
+                "top_p": 0.7,
+                "top_k": 30,
+                "max_output_tokens": 1024,
+            }
+            
+            response = model.generate_content(
+                full_prompt,
+                generation_config=generation_config
+            )
+            
+            if response.text:
+                return response.text
+            else:
+                return "❌ Не удалось сгенерировать ответ даже с fallback моделью"
+                
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Fallback model error: {error_msg}")
+            return f"❌ Все модели недоступны: {error_msg}"
     
     def _build_prompt(
         self, 
