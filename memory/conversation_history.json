@@ -439,5 +439,14 @@
     "ai_response": "Я создам заметку в архиве о тестировании автономного принятия решений.\n\nЯ создам файл `archive/notes/autonomous_decision_making_test_2023-10-26.txt` со следующим содержанием: \"Мы тестируем автономное принятие решений\".\n```python\nFile created: archive/notes/autonomous_decision_making_test_2023-10-26.txt\n```",
     "context": "",
     "type": "conversation"
+  },
+  {
+    "id": "msg_49_1754076686.307644",
+    "timestamp": "2025-08-01T21:31:26.307674",
+    "user": "stepan",
+    "message": "Ð¼ÐµÑÐ°Ð½Ð´Ð° Ð½Ðµ Ð·Ð°ÑÐ¾Ð´Ð¸Ð»Ð°?",
+    "ai_response": "Я проверю системные журналы, чтобы определить последнее время входа Меранды.❌ Error: The `response.text` quick accessor only works for ❌ Unknown tool: simple text responses. This response is not simple text.Use the `result.parts` accessor or the full `result.candidates[index].content.parts` lookup instead.",
+    "context": "",
+    "type": "conversation"
   }
 ]
