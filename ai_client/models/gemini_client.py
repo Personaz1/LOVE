@@ -475,6 +475,17 @@ class GeminiClient:
                 return text_content
             
             return "❌ Не удалось сгенерировать ответ"
+                
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Sync generation error: {error_msg}")
+            
+            # Если таймаут или квота - пробуем другую модель
+            if "504" in error_msg or "Deadline" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
+                logger.warning("⚠️ API ошибка (таймаут/квота), пробуем другую модель...")
+                return self._try_fallback_model_sync(system_prompt, user_message, conversation_context, user_profile)
+            
+            return f"❌ Error: {error_msg}"
     
     def chat(
         self, 
@@ -501,82 +512,7 @@ class GeminiClient:
             logger.error(f"❌ Chat error: {error_msg}")
             return f"❌ Error: {error_msg}"
 
-    def _generate_gemini_response_sync(
-        self, 
-        system_prompt: str, 
-        user_message: str, 
-        conversation_context: Optional[str] = None,
-        user_profile: Optional[Dict[str, Any]] = None
-    ) -> str:
-        """Синхронная версия генерации ответа"""
-        try:
-            # Формируем промпт
-            full_prompt = self._build_prompt_sync(system_prompt, user_message, conversation_context, user_profile)
-            
-            # Получаем модель
-            model_name = self._get_current_model()
-            model = genai.GenerativeModel(model_name)
-            
-            # Устанавливаем таймаут и ограничения
-            generation_config = {
-                "temperature": 0.7,
-                "top_p": 0.8,
-                "top_k": 40,
-                "max_output_tokens": 2048,
-            }
-            
-            # Генерируем ответ
-            response = model.generate_content(
-                full_prompt,
-                generation_config=generation_config
-            )
-            
-            # Проверяем finish_reason
-            if hasattr(response, 'finish_reason'):
-                finish_reason = response.finish_reason
-                if finish_reason == 1:  # SAFETY
-                    return "❌ Ответ заблокирован системой безопасности"
-                elif finish_reason == 2:  # RECITATION
-                    return "❌ Ответ заблокирован из-за рецитации"
-                elif finish_reason == 3:  # OTHER
-                    return "❌ Ответ заблокирован по другим причинам"
-            
-            # Проверяем наличие текста
-            if hasattr(response, 'text') and response.text:
-                return response.text
-            elif hasattr(response, 'parts') and response.parts:
-                # Обрабатываем сложные ответы через parts
-                text_parts = []
-                for part in response.parts:
-                    if hasattr(part, 'text') and part.text:
-                        text_parts.append(part.text)
-                if text_parts:
-                    return "".join(text_parts)
-            
-            # Если нет текста, пробуем получить через candidates
-            if hasattr(response, 'candidates') and response.candidates:
-                candidate = response.candidates[0]
-                if hasattr(candidate, 'content') and candidate.content:
-                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
-                        text_parts = []
-                        for part in candidate.content.parts:
-                            if hasattr(part, 'text') and part.text:
-                                text_parts.append(part.text)
-                        if text_parts:
-                            return "".join(text_parts)
-            
-            return "❌ Не удалось сгенерировать ответ"
-                
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"❌ Sync generation error: {error_msg}")
-            
-            # Если таймаут или квота - пробуем другую модель
-            if "504" in error_msg or "Deadline" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
-                logger.warning("⚠️ API ошибка (таймаут/квота), пробуем другую модель...")
-                return self._try_fallback_model_sync(system_prompt, user_message, conversation_context, user_profile)
-            
-            return f"❌ Error: {error_msg}"
+
 
     def _build_prompt_sync(
         self, 
