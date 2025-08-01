@@ -5,6 +5,184 @@
     box-sizing: border-box;
 }
 
+/* Rich text formatting styles */
+.message-text {
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+/* Code blocks */
+.code-block {
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+body.theme-dark .code-block {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+}
+
+/* Inline code */
+.inline-code {
+    background: rgba(0, 0, 0, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+    color: #d63384;
+}
+
+body.theme-dark .inline-code {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ff6b9d;
+}
+
+/* Headers */
+.message-header {
+    font-weight: 600;
+    margin: 16px 0 8px 0;
+    color: #1a1a1a;
+    border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    padding-bottom: 4px;
+}
+
+.message-header h1 {
+    font-size: 1.5em;
+    margin: 0;
+}
+
+.message-header h2 {
+    font-size: 1.3em;
+    margin: 0;
+}
+
+.message-header h3 {
+    font-size: 1.1em;
+    margin: 0;
+}
+
+body.theme-dark .message-header {
+    color: #e0e0e0;
+    border-bottom-color: rgba(102, 126, 234, 0.5);
+}
+
+/* Lists */
+.message-list {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.message-list li {
+    margin: 4px 0;
+    line-height: 1.5;
+}
+
+/* Blockquotes */
+.message-quote {
+    border-left: 4px solid rgba(102, 126, 234, 0.5);
+    padding: 12px 16px;
+    margin: 12px 0;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+}
+
+body.theme-dark .message-quote {
+    background: rgba(102, 126, 234, 0.1);
+    border-left-color: rgba(102, 126, 234, 0.7);
+}
+
+/* Horizontal rules */
+.message-divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.3), transparent);
+    margin: 16px 0;
+}
+
+/* System steps */
+.system-step {
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 6px;
+    font-weight: 500;
+    border-left: 3px solid;
+}
+
+.system-step.executing {
+    background: rgba(255, 193, 7, 0.1);
+    border-left-color: #ffc107;
+    color: #856404;
+}
+
+.system-step.success {
+    background: rgba(40, 167, 69, 0.1);
+    border-left-color: #28a745;
+    color: #155724;
+}
+
+.system-step.error {
+    background: rgba(220, 53, 69, 0.1);
+    border-left-color: #dc3545;
+    color: #721c24;
+}
+
+.system-step.warning {
+    background: rgba(255, 193, 7, 0.1);
+    border-left-color: #ffc107;
+    color: #856404;
+}
+
+.system-step.target {
+    background: rgba(102, 126, 234, 0.1);
+    border-left-color: #667eea;
+    color: #4a5568;
+}
+
+.system-step.chat {
+    background: rgba(102, 126, 234, 0.1);
+    border-left-color: #667eea;
+    color: #4a5568;
+}
+
+body.theme-dark .system-step.executing {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffd54f;
+}
+
+body.theme-dark .system-step.success {
+    background: rgba(40, 167, 69, 0.2);
+    color: #4caf50;
+}
+
+body.theme-dark .system-step.error {
+    background: rgba(220, 53, 69, 0.2);
+    color: #f44336;
+}
+
+body.theme-dark .system-step.warning {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffd54f;
+}
+
+body.theme-dark .system-step.target {
+    background: rgba(102, 126, 234, 0.2);
+    color: #90caf9;
+}
+
+body.theme-dark .system-step.chat {
+    background: rgba(102, 126, 234, 0.2);
+    color: #90caf9;
+}
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     min-height: 100vh;

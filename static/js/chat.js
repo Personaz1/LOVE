@@ -620,10 +620,55 @@ function formatMessage(text) {
         }
     }
     
+    // Enhanced formatting with rich text support
+    return formatRichText(text);
+}
+
+function formatRichText(text) {
     // Convert URLs to links
     text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>');
     
-    // Convert line breaks to <br>
+    // Markdown-style formatting
+    // Bold text: **text** or __text__
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Italic text: *text* or _text_
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    
+    // Code blocks: ```code``` or `code`
+    text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
+    text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    
+    // Headers: # Header, ## Header, ### Header
+    text = text.replace(/^### (.*$)/gm, '<h3 class="message-header">$1</h3>');
+    text = text.replace(/^## (.*$)/gm, '<h2 class="message-header">$1</h2>');
+    text = text.replace(/^# (.*$)/gm, '<h1 class="message-header">$1</h1>');
+    
+    // Lists: - item or * item
+    text = text.replace(/^[\s]*[-*] (.*$)/gm, '<li>$1</li>');
+    text = text.replace(/(<li>.*<\/li>)/s, '<ul class="message-list">$1</ul>');
+    
+    // Numbered lists: 1. item
+    text = text.replace(/^[\s]*\d+\. (.*$)/gm, '<li>$1</li>');
+    text = text.replace(/(<li>.*<\/li>)/s, '<ol class="message-list">$1</ol>');
+    
+    // Blockquotes: > text
+    text = text.replace(/^> (.*$)/gm, '<blockquote class="message-quote">$1</blockquote>');
+    
+    // Horizontal rules: ---
+    text = text.replace(/^---$/gm, '<hr class="message-divider">');
+    
+    // Special formatting for system messages
+    text = text.replace(/^🔧 (.*$)/gm, '<div class="system-step executing">🔧 $1</div>');
+    text = text.replace(/^✅ (.*$)/gm, '<div class="system-step success">✅ $1</div>');
+    text = text.replace(/^❌ (.*$)/gm, '<div class="system-step error">❌ $1</div>');
+    text = text.replace(/^⚠️ (.*$)/gm, '<div class="system-step warning">⚠️ $1</div>');
+    text = text.replace(/^🎯 (.*$)/gm, '<div class="system-step target">🎯 $1</div>');
+    text = text.replace(/^💬 (.*$)/gm, '<div class="system-step chat">💬 $1</div>');
+    
+    // Convert line breaks to <br> (after all other formatting)
     text = text.replace(/\n/g, '<br>');
     
     return text;
