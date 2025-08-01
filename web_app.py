@@ -25,7 +25,7 @@ from ai_client.utils.cache import system_cache
 # Load environment variables
 load_dotenv()
 
-from ai_client import AIClient
+from ai_client.core.client import AIClient
 from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
 from memory.conversation_history import conversation_history

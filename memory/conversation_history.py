@@ -38,7 +38,7 @@ def _load_ai_client():
             logger.error(f"❌ ai_client module not found at {ai_client_path}")
             raise FileNotFoundError(f"ai_client module not found at {ai_client_path}")
         
-        from ai_client import AIClient as AIClientClass
+        from ai_client.core.client import AIClient as AIClientClass
         AIClient = AIClientClass
         AI_AVAILABLE = True
         logger.info("✅ AI client successfully imported for summaries")

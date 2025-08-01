@@ -264,8 +264,22 @@ class GeminiClient:
             # Генерируем ответ
             response = model.generate_content(full_prompt, stream=True)
             
+            # Проверяем finish_reason перед обработкой
+            if hasattr(response, 'finish_reason'):
+                finish_reason = response.finish_reason
+                if finish_reason == 1:  # SAFETY
+                    yield "❌ Ответ заблокирован системой безопасности"
+                    return
+                elif finish_reason == 2:  # RECITATION
+                    yield "❌ Ответ заблокирован из-за рецитации"
+                    return
+                elif finish_reason == 3:  # OTHER
+                    yield "❌ Ответ заблокирован по другим причинам"
+                    return
+            
+            # Обрабатываем streaming ответ
             for chunk in response:
-                if chunk.text:
+                if hasattr(chunk, 'text') and chunk.text:
                     yield chunk.text
                     
         except Exception as e:
@@ -301,10 +315,18 @@ class GeminiClient:
             # Генерируем ответ
             response = model.generate_content(full_prompt)
             
-            # Проверяем finish_reason и text
-            if hasattr(response, 'finish_reason') and response.finish_reason == 1:  # SAFETY
-                return "❌ Ответ заблокирован системой безопасности"
-            elif hasattr(response, 'text') and response.text:
+            # Проверяем finish_reason
+            if hasattr(response, 'finish_reason'):
+                finish_reason = response.finish_reason
+                if finish_reason == 1:  # SAFETY
+                    return "❌ Ответ заблокирован системой безопасности"
+                elif finish_reason == 2:  # RECITATION
+                    return "❌ Ответ заблокирован из-за рецитации"
+                elif finish_reason == 3:  # OTHER
+                    return "❌ Ответ заблокирован по другим причинам"
+            
+            # Проверяем наличие текста
+            if hasattr(response, 'text') and response.text:
                 return response.text
             elif hasattr(response, 'parts') and response.parts:
                 # Обрабатываем сложные ответы через parts
@@ -312,9 +334,22 @@ class GeminiClient:
                 for part in response.parts:
                     if hasattr(part, 'text') and part.text:
                         text_parts.append(part.text)
-                return "".join(text_parts)
-            else:
-                return "❌ Не удалось сгенерировать ответ"
+                if text_parts:
+                    return "".join(text_parts)
+            
+            # Если нет текста, пробуем получить через candidates
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        text_parts = []
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                text_parts.append(part.text)
+                        if text_parts:
+                            return "".join(text_parts)
+            
+            return "❌ Не удалось сгенерировать ответ"
             
         except Exception as e:
             error_msg = str(e)
@@ -384,13 +419,41 @@ class GeminiClient:
                 generation_config=generation_config
             )
             
-            # Проверяем finish_reason и text
-            if hasattr(response, 'finish_reason') and response.finish_reason == 1:  # SAFETY
-                return "❌ Ответ заблокирован системой безопасности"
-            elif response.text:
+            # Проверяем finish_reason
+            if hasattr(response, 'finish_reason'):
+                finish_reason = response.finish_reason
+                if finish_reason == 1:  # SAFETY
+                    return "❌ Ответ заблокирован системой безопасности"
+                elif finish_reason == 2:  # RECITATION
+                    return "❌ Ответ заблокирован из-за рецитации"
+                elif finish_reason == 3:  # OTHER
+                    return "❌ Ответ заблокирован по другим причинам"
+            
+            # Проверяем наличие текста
+            if hasattr(response, 'text') and response.text:
                 return response.text
-            else:
-                return "❌ Не удалось сгенерировать ответ"
+            elif hasattr(response, 'parts') and response.parts:
+                # Обрабатываем сложные ответы через parts
+                text_parts = []
+                for part in response.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                if text_parts:
+                    return "".join(text_parts)
+            
+            # Если нет текста, пробуем получить через candidates
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        text_parts = []
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                text_parts.append(part.text)
+                        if text_parts:
+                            return "".join(text_parts)
+            
+            return "❌ Не удалось сгенерировать ответ"
                 
         except Exception as e:
             error_msg = str(e)
