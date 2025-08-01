@@ -175,10 +175,6 @@ class AIClient:
             ]
         }
 
-    def get_current_model(self) -> str:
-        """Get current model name - alias for _get_current_model"""
-        return self._get_current_model()
-
     def _get_profile_manager(self, username: str) -> UserProfile:
         """Get or create profile manager for specific user"""
         return UserProfile(username)
@@ -1006,15 +1002,15 @@ Focus on being a superintelligent system architect and family guardian.
             # Try each possible path
             for full_path in possible_paths:
                 if os.path.exists(full_path) and not os.path.isdir(full_path):
-            # Ensure path is within project directory
-            if not full_path.startswith(project_root):
+                    # Ensure path is within project directory
+                    if not full_path.startswith(project_root):
                         continue  # Skip if outside project
-            
-            with open(full_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            
+                    
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
                     logger.info(f"📖 Read file: {path} -> {full_path} ({len(content)} chars)")
-            return content
+                    return content
             
             # If not found, provide helpful suggestions
             suggestions = self._find_similar_files(path)
@@ -1436,52 +1432,6 @@ Focus on being a superintelligent system architect and family guardian.
         
         return unique_calls
     
-    def _parse_arguments(self, args_str: str, expected_params: List[str]) -> Dict[str, Any]:
-        """
-        Универсальный парсер аргументов, поддерживающий все форматы:
-        - "value" (двойные кавычки)
-        - 'value' (одинарные кавычки)  
-        - value (без кавычек)
-        - param=value (именованные аргументы)
-        - пустые аргументы
-        """
-        result = {}
-        args_str = args_str.strip()
-        
-        # Если аргументы пустые, возвращаем пустой словарь
-        if not args_str:
-            return result
-            
-        # Пытаемся парсить как именованные аргументы: param=value
-        if '=' in args_str:
-            # Паттерн для именованных аргументов: param="value" или param=value
-            named_pattern = r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|(\w+))'
-            matches = re.findall(named_pattern, args_str)
-            for match in matches:
-                param_name = match[0]
-                # Берем первое непустое значение из групп
-                param_value = next((v for v in match[1:] if v), "")
-                result[param_name] = param_value
-            return result
-        
-        # Пытаемся парсить как позиционные аргументы
-        # Паттерн для значений в кавычках или без кавычек
-        value_pattern = r'(?:"([^"]*)"|\'([^\']*)\'|(\w+))'
-        matches = re.findall(value_pattern, args_str)
-        
-        # Извлекаем значения (первая непустая группа из каждой match)
-        values = []
-        for match in matches:
-            value = next((v for v in match if v), "")
-            values.append(value)
-        
-        # Сопоставляем с ожидаемыми параметрами
-        for i, param in enumerate(expected_params):
-            if i < len(values):
-                result[param] = values[i]
-        
-        return result
-    
     def _execute_tool_call(self, tool_call: str) -> str:
         """Execute a function call extracted from model response"""
         try:
@@ -1533,12 +1483,12 @@ Focus on being a superintelligent system architect and family guardian.
                                 feeling = named_arg_match.group(2)
                                 context = named_arg_match.group(3) if named_arg_match.group(3) else ""
                                 logger.info(f"🔧 update_current_feeling: username={username}, feeling={feeling}, context={context} (from named args)")
-                        result = self.update_current_feeling(username, feeling, context)
-                        logger.info(f"✅ update_current_feeling result: {result}")
-                        return f"Updated feeling to '{feeling}' for {username}"
-                    else:
-                        logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
-                        return f"Invalid arguments for update_current_feeling: {args_str}"
+                                result = self.update_current_feeling(username, feeling, context)
+                                logger.info(f"✅ update_current_feeling result: {result}")
+                                return f"Updated feeling to '{feeling}' for {username}"
+                            else:
+                                logger.error(f"❌ Invalid arguments for update_current_feeling: {args_str}")
+                                return f"Invalid arguments for update_current_feeling: {args_str}"
                 
                 elif func_name == "update_relationship_status":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -1669,16 +1619,16 @@ Focus on being a superintelligent system architect and family guardian.
                             if named_arg_match:
                                 username = named_arg_match.group(1)
                                 logger.info(f"🔧 read_user_profile: username={username} (from named arg)")
-                            result = self.read_user_profile(username)
-                            if isinstance(result, str):
-                                logger.info(f"✅ read_user_profile result: {result[:100]}...")
-                                return f"Read profile for {username}: {result[:100]}..."
+                                result = self.read_user_profile(username)
+                                if isinstance(result, str):
+                                    logger.info(f"✅ read_user_profile result: {result[:100]}...")
+                                    return f"Read profile for {username}: {result[:100]}..."
+                                else:
+                                    logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
+                                    return f"Read profile for {username}: {str(result)[:100]}..."
                             else:
-                                logger.info(f"✅ read_user_profile result: {str(result)[:100]}...")
-                                return f"Read profile for {username}: {str(result)[:100]}..."
-                        else:
-                            logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
-                            return f"Invalid arguments for read_user_profile: {args_str}"
+                                logger.error(f"❌ Invalid arguments for read_user_profile: {args_str}")
+                                return f"Invalid arguments for read_user_profile: {args_str}"
                 
                 elif func_name == "read_emotional_history":
                     # Handle empty arguments with fallback
@@ -1709,17 +1659,17 @@ Focus on being a superintelligent system architect and family guardian.
                         arg_match_unquoted = re.match(r'(\w+)', args_str.strip())
                         if arg_match_unquoted:
                             username = arg_match_unquoted.group(1)
-                        logger.info(f"🔧 read_emotional_history: username={username}")
-                        result = self.read_emotional_history(username)
-                        if isinstance(result, str):
-                            logger.info(f"✅ read_emotional_history result: {result[:100]}...")
-                            return f"Read emotional history for {username}: {result[:100]}..."
+                            logger.info(f"🔧 read_emotional_history: username={username}")
+                            result = self.read_emotional_history(username)
+                            if isinstance(result, str):
+                                logger.info(f"✅ read_emotional_history result: {result[:100]}...")
+                                return f"Read emotional history for {username}: {result[:100]}..."
+                            else:
+                                logger.info(f"✅ read_emotional_history result: {str(result)[:100]}...")
+                                return f"Read emotional history for {username}: {str(result)[:100]}..."
                         else:
-                            logger.info(f"✅ read_emotional_history result: {str(result)[:100]}...")
-                            return f"Read emotional history for {username}: {str(result)[:100]}..."
-                    else:
-                        logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
-                        return f"Invalid arguments for read_emotional_history: {args_str}"
+                            logger.error(f"❌ Invalid arguments for read_emotional_history: {args_str}")
+                            return f"Invalid arguments for read_emotional_history: {args_str}"
                 
                 elif func_name == "search_user_data":
                     arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
@@ -1739,9 +1689,9 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"Invalid arguments for search_user_data: {args_str}"
                 
                 elif func_name == "read_file":
-                    # Используем универсальный парсер
-                    args = self._parse_arguments(args_str, ["path"])
-                    path = args.get("path", "config.py")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        path = arg_match.group(1)
                         logger.info(f"🔧 read_file: path={path}")
                         # Help Guardian find the correct path for his profile
                         if path == "ai_client.py" and "guardian" in args_str.lower():
@@ -1750,6 +1700,14 @@ Focus on being a superintelligent system architect and family guardian.
                         result = self.read_file(path)
                         logger.info(f"✅ read_file result: {result[:200]}..." if len(result) > 200 else result)
                         return f"File content for {path}: {result[:200]}..." if len(result) > 200 else result
+                    else:
+                        logger.error(f"❌ Invalid arguments for read_file: {args_str}")
+                        return ("❌ Ошибка: read_file требует конкретный путь к файлу. "
+                                "Примеры правильного использования:\n"
+                                "- read_file(\"config.py\")\n"
+                                "- read_file(\"memory/guardian_profile.json\")\n"
+                                "- read_file(\"web_app.py\")\n\n"
+                                "Для поиска файлов используй list_files(\"директория\") или уточни путь у пользователя.")
                 
                 elif func_name == "write_file":
                     # Handle both single and double quotes
@@ -1812,22 +1770,28 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"Invalid arguments for edit_file: {args_str}"
                 
                 elif func_name == "list_files":
-                    # Используем универсальный парсер
-                    args = self._parse_arguments(args_str, ["directory"])
-                    directory = args.get("directory", "")
+                    arg_match = re.match(r'["\']([^"\']*)["\']', args_str)
+                    if arg_match:
+                        directory = arg_match.group(1)
                         logger.info(f"🔧 list_files: directory={directory}")
                         result = self.list_files(directory)
                         logger.info(f"✅ list_files result: {result}")
                         return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for list_files: {args_str}")
+                        return f"Invalid arguments for list_files: {args_str}"
                 
                 elif func_name == "search_files":
-                    # Используем универсальный парсер
-                    args = self._parse_arguments(args_str, ["query"])
-                    query = args.get("query", "system")
+                    arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        query = arg_match.group(1)
                         logger.info(f"🔧 search_files: query={query}")
                         result = self.search_files(query)
                         logger.info(f"✅ search_files result: {result}")
                         return result
+                    else:
+                        logger.error(f"❌ Invalid arguments for search_files: {args_str}")
+                        return f"Invalid arguments for search_files: {args_str}"
                 
                 elif func_name == "get_file_info":
                     arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
@@ -1866,14 +1830,26 @@ Focus on being a superintelligent system architect and family guardian.
                         return f"Invalid arguments for create_directory: {args_str}"
                 
                 elif func_name == "add_model_note":
-                    # Используем универсальный парсер
-                    args = self._parse_arguments(args_str, ["note_text", "category"])
-                    note_text = args.get("note_text", "System note")
-                    category = args.get("category", "general")
+                    arg_match = re.match(r'["\']([^"\']+)["\']\s*,\s*["\']([^"\']+)["\']', args_str)
+                    if arg_match:
+                        note_text = arg_match.group(1)
+                        category = arg_match.group(2)
                         logger.info(f"🔧 add_model_note: note_text={note_text[:50]}..., category={category}")
                         result = self.add_model_note(note_text, category)
                         logger.info(f"✅ add_model_note result: {result}")
                         return f"Added model note: {note_text[:50]}..."
+                    else:
+                        # Try without category
+                        arg_match = re.match(r'["\']([^"\']+)["\']', args_str)
+                        if arg_match:
+                            note_text = arg_match.group(1)
+                            logger.info(f"🔧 add_model_note: note_text={note_text[:50]}...")
+                            result = self.add_model_note(note_text, "general")
+                            logger.info(f"✅ add_model_note result: {result}")
+                            return f"Added model note: {note_text[:50]}..."
+                        else:
+                            logger.error(f"❌ Invalid arguments for add_model_note: {args_str}")
+                            return f"Invalid arguments for add_model_note: {args_str}"
                 
                 elif func_name == "add_user_observation":
                     # Handle empty arguments with fallback
@@ -2613,7 +2589,7 @@ Focus on being a superintelligent system architect and family guardian.
                     result = self.diagnose_network()
                     logger.info(f"✅ diagnose_network result: {result}")
                     return result
-                    
+                
                 else:
                     logger.error(f"❌ Unknown tool: {func_name}")
                     return f"Unknown tool: {func_name}. Available tools: read_file, write_file, edit_file, create_file, delete_file, list_files, search_files, analyze_image, get_project_structure, read_user_profile, read_emotional_history, update_current_feeling, update_relationship_status, update_user_profile, add_relationship_insight, add_model_note, add_user_observation, add_personal_thought, add_system_insight, get_model_notes, write_insight_to_file, search_user_data, create_sandbox_file, edit_sandbox_file, read_sandbox_file, list_sandbox_files, delete_sandbox_file, create_downloadable_file, get_system_logs, get_error_summary, diagnose_system_health, archive_conversation, plan_step, act_step, reflect, react_cycle, web_search, fetch_url, call_api, integrate_api, call_custom_api, get_weather, translate_text, store_embedding_memory, search_embedding_memory, summarize_conversation, get_memory_stats, clear_vector_memory, create_event, get_upcoming_events, reschedule_event, complete_event, get_event_statistics, create_task_list, list_tasks, run_terminal_command, get_system_info, diagnose_network, etc."
@@ -2965,18 +2941,102 @@ Focus on being a superintelligent system architect and family guardian.
             return f"Error generating error summary: {e}"
     
     def diagnose_system_health(self) -> str:
-        """Simple system health check"""
+        """Comprehensive system health check with full context"""
         try:
-            current_model = self.models[self.current_model_index]['name']
-            api_key = os.getenv('GEMINI_API_KEY')
+            health_report = []
             
-            status = [
-                f"Model: {current_model}",
-                f"API: {'✅' if api_key else '❌'}",
-                f"Sandbox: {'✅' if os.path.exists('guardian_sandbox') else '❌'}"
+            # System overview
+            health_report.append("=== ΔΣ Guardian System Status ===")
+            health_report.append(f"🕐 Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            health_report.append(f"🧠 Current model: {self.models[self.current_model_index]['name']}")
+            health_report.append(f"📊 Model index: {self.current_model_index}/{len(self.models)}")
+            
+            # Check file permissions
+            health_report.append("\n=== File System Health ===")
+            critical_files = [
+                "memory/model_notes.json",
+                "memory/conversation_history.json", 
+                "memory/guardian_profile.json",
+                "memory/user_profiles/meranda.json",
+                "memory/user_profiles/stepan.json"
             ]
             
-            return " | ".join(status)
+            for file_path in critical_files:
+                if os.path.exists(file_path):
+                    try:
+                        with open(file_path, 'r') as f:
+                            json.load(f)
+                        health_report.append(f"✅ {file_path}: OK")
+                    except Exception as e:
+                        health_report.append(f"❌ {file_path}: {e}")
+                else:
+                    health_report.append(f"⚠️ {file_path}: Missing")
+            
+            # Check sandbox files
+            health_report.append("\n=== Sandbox Memory Files ===")
+            sandbox_files = [
+                "guardian_sandbox/system_activity_log.txt",
+                "guardian_sandbox/meranda_routines.txt", 
+                "guardian_sandbox/stepan_preferences.txt",
+                "guardian_sandbox/system_notes_for_meranda_intro.txt"
+            ]
+            
+            for file_path in sandbox_files:
+                if os.path.exists(file_path):
+                    try:
+                        with open(file_path, 'r') as f:
+                            content = f.read()
+                        size = len(content)
+                        health_report.append(f"✅ {file_path}: OK ({size} chars)")
+                    except Exception as e:
+                        health_report.append(f"❌ {file_path}: {e}")
+                else:
+                    health_report.append(f"⚠️ {file_path}: Missing")
+            
+            # Check API status
+            health_report.append("\n=== API Health ===")
+            api_key = os.getenv('GEMINI_API_KEY')
+            if api_key:
+                health_report.append("✅ GEMINI_API_KEY: Set")
+            else:
+                health_report.append("❌ GEMINI_API_KEY: Missing")
+            
+            # Check sandbox directory
+            sandbox_path = "guardian_sandbox"
+            if os.path.exists(sandbox_path):
+                health_report.append(f"✅ Sandbox: {sandbox_path} exists")
+                # Count files in sandbox
+                try:
+                    sandbox_files = [f for f in os.listdir(sandbox_path) if os.path.isfile(os.path.join(sandbox_path, f))]
+                    health_report.append(f"📁 Sandbox files: {len(sandbox_files)} files")
+                except Exception as e:
+                    health_report.append(f"⚠️ Error counting sandbox files: {e}")
+            else:
+                health_report.append(f"⚠️ Sandbox: {sandbox_path} missing")
+            
+            # System capabilities
+            health_report.append("\n=== System Capabilities ===")
+            health_report.append("✅ Self-modification: Can edit own prompt and code")
+            health_report.append("✅ Memory system: Persistent notes in sandbox")
+            health_report.append("✅ Multi-model support: Automatic model switching")
+            health_report.append("✅ File operations: Read/write/create/delete files")
+            health_report.append("✅ User profiles: Meranda and Stepan data")
+            health_report.append("✅ Image analysis: Vision capabilities available")
+            
+            # Recent activity (last 5 log entries)
+            health_report.append("\n=== Recent Activity ===")
+            try:
+                with open("memory/model_notes.json", 'r') as f:
+                    notes = json.load(f)
+                    recent_notes = notes[-5:] if len(notes) > 5 else notes
+                    for note in recent_notes:
+                        timestamp = note.get('timestamp', 'Unknown')
+                        content = note.get('content', '')[:100]
+                        health_report.append(f"📝 {timestamp}: {content}...")
+            except Exception as e:
+                health_report.append(f"⚠️ Error reading recent activity: {e}")
+            
+            return "\n".join(health_report)
             
         except Exception as e:
             logger.error(f"Error in system health check: {e}")
@@ -3218,7 +3278,7 @@ Generate a natural, sincere greeting. Be yourself."""
                 
                 if response_text and hasattr(response_text, 'strip'):
                     return response_text.strip()
-            else:
+                else:
                     return "Hello! How can I help you today?"
                     
             except Exception as e:
