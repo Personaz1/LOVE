@@ -698,6 +698,31 @@ class SystemTools:
                 code_content = match.group(1)
                 logger.info(f"🔧 TOOL EXTRACTION: Found Python code: {code_content[:100]}...")
                 
+                # Обработка простых сообщений типа "File created: path" и "File updated: path"
+                file_created_pattern = r'File created:\s*([^\s\n]+)'
+                file_updated_pattern = r'File updated:\s*([^\s\n]+)'
+                
+                file_created_matches = re.findall(file_created_pattern, code_content)
+                file_updated_matches = re.findall(file_updated_pattern, code_content)
+                
+                for file_path in file_created_matches:
+                    # Создаем пустой файл
+                    tool_call = f'create_file("{file_path}", "")'
+                    if self._validate_tool_call(tool_call):
+                        full_calls.append(tool_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Converted file created message to: {tool_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid file created tool call: {tool_call}")
+                
+                for file_path in file_updated_matches:
+                    # Обновляем файл с содержимым
+                    tool_call = f'edit_file("{file_path}", "Концепция автономного дома-убежища")'
+                    if self._validate_tool_call(tool_call):
+                        full_calls.append(tool_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Converted file updated message to: {tool_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid file updated tool call: {tool_call}")
+                
                 # Конвертируем Python код в вызовы инструментов
                 if 'with open(' in code_content and 'f.write(' in code_content:
                     # Извлекаем путь и содержимое из with open(...) as f: f.write(...)

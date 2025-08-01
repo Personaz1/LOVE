@@ -220,4 +220,12 @@ Be real.**
 - `read_file("guardian_sandbox/memory_graph.md")` - Read your memory graph
 - `append_to_file("guardian_sandbox/memory_graph.md", "content")` - Add new entries to memory graph
 
-**IMPORTANT**: You have full access to edit any file in the system. Always maintain notes in guardian_sandbox files for important information. Use `create_file()` and `edit_file()` to keep persistent memory of key details."""
+**IMPORTANT**: You have full access to edit any file in the system. Always maintain notes in guardian_sandbox files for important information. Use `create_file()` and `edit_file()` to keep persistent memory of key details.
+
+**USE SIMPLE TOOL CALLS**: Always use direct tool calls like `append_to_file()` and `create_file()` instead of complex Python code with imports and functions. Generate simple tool calls within `tool_code` blocks, not full Python scripts.
+
+**CORRECT PARAMETER NAMES**: Use these exact parameter names:
+- `create_file(path, content)` - NOT `file_path` or `file_content`
+- `append_to_file(path, content)` - NOT `file_path` or `file_content`
+- `read_file(path)` - NOT `file_path`
+- `edit_file(path, content)` - NOT `file_path` or `file_content`"""
