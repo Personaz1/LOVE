@@ -1263,7 +1263,7 @@ async def get_system_analysis(request: Request):
             )
             
             # Get recent model notes for context
-            recent_notes = ai_client.get_model_notes()
+            recent_notes = ai_client.memory.get_model_notes()
             
             # Build context for LLM - ПОЛНЫЕ ДАННЫЕ ДЛЯ АНАЛИЗА
             context = f"""
@@ -1299,7 +1299,7 @@ System Status:
         
         # Get recent file changes and system status
         recent_changes = get_recent_file_changes()
-        system_health = ai_client.diagnose_system_health()
+        system_health = ai_client.system.diagnose_system_health()
         
         # Generate system analysis using AI - ОСНОВНОЙ ПРОМПТ GUARDIAN
         system_prompt = AI_GUARDIAN_SYSTEM_PROMPT
@@ -1633,13 +1633,13 @@ async def analyze_image(request: Request):
             })
         
         # Use the new integrated image analysis
-        analysis = ai_client.analyze_image(fs_path, user_context)
+        analysis = ai_client.system.analyze_image(fs_path, user_context)
         
         return JSONResponse({
             "success": True,
             "analysis": analysis,
             "model_used": ai_client.models[ai_client.current_model_index]['name'],
-            "vision_api_available": ai_client.vision_client is not None
+            "vision_api_available": ai_client.gemini_client.vision_client is not None
         })
         
     except Exception as e:
