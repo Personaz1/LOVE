@@ -1091,6 +1091,12 @@ Format as JSON:
 
 Be empathetic, professional, and insightful. Focus on emotional well-being and mental health awareness."""
 
+        # Log system analysis start
+        logger.info("🔧 SYSTEM ANALYSIS: Starting autonomous analysis...")
+        logger.info(f"🔧 SYSTEM ANALYSIS: User context available: {bool(username)}")
+        logger.info(f"🔧 SYSTEM ANALYSIS: Recent changes: {len(recent_changes.split())} words")
+        logger.info(f"🔧 SYSTEM ANALYSIS: System health: {len(system_health.split())} words")
+
         # Generate analysis
         analysis_response = ai_client.chat(
             message="Generate system analysis based on this context",
@@ -1098,6 +1104,10 @@ Be empathetic, professional, and insightful. Focus on emotional well-being and m
             conversation_context=context,
             system_prompt=system_prompt
         )
+
+        # Log system analysis completion
+        logger.info(f"✅ SYSTEM ANALYSIS: Completed - {len(analysis_response.split())} words generated")
+        logger.info(f"✅ SYSTEM ANALYSIS: Response preview: {analysis_response[:100]}...")
         
         # Try to parse JSON response
         try:

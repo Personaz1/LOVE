@@ -73,13 +73,18 @@ class SystemTools:
     def diagnose_system_health(self) -> str:
         """Диагностика здоровья системы"""
         try:
+            logger.info("🔧 SYSTEM TOOLS: Starting system health diagnosis...")
             health_report = []
             
             # Системный обзор
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             health_report.append("=== ΔΣ Guardian System Status ===")
-            health_report.append(f"🕐 Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            health_report.append(f"🕐 Current time: {current_time}")
             health_report.append("🧠 Current model: gemini-2.5-pro")
             health_report.append("📊 Model index: 0/7")
+            
+            logger.info(f"🔧 SYSTEM TOOLS: Current time: {current_time}")
+            logger.info("🔧 SYSTEM TOOLS: Using gemini-2.5-pro model")
             
             # Проверка файлов
             health_report.append("\n=== File System Health ===")
@@ -91,13 +96,17 @@ class SystemTools:
                 "memory/user_profiles/stepan.json",
             ]
             
+            logger.info(f"🔧 SYSTEM TOOLS: Checking {len(critical_files)} critical files")
+            
             for file_path in critical_files:
                 full_path = os.path.join(self.project_root, file_path)
                 if os.path.exists(full_path):
                     size = os.path.getsize(full_path)
                     health_report.append(f"✅ {file_path}: OK ({size} bytes)")
+                    logger.info(f"✅ SYSTEM TOOLS: {file_path} - OK ({size} bytes)")
                 else:
                     health_report.append(f"❌ {file_path}: Missing")
+                    logger.warning(f"❌ SYSTEM TOOLS: {file_path} - Missing")
             
             # Проверка песочницы
             health_report.append("\n=== Sandbox Memory Files ===")
@@ -149,10 +158,12 @@ class SystemTools:
             except Exception as e:
                 health_report.append(f"⚠️ Error reading recent activity: {str(e)}")
             
-            return "\n".join(health_report)
+            result = "\n".join(health_report)
+            logger.info(f"✅ SYSTEM TOOLS: System health diagnosis completed - {len(result.split())} words")
+            return result
             
         except Exception as e:
-            logger.error(f"Error diagnosing system health: {e}")
+            logger.error(f"❌ Error diagnosing system health: {e}")
             return f"❌ Error diagnosing system health: {str(e)}"
     
     def analyze_image(self, image_path: str, user_context: str = "") -> str:

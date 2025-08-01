@@ -200,7 +200,11 @@ class AIClient:
         return self.system_tools.get_error_summary()
     
     def diagnose_system_health(self) -> str:
-        return self.system_tools.diagnose_system_health()
+        """Диагностика здоровья системы"""
+        self.logger.info("🔧 SYSTEM TOOLS: Executing diagnose_system_health()")
+        result = self.system_tools.diagnose_system_health()
+        self.logger.info(f"✅ SYSTEM TOOLS: diagnose_system_health completed - {len(result.split())} words")
+        return result
     
     def analyze_image(self, image_path: str, user_context: str = "") -> str:
         return self.system_tools.analyze_image(image_path, user_context)
