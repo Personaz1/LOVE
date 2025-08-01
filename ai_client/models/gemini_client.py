@@ -308,11 +308,10 @@ class GeminiClient:
             if not system_prompt:
                 system_prompt = "You are a helpful AI assistant."
             
-            # Генерируем ответ синхронно
-            import asyncio
-            response = asyncio.run(self._generate_gemini_response(
+            # Генерируем ответ синхронно через sync версию
+            response = self._generate_gemini_response_sync(
                 system_prompt, message, conversation_context, user_profile
-            ))
+            )
             
             return response
             
@@ -320,6 +319,59 @@ class GeminiClient:
             error_msg = str(e)
             logger.error(f"❌ Chat error: {error_msg}")
             return f"❌ Error: {error_msg}"
+
+    def _generate_gemini_response_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Синхронная версия генерации ответа"""
+        try:
+            # Формируем промпт
+            full_prompt = self._build_prompt_sync(system_prompt, user_message, conversation_context, user_profile)
+            
+            # Получаем модель
+            model_name = self._get_current_model()
+            model = genai.GenerativeModel(model_name)
+            
+            # Генерируем ответ
+            response = model.generate_content(full_prompt)
+            
+            if response.text:
+                return response.text
+            else:
+                return "❌ Не удалось сгенерировать ответ"
+                
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Sync generation error: {error_msg}")
+            return f"❌ Error: {error_msg}"
+
+    def _build_prompt_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Синхронная версия построения промпта"""
+        prompt_parts = [system_prompt]
+        
+        # Добавляем контекст пользователя
+        if user_profile:
+            prompt_parts.append(f"\nUser Profile: {json.dumps(user_profile, ensure_ascii=False)}")
+        
+        # Добавляем контекст разговора
+        if conversation_context:
+            prompt_parts.append(f"\nConversation Context: {conversation_context}")
+        
+        # Добавляем сообщение пользователя
+        prompt_parts.append(f"\nUser: {user_message}")
+        prompt_parts.append("\nAssistant:")
+        
+        return "\n".join(prompt_parts)
     
     def _build_prompt(
         self, 
