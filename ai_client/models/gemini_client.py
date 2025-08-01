@@ -295,7 +295,7 @@ class GeminiClient:
             else:
                 return f"❌ Error: {error_msg}"
     
-    async def chat(
+    def chat(
         self, 
         message: str, 
         user_profile: Optional[Dict[str, Any]] = None,
@@ -308,10 +308,11 @@ class GeminiClient:
             if not system_prompt:
                 system_prompt = "You are a helpful AI assistant."
             
-            # Генерируем ответ
-            response = await self._generate_gemini_response(
+            # Генерируем ответ синхронно
+            import asyncio
+            response = asyncio.run(self._generate_gemini_response(
                 system_prompt, message, conversation_context, user_profile
-            )
+            ))
             
             return response
             
