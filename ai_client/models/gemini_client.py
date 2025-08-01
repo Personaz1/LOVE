@@ -304,8 +304,15 @@ class GeminiClient:
             # Проверяем finish_reason и text
             if hasattr(response, 'finish_reason') and response.finish_reason == 1:  # SAFETY
                 return "❌ Ответ заблокирован системой безопасности"
-            elif response.text:
+            elif hasattr(response, 'text') and response.text:
                 return response.text
+            elif hasattr(response, 'parts') and response.parts:
+                # Обрабатываем сложные ответы через parts
+                text_parts = []
+                for part in response.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                return "".join(text_parts)
             else:
                 return "❌ Не удалось сгенерировать ответ"
             

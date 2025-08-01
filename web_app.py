@@ -22,9 +22,6 @@ import uvicorn
 # Импортируем кэш
 from ai_client.utils.cache import system_cache
 
-# WebSocket connections для real-time логов
-websocket_connections: List[WebSocket] = []
-
 # Load environment variables
 load_dotenv()
 
@@ -46,25 +43,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Custom WebSocket handler для логов
+# WebSocket connections list
+websocket_connections = []
+
 class WebSocketLogHandler(logging.Handler):
+    """Handler для отправки логов через WebSocket"""
     def emit(self, record):
         try:
             log_entry = self.format(record)
-            
-            # Отправляем лог всем подключенным WebSocket клиентам
+            # Отправляем всем подключенным WebSocket клиентам
             for websocket in websocket_connections[:]:  # Копируем список для безопасной итерации
                 try:
-                    # Проверяем что соединение еще открыто
-                    if websocket.client_state.value == 1:  # 1 = CONNECTED
-                        # Создаем задачу для асинхронной отправки
-                        asyncio.create_task(websocket.send_text(log_entry))
+                    asyncio.create_task(websocket.send_text(log_entry))
                 except Exception as e:
-                    # Удаляем отключенные соединения
-                    if websocket in websocket_connections:
-                        websocket_connections.remove(websocket)
+                    # Удаляем отключенные WebSocket
+                    websocket_connections.remove(websocket)
         except Exception as e:
-            print(f"WebSocket log handler error: {e}")
+            pass  # Игнорируем ошибки WebSocket
 
 # Создаем WebSocket handler
 websocket_handler = WebSocketLogHandler()
@@ -337,8 +332,44 @@ async def login_greeting(request: Request):
             user_profile_dict = user_profile.get_profile()
             user_profile_dict['username'] = username
             
-            # Generate greeting using AI
-            greeting = ai_client._generate_login_greeting(user_profile_dict)
+            # Get conversation context and system analysis
+            recent_messages = conversation_history.get_recent_history(limit=10)
+            emotional_history = user_profile.get_emotional_history(limit=5)
+            emotional_trends = user_profile.get_emotional_trends()
+            current_theme = theme_manager.analyze_context_and_set_theme(
+                user_profile_dict, recent_messages, emotional_history
+            )
+            
+            # Build rich context for Guardian
+            context = f"""
+User Profile:
+- Name: {user_profile_dict.get('full_name', username)}
+- Current Feeling: {user_profile_dict.get('current_feeling', 'N/A')}
+- Bio: {user_profile_dict.get('profile', 'N/A')}
+
+Recent Emotional History:
+{emotional_history}
+
+Emotional Trends:
+{emotional_trends}
+
+Recent Conversation ({len(recent_messages)} messages):
+{chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages[-3:]])}
+
+Current Theme: {current_theme}
+
+System Status: Guardian is ready to provide personalized greeting
+"""
+            
+            # Generate dynamic greeting using Guardian AI
+            greeting_message = f"Generate a personalized, warm greeting for {username}. Consider their emotional state, recent activity, and current time. Be natural and caring."
+            
+            greeting = ai_client.chat(
+                message=greeting_message,
+                user_profile=user_profile_dict,
+                conversation_context=context,
+                system_prompt=guardian_profile.get_system_prompt()
+            )
             
             # Send greeting
             yield f"data: {json.dumps({'type': 'greeting', 'content': greeting})}\n\n"
@@ -437,6 +468,36 @@ async def chat_stream_endpoint(
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             
+            # ОБРАБОТКА TOOL CALLS В STREAMING
+            logger.info(f"🔧 STREAMING CHAT: Processing response for tool calls...")
+            
+            # Извлекаем tool calls из полного ответа
+            tool_calls = ai_client._extract_tool_calls(full_response)
+            
+            if tool_calls:
+                logger.info(f"🔧 STREAMING CHAT: Found {len(tool_calls)} tool calls: {tool_calls}")
+                
+                # Выполняем каждый tool call
+                for tool_call in tool_calls:
+                    try:
+                        logger.info(f"🔧 STREAMING CHAT: Executing tool call: {tool_call}")
+                        tool_result = ai_client._execute_tool_call(tool_call)
+                        logger.info(f"✅ STREAMING CHAT: Tool result: {tool_result[:200]}..." if len(tool_result) > 200 else tool_result)
+                        
+                        # Отправляем результат tool call
+                        yield f"data: {json.dumps({'type': 'tool_result', 'tool': tool_call, 'result': tool_result})}\n\n"
+                        
+                        # Заменяем tool call на результат в полном ответе
+                        full_response = full_response.replace(tool_call, tool_result)
+                        
+                    except Exception as e:
+                        logger.error(f"❌ STREAMING CHAT: Error executing tool call {tool_call}: {e}")
+                        error_msg = f"❌ Error executing {tool_call}: {str(e)}"
+                        yield f"data: {json.dumps({'type': 'tool_error', 'tool': tool_call, 'error': error_msg})}\n\n"
+                        full_response = full_response.replace(tool_call, error_msg)
+            else:
+                logger.info(f"🔧 STREAMING CHAT: No tool calls found in response")
+            
             # Send final completion signal
             yield f"data: {json.dumps({'type': 'message_complete'})}\n\n"
             
@@ -493,6 +554,32 @@ async def chat_endpoint(
             user_profile=user_profile_dict,
             conversation_context=full_context
         )
+        
+        # ОБРАБОТКА TOOL CALLS
+        logger.info(f"🔧 CHAT: Processing response for tool calls...")
+        
+        # Извлекаем tool calls из ответа
+        tool_calls = ai_client._extract_tool_calls(ai_response)
+        
+        if tool_calls:
+            logger.info(f"🔧 CHAT: Found {len(tool_calls)} tool calls: {tool_calls}")
+            
+            # Выполняем каждый tool call
+            for tool_call in tool_calls:
+                try:
+                    logger.info(f"🔧 CHAT: Executing tool call: {tool_call}")
+                    tool_result = ai_client._execute_tool_call(tool_call)
+                    logger.info(f"✅ CHAT: Tool result: {tool_result[:200]}..." if len(tool_result) > 200 else tool_result)
+                    
+                    # Заменяем tool call на результат в ответе
+                    ai_response = ai_response.replace(tool_call, tool_result)
+                    
+                except Exception as e:
+                    logger.error(f"❌ CHAT: Error executing tool call {tool_call}: {e}")
+                    error_msg = f"❌ Error executing {tool_call}: {str(e)}"
+                    ai_response = ai_response.replace(tool_call, error_msg)
+        else:
+            logger.info(f"🔧 CHAT: No tool calls found in response")
         
         # Save to conversation history
         conversation_history.add_message(username, message, ai_response)
@@ -1185,11 +1272,11 @@ User Profile:
 - Current Feeling: {profile_data.get('current_feeling', 'N/A')}
 - Bio: {profile_data.get('profile', 'N/A')}
 
-Recent Emotional History ({len(emotional_history)} entries):
-{chr(10).join([f"- {entry.get('feeling', 'N/A')} ({entry.get('timestamp', 'N/A')[:10]})" for entry in emotional_history])}
+Recent Emotional History:
+{emotional_history}
 
-Emotional Trends ({len(emotional_trends)} patterns):
-{chr(10).join([f"- {trend.get('pattern', 'N/A')}" for trend in emotional_trends])}
+Emotional Trends:
+{emotional_trends}
 
 Recent Conversation ({len(recent_messages)} messages):
 {chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages])}
@@ -1253,6 +1340,15 @@ Provide your response in this JSON format:
         logger.info(f"🔧 SYSTEM ANALYSIS: User context available: {bool(username)}")
         logger.info(f"🔧 SYSTEM ANALYSIS: Recent changes: {len(recent_changes.split())} words")
         logger.info(f"🔧 SYSTEM ANALYSIS: System health: {len(system_health.split())} words")
+        
+        # Детальное логирование для отладки
+        try:
+            logger.info(f"🔧 SYSTEM ANALYSIS: emotional_history type: {type(emotional_history)}")
+            logger.info(f"🔧 SYSTEM ANALYSIS: emotional_trends type: {type(emotional_trends)}")
+            logger.info(f"🔧 SYSTEM ANALYSIS: recent_messages type: {type(recent_messages)}")
+            logger.info(f"🔧 SYSTEM ANALYSIS: recent_notes type: {type(recent_notes)}")
+        except Exception as e:
+            logger.error(f"🔧 SYSTEM ANALYSIS: Error in debug logging: {e}")
 
         # Generate analysis
         analysis_response = ai_client.chat(
@@ -1786,31 +1882,41 @@ async def models_page(request: Request):
 @app.websocket("/ws/logs")
 async def websocket_logs(websocket: WebSocket):
     await websocket.accept()
-    websocket_connections.append(websocket)
     
     try:
-        # Просто читаем и отправляем содержимое app.log
+        # Простой стриминг логов
+        last_position = 0
+        
         while True:
             try:
-                # Читаем последние строки из лога
+                # Читаем лог файл
                 with open('app.log', 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                    # Отправляем последние 50 строк
-                    for line in lines[-50:]:
-                        await websocket.send_text(line.strip())
+                    f.seek(last_position)
+                    new_lines = f.readlines()
+                    
+                    if new_lines:
+                        # Отправляем только новые строки
+                        for line in new_lines:
+                            if line.strip():
+                                await websocket.send_text(line.strip())
+                        
+                        # Обновляем позицию
+                        last_position = f.tell()
                 
-                # Ждем 2 секунды перед следующей проверкой
-                await asyncio.sleep(2)
+                # Ждем 1 секунду
+                await asyncio.sleep(1)
                 
+            except FileNotFoundError:
+                await websocket.send_text("Log file not found")
+                break
             except Exception as e:
-                await websocket.send_text(f"Error reading log: {e}")
+                await websocket.send_text(f"Log error: {e}")
                 break
             
     except WebSocketDisconnect:
-        websocket_connections.remove(websocket)
+        pass
     except Exception as e:
-        if websocket in websocket_connections:
-            websocket_connections.remove(websocket)
+        pass
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

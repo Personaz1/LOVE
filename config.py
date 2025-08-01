@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     GEMINI_MAX_TOKENS: int = 4000
     GEMINI_TEMPERATURE: float = 0.7
     
+    # Google Cloud Vision API Configuration
+    GOOGLE_CLOUD_VISION_API_KEY: Optional[str] = None
+    
     # Database Configuration
     DATABASE_URL: str = "sqlite:///./family_guardian.db"
     

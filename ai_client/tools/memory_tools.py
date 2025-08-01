@@ -272,10 +272,13 @@ class MemoryTools:
             
             result = "📝 Recent Model Notes:\n"
             for note in recent_notes:
-                timestamp = note['timestamp']
-                text = note['text']
-                category = note.get('category', 'general')
-                result += f"{timestamp}: {text} [{category}]\n"
+                if isinstance(note, dict):
+                    timestamp = note.get('timestamp', 'unknown')
+                    text = note.get('text', 'no text')
+                    category = note.get('category', 'general')
+                    result += f"{timestamp}: {text} [{category}]\n"
+                else:
+                    result += f"Invalid note format: {note}\n"
             
             return result
             

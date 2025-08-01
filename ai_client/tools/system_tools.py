@@ -182,8 +182,16 @@ class SystemTools:
             
             # Анализируем через Vision API
             if self.config.is_vision_configured():
-                # TODO: Реализовать анализ через Vision API
-                return f"🔍 Image analysis for {image_path} (Vision API not implemented)"
+                # Используем Vision API из gemini_client
+                from ..models.gemini_client import GeminiClient
+                gemini_client = GeminiClient()
+                vision_result = gemini_client._analyze_image_with_vision_api(image_path)
+                
+                # Добавляем контекст пользователя
+                if user_context:
+                    return f"🔍 Image Analysis: {vision_result}\n\nUser Context: {user_context}"
+                else:
+                    return f"🔍 Image Analysis: {vision_result}"
             else:
                 return f"❌ Vision API not configured for image analysis"
             
@@ -556,12 +564,17 @@ class SystemTools:
     def _extract_tool_calls(self, text: str) -> List[str]:
         """Извлечение вызовов инструментов из текста"""
         try:
-            # Паттерн для поиска вызовов функций
+            # Паттерн для поиска полных вызовов функций
             pattern = r'(\w+)\s*\([^)]*\)'
             matches = re.findall(pattern, text)
             
-            # Убираем дубликаты и сортируем
-            unique_calls = list(set(matches))
+            # Получаем полные вызовы, а не только имена
+            full_calls = []
+            for match in re.finditer(pattern, text):
+                full_calls.append(match.group(0))  # Полный вызов
+            
+            # Убираем дубликаты
+            unique_calls = list(set(full_calls))
             unique_calls.sort()
             
             return unique_calls
@@ -682,6 +695,175 @@ class SystemTools:
                 result = memory_tools.add_model_note(note_text, category)
                 logger.info(f"✅ add_model_note result: {result}")
                 return f"Added model note: {note_text[:50]}..."
+            
+            elif func_name == "read_user_profile":
+                args = self._parse_arguments(args_str, ["username"])
+                username = args.get("username", "stepan")
+                logger.info(f"🔧 read_user_profile: username={username}")
+                # Делегируем в MemoryTools
+                from ..tools.memory_tools import MemoryTools
+                memory_tools = MemoryTools()
+                result = memory_tools.read_user_profile(username)
+                logger.info(f"✅ read_user_profile result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            # System Tools
+            elif func_name == "get_system_logs":
+                args = self._parse_arguments(args_str, ["lines"])
+                lines = args.get("lines", 50)
+                logger.info(f"🔧 get_system_logs: lines={lines}")
+                result = self.get_system_logs(int(lines))
+                logger.info(f"✅ get_system_logs result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "get_error_summary":
+                logger.info(f"🔧 get_error_summary")
+                result = self.get_error_summary()
+                logger.info(f"✅ get_error_summary result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "diagnose_system_health":
+                logger.info(f"🔧 diagnose_system_health")
+                result = self.diagnose_system_health()
+                logger.info(f"✅ diagnose_system_health result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "analyze_image":
+                args = self._parse_arguments(args_str, ["image_path", "user_context"])
+                image_path = args.get("image_path", "")
+                user_context = args.get("user_context", "")
+                logger.info(f"🔧 analyze_image: image_path={image_path}")
+                result = self.analyze_image(image_path, user_context)
+                logger.info(f"✅ analyze_image result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "get_project_structure":
+                logger.info(f"🔧 get_project_structure")
+                result = self.get_project_structure()
+                logger.info(f"✅ get_project_structure result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "find_images":
+                logger.info(f"🔧 find_images")
+                result = self.find_images()
+                logger.info(f"✅ find_images result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "web_search":
+                args = self._parse_arguments(args_str, ["query"])
+                query = args.get("query", "")
+                logger.info(f"🔧 web_search: query={query}")
+                result = self.web_search(query)
+                logger.info(f"✅ web_search result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "fetch_url":
+                args = self._parse_arguments(args_str, ["url"])
+                url = args.get("url", "")
+                logger.info(f"🔧 fetch_url: url={url}")
+                result = self.fetch_url(url)
+                logger.info(f"✅ fetch_url result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "call_api":
+                args = self._parse_arguments(args_str, ["endpoint", "payload"])
+                endpoint = args.get("endpoint", "")
+                payload = args.get("payload", "")
+                logger.info(f"🔧 call_api: endpoint={endpoint}")
+                result = self.call_api(endpoint, payload)
+                logger.info(f"✅ call_api result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "get_weather":
+                args = self._parse_arguments(args_str, ["location"])
+                location = args.get("location", "")
+                logger.info(f"🔧 get_weather: location={location}")
+                result = self.get_weather(location)
+                logger.info(f"✅ get_weather result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "translate_text":
+                args = self._parse_arguments(args_str, ["text", "target_language"])
+                text = args.get("text", "")
+                target_language = args.get("target_language", "en")
+                logger.info(f"🔧 translate_text: text={text[:50]}..., target_language={target_language}")
+                result = self.translate_text(text, target_language)
+                logger.info(f"✅ translate_text result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "create_event":
+                args = self._parse_arguments(args_str, ["title", "description", "date", "time", "priority"])
+                title = args.get("title", "")
+                description = args.get("description", "")
+                date = args.get("date", "")
+                time = args.get("time", "")
+                priority = args.get("priority", "medium")
+                logger.info(f"🔧 create_event: title={title}")
+                result = self.create_event(title, description, date, time, priority)
+                logger.info(f"✅ create_event result: {result}")
+                return f"Event created: {result}"
+            
+            elif func_name == "get_upcoming_events":
+                args = self._parse_arguments(args_str, ["days"])
+                days = args.get("days", 7)
+                logger.info(f"🔧 get_upcoming_events: days={days}")
+                result = self.get_upcoming_events(int(days))
+                logger.info(f"✅ get_upcoming_events result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "create_task_list":
+                args = self._parse_arguments(args_str, ["title", "tasks"])
+                title = args.get("title", "")
+                tasks = args.get("tasks", "")
+                logger.info(f"🔧 create_task_list: title={title}")
+                result = self.create_task_list(title, tasks)
+                logger.info(f"✅ create_task_list result: {result}")
+                return f"Task list created: {result}"
+            
+            elif func_name == "list_tasks":
+                args = self._parse_arguments(args_str, ["context"])
+                context = args.get("context", "")
+                logger.info(f"🔧 list_tasks: context={context}")
+                result = self.list_tasks(context)
+                logger.info(f"✅ list_tasks result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "run_terminal_command":
+                args = self._parse_arguments(args_str, ["command"])
+                command = args.get("command", "")
+                logger.info(f"🔧 run_terminal_command: command={command}")
+                result = self.run_terminal_command(command)
+                logger.info(f"✅ run_terminal_command result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "get_system_info":
+                logger.info(f"🔧 get_system_info")
+                result = self.get_system_info()
+                logger.info(f"✅ get_system_info result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "diagnose_network":
+                logger.info(f"🔧 diagnose_network")
+                result = self.diagnose_network()
+                logger.info(f"✅ diagnose_network result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "reflect":
+                args = self._parse_arguments(args_str, ["history"])
+                history = args.get("history", "")
+                logger.info(f"🔧 reflect: history={history[:50]}...")
+                result = self.reflect(history.split(",") if history else [])
+                logger.info(f"✅ reflect result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "react_cycle":
+                args = self._parse_arguments(args_str, ["goal", "max_steps"])
+                goal = args.get("goal", "")
+                max_steps = args.get("max_steps", 20)
+                logger.info(f"🔧 react_cycle: goal={goal}, max_steps={max_steps}")
+                result = self.react_cycle(goal, int(max_steps))
+                logger.info(f"✅ react_cycle result: {result[:200]}..." if len(result) > 200 else result)
+                return result
             
             else:
                 logger.error(f"❌ Unknown tool: {func_name}")

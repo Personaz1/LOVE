@@ -49,4 +49,7 @@ class Logger:
     
     def get_logger(self) -> logging.Logger:
         """Получить объект логгера"""
-        return self.logger 
+        return self.logger
+
+# Экспортируем Logger для импорта
+__all__ = ['Logger'] 

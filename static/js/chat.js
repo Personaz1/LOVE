@@ -339,6 +339,22 @@ async function handleStreamData(data) {
                 currentStreamingMessage = null;
             }
             break;
+        case 'final_response':
+            // Заменяем текущее сообщение на финальный ответ с результатами tool calls
+            if (currentStreamingMessage) {
+                currentStreamingMessage.textContent = data.content;
+                finalizeStreamingMessage(currentStreamingMessage);
+                currentStreamingMessage = null;
+            }
+            break;
+        case 'tool_result':
+            // Показываем результат выполнения tool call
+            console.log('Tool executed:', data.tool, 'Result:', data.result);
+            break;
+        case 'tool_error':
+            // Показываем ошибку tool call
+            console.error('Tool error:', data.tool, 'Error:', data.error);
+            break;
         case 'greeting':
             greetingShown = true;
             addMessage(data.content, 'ai');
