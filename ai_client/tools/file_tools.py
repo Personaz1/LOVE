@@ -24,50 +24,52 @@ class FileTools:
         self.project_root = self.config.get_project_root()
     
     def read_file(self, path: str) -> str:
-        """Чтение содержимого файла с умным разрешением путей"""
+        """Чтение файла"""
         try:
-            # Безопасность: разрешаем доступ только к директории проекта
-            project_root = self.project_root
-            
-            # Умное разрешение путей
-            if not path.startswith('/') and not path.startswith('./') and not path.startswith('../'):
-                # Пробуем относительные пути сначала
-                possible_paths = [
-                    path,  # Прямой путь
-                    os.path.join(project_root, path),  # Из корня проекта
-                    os.path.join(project_root, 'guardian_sandbox', path),  # Из песочницы
-                    os.path.join(project_root, 'memory', path),  # Из памяти
-                    os.path.join(project_root, 'prompts', path),  # Из промптов
-                    os.path.join(project_root, 'static', path),  # Из статики
-                    os.path.join(project_root, 'templates', path),  # Из шаблонов
-                ]
+            if path.startswith('/'):
+                # Если передан абсолютный путь, конвертируем в относительный
+                path = path.lstrip('/')
+                full_path = os.path.join(self.project_root, path)
             else:
-                # Абсолютный или относительный путь
-                possible_paths = [os.path.abspath(path)]
+                # Относительный путь
+                full_path = os.path.join(self.project_root, path)
             
-            # Пробуем каждый возможный путь
-            for full_path in possible_paths:
-                if os.path.exists(full_path) and not os.path.isdir(full_path):
-                    # Убеждаемся что путь в пределах директории проекта
-                    if not full_path.startswith(project_root):
-                        continue  # Пропускаем если вне проекта
-                    
-                    with open(full_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    
-                    logger.info(f"📖 Read file: {path} -> {full_path} ({len(content)} chars)")
-                    return content
+            # Безопасность: убеждаемся что файл в пределах проекта
+            full_path = os.path.abspath(full_path)
+            if not full_path.startswith(self.project_root):
+                logger.error(f"Access denied: File {path} is outside project directory")
+                return "❌ Access denied: File is outside project directory"
             
-            # Если не найдено, предоставляем полезные предложения
-            suggestions = self._find_similar_files(path)
-            if suggestions:
-                return f"❌ File not found: {path}\n\n💡 Similar files found:\n{suggestions}"
-            else:
-                return f"❌ File not found: {path}\n\n💡 Try using list_files() to see available files"
+            if not os.path.exists(full_path):
+                # Пробуем найти похожие файлы
+                similar_files = self._find_similar_files(path)
+                if similar_files:
+                    return f"❌ File not found: {path}\n\nSimilar files found:\n{similar_files}"
+                else:
+                    return f"❌ File not found: {path}"
+            
+            # Определяем кодировку
+            encoding = 'utf-8'
+            try:
+                with open(full_path, 'r', encoding=encoding) as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                # Пробуем другие кодировки
+                for enc in ['latin-1', 'cp1252', 'iso-8859-1']:
+                    try:
+                        with open(full_path, 'r', encoding=enc) as f:
+                            content = f.read()
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                else:
+                    return f"❌ Cannot read file {path}: encoding issues"
+            
+            return content
             
         except Exception as e:
             logger.error(f"Error reading file {path}: {e}")
-            return f"❌ Error reading file {path}: {str(e)}"
+            return f"❌ Error reading file: {str(e)}"
     
     def write_file(self, path: str, content: str) -> bool:
         """Запись содержимого в файл"""
@@ -153,6 +155,16 @@ class FileTools:
         try:
             if not directory:
                 directory = self.project_root
+            elif directory.startswith('/'):
+                # Если передан абсолютный путь, конвертируем в относительный
+                directory = directory.lstrip('/')
+                if directory == "":
+                    directory = self.project_root
+                else:
+                    directory = os.path.join(self.project_root, directory)
+            else:
+                # Относительный путь
+                directory = os.path.join(self.project_root, directory)
             
             # Безопасность: убеждаемся что директория в пределах проекта
             full_path = os.path.abspath(directory)

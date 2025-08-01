@@ -286,5 +286,23 @@
     "ai_response": "```python\n❌ Unknown tool: print)\n```",
     "context": "",
     "type": "conversation"
+  },
+  {
+    "id": "msg_32_1754069441.068019",
+    "timestamp": "2025-08-01T19:30:41.068029",
+    "user": "stepan",
+    "message": "привет",
+    "ai_response": "Привет! Как вы сегодня?",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_33_1754069455.264884",
+    "timestamp": "2025-08-01T19:30:55.264897",
+    "user": "stepan",
+    "message": "найди картинку 777 у себя где то папках и опиши ее",
+    "ai_response": "Я могу попытаться найти `777.png` в известных мне директориях. Начну с `/static/`, так как там часто хранятся изображения.\n\n```python\n❌ Access denied: Directory is outside project\n```",
+    "context": "",
+    "type": "conversation"
   }
 ]
