@@ -443,6 +443,104 @@ class GeminiClient:
                 elif finish_reason == 3:  # OTHER
                     return "❌ Ответ заблокирован по другим причинам"
             
+            # Проверяем наличие текста - пробуем разные способы
+            text_content = ""
+            
+            # Способ 1: прямой доступ к text
+            if hasattr(response, 'text') and response.text:
+                text_content = response.text
+            # Способ 2: через parts
+            elif hasattr(response, 'parts') and response.parts:
+                text_parts = []
+                for part in response.parts:
+                    if hasattr(part, 'text') and part.text:
+                        text_parts.append(part.text)
+                if text_parts:
+                    text_content = "".join(text_parts)
+            # Способ 3: через candidates
+            elif hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        text_parts = []
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                text_parts.append(part.text)
+                        if text_parts:
+                            text_content = "".join(text_parts)
+                    elif hasattr(candidate.content, 'text') and candidate.content.text:
+                        text_content = candidate.content.text
+            
+            if text_content:
+                return text_content
+            
+            return "❌ Не удалось сгенерировать ответ"
+    
+    def chat(
+        self, 
+        message: str, 
+        user_profile: Optional[Dict[str, Any]] = None,
+        conversation_context: Optional[str] = None,
+        system_prompt: Optional[str] = None
+    ) -> str:
+        """Основной метод чата"""
+        try:
+            # Используем стандартный промпт если не указан
+            if not system_prompt:
+                system_prompt = "You are a helpful AI assistant."
+            
+            # Генерируем ответ синхронно через sync версию
+            response = self._generate_gemini_response_sync(
+                system_prompt, message, conversation_context, user_profile
+            )
+            
+            return response
+            
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Chat error: {error_msg}")
+            return f"❌ Error: {error_msg}"
+
+    def _generate_gemini_response_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Синхронная версия генерации ответа"""
+        try:
+            # Формируем промпт
+            full_prompt = self._build_prompt_sync(system_prompt, user_message, conversation_context, user_profile)
+            
+            # Получаем модель
+            model_name = self._get_current_model()
+            model = genai.GenerativeModel(model_name)
+            
+            # Устанавливаем таймаут и ограничения
+            generation_config = {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 2048,
+            }
+            
+            # Генерируем ответ
+            response = model.generate_content(
+                full_prompt,
+                generation_config=generation_config
+            )
+            
+            # Проверяем finish_reason
+            if hasattr(response, 'finish_reason'):
+                finish_reason = response.finish_reason
+                if finish_reason == 1:  # SAFETY
+                    return "❌ Ответ заблокирован системой безопасности"
+                elif finish_reason == 2:  # RECITATION
+                    return "❌ Ответ заблокирован из-за рецитации"
+                elif finish_reason == 3:  # OTHER
+                    return "❌ Ответ заблокирован по другим причинам"
+            
             # Проверяем наличие текста
             if hasattr(response, 'text') and response.text:
                 return response.text

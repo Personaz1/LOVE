@@ -564,7 +564,13 @@ class SystemTools:
             # Получаем полные вызовы, а не только имена
             full_calls = []
             for match in re.finditer(pattern, text):
-                full_calls.append(match.group(0))  # Полный вызов
+                full_call = match.group(0)  # Полный вызов
+                
+                # Валидация вызова
+                if self._validate_tool_call(full_call):
+                    full_calls.append(full_call)
+                else:
+                    logger.warning(f"⚠️ Invalid tool call: {full_call}")
             
             # Убираем дубликаты
             unique_calls = list(set(full_calls))
@@ -575,6 +581,57 @@ class SystemTools:
         except Exception as e:
             logger.error(f"Error extracting tool calls: {e}")
             return []
+    
+    def _validate_tool_call(self, tool_call: str) -> bool:
+        """Валидация синтаксиса вызова инструмента"""
+        try:
+            # Извлекаем имя функции и аргументы
+            match = re.match(r'(\w+)\s*\((.*)\)', tool_call)
+            if not match:
+                return False
+            
+            func_name = match.group(1)
+            args_str = match.group(2)
+            
+            # Проверяем что это известный инструмент
+            known_tools = [
+                'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
+                'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
+                'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
+                'generate_system_greeting', 'read_user_profile', 'read_emotional_history',
+                'search_user_data', 'update_current_feeling', 'add_user_observation',
+                'append_to_file', 'safe_create_file'
+            ]
+            
+            if func_name not in known_tools:
+                logger.warning(f"⚠️ Unknown tool: {func_name}")
+                return False
+            
+            # Проверяем базовый синтаксис
+            if not args_str.strip():
+                return False
+            
+            # Проверяем что аргументы правильно экранированы
+            if args_str.count('"') % 2 != 0:
+                logger.warning(f"⚠️ Unmatched quotes in tool call: {tool_call}")
+                return False
+            
+            # Проверяем что нет незакрытых скобок
+            if args_str.count('(') != args_str.count(')'):
+                logger.warning(f"⚠️ Unmatched parentheses in tool call: {tool_call}")
+                return False
+            
+            # Проверяем что нет незакрытых кавычек внутри аргументов
+            quoted_args = re.findall(r'"([^"]*)"', args_str)
+            if len(quoted_args) == 0 and func_name in ['create_file', 'write_file', 'edit_file', 'append_to_file', 'safe_create_file']:
+                logger.warning(f"⚠️ Missing quoted arguments in tool call: {tool_call}")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Tool call validation error: {e}")
+            return False
     
     def _extract_nested_calls(self, text: str) -> List[str]:
         """Извлечение вложенных вызовов"""
@@ -681,13 +738,37 @@ class SystemTools:
                 args = self._parse_arguments(args_str, ["path", "content"])
                 path = args.get("path", "")
                 content = args.get("content", "")
-                logger.info(f"🔧 create_file: path={path}")
+                logger.info(f"🔧 create_file: path={path}, content_length={len(content)}")
                 # Делегируем в FileTools
                 from ..tools.file_tools import FileTools
                 file_tools = FileTools()
                 result = file_tools.create_file(path, content)
                 logger.info(f"✅ create_file result: {result}")
                 return f"File created: {path}" if result else f"Failed to create file: {path}"
+            
+            elif func_name == "append_to_file":
+                args = self._parse_arguments(args_str, ["path", "content"])
+                path = args.get("path", "")
+                content = args.get("content", "")
+                logger.info(f"🔧 append_to_file: path={path}, content_length={len(content)}")
+                # Делегируем в FileTools
+                from ..tools.file_tools import FileTools
+                file_tools = FileTools()
+                result = file_tools.append_to_file(path, content)
+                logger.info(f"✅ append_to_file result: {result}")
+                return f"Content appended to: {path}" if result else f"Failed to append to file: {path}"
+            
+            elif func_name == "safe_create_file":
+                args = self._parse_arguments(args_str, ["path", "content"])
+                path = args.get("path", "")
+                content = args.get("content", "")
+                logger.info(f"🔧 safe_create_file: path={path}, content_length={len(content)}")
+                # Делегируем в FileTools
+                from ..tools.file_tools import FileTools
+                file_tools = FileTools()
+                result = file_tools.safe_create_file(path, content)
+                logger.info(f"✅ safe_create_file result: {result}")
+                return f"File created safely: {path}" if result else f"Failed to create file safely: {path}"
             
             elif func_name == "write_file":
                 args = self._parse_arguments(args_str, ["path", "content"])

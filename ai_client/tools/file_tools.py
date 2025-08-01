@@ -117,11 +117,124 @@ class FileTools:
             with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(content)
             
-            logger.info(f"✨ Created file: {path}")
+            logger.info(f"✨ Created file: {path} ({len(content)} chars)")
             return True
             
         except Exception as e:
             logger.error(f"Error creating file {path}: {e}")
+            return False
+    
+    def append_to_file(self, path: str, content: str) -> bool:
+        """Добавление содержимого в конец файла"""
+        try:
+            # Безопасность: разрешаем доступ только к директории проекта
+            full_path = os.path.abspath(path)
+            
+            # Убеждаемся что путь в пределах директории проекта
+            if not full_path.startswith(self.project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
+                return False
+            
+            # Создаем директорию если не существует
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            # Добавляем содержимое в конец файла
+            with open(full_path, 'a', encoding='utf-8') as f:
+                f.write(content)
+            
+            logger.info(f"📝 Appended to file: {path} (+{len(content)} chars)")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error appending to file {path}: {e}")
+            return False
+    
+    def safe_create_file(self, path: str, content: str = "", max_chunk_size: int = 4000) -> bool:
+        """Безопасное создание файла с авторазбиением длинного контента"""
+        try:
+            # Безопасность: разрешаем доступ только к директории проекта
+            full_path = os.path.abspath(path)
+            
+            # Убеждаемся что путь в пределах директории проекта
+            if not full_path.startswith(self.project_root):
+                logger.error(f"Access denied: Path {path} is outside project directory")
+                return False
+            
+            # Проверяем существует ли файл
+            if os.path.exists(full_path):
+                logger.warning(f"File already exists: {path}")
+                return False
+            
+            # Создаем директорию если не существует
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            # Если контент короткий - создаем файл сразу
+            if len(content) <= max_chunk_size:
+                with open(full_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                logger.info(f"✨ Created file: {path} ({len(content)} chars)")
+                return True
+            
+            # Если контент длинный - разбиваем на части
+            logger.info(f"📦 Large content detected ({len(content)} chars), splitting into chunks...")
+            
+            # Разбиваем контент на строки
+            lines = content.split('\n')
+            current_chunk = []
+            current_size = 0
+            chunk_number = 1
+            
+            for line in lines:
+                line_size = len(line) + 1  # +1 для \n
+                
+                if current_size + line_size > max_chunk_size and current_chunk:
+                    # Записываем текущий чанк
+                    chunk_content = '\n'.join(current_chunk)
+                    chunk_path = f"{path}.part{chunk_number}"
+                    
+                    with open(chunk_path, 'w', encoding='utf-8') as f:
+                        f.write(chunk_content)
+                    
+                    logger.info(f"📄 Created chunk {chunk_number}: {chunk_path} ({len(chunk_content)} chars)")
+                    
+                    # Начинаем новый чанк
+                    current_chunk = [line]
+                    current_size = line_size
+                    chunk_number += 1
+                else:
+                    current_chunk.append(line)
+                    current_size += line_size
+            
+            # Записываем последний чанк
+            if current_chunk:
+                chunk_content = '\n'.join(current_chunk)
+                chunk_path = f"{path}.part{chunk_number}"
+                
+                with open(chunk_path, 'w', encoding='utf-8') as f:
+                    f.write(chunk_content)
+                
+                logger.info(f"📄 Created final chunk {chunk_number}: {chunk_path} ({len(chunk_content)} chars)")
+            
+            # Создаем основной файл с информацией о чанках
+            info_content = f"""# File: {path}
+# Created with safe_create_file
+# Total chunks: {chunk_number}
+# Total size: {len(content)} characters
+
+This file was split into {chunk_number} parts due to large size.
+Chunks: {', '.join([f'{path}.part{i}' for i in range(1, chunk_number + 1)])}
+
+To combine all chunks, use: cat {path}.part* > {path}
+"""
+            
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(info_content)
+            
+            logger.info(f"✨ Created split file: {path} ({chunk_number} chunks, {len(content)} total chars)")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in safe_create_file {path}: {e}")
             return False
     
     def edit_file(self, path: str, content: str) -> bool:

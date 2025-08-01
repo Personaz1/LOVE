@@ -161,6 +161,8 @@ AI_GUARDIAN_SYSTEM_PROMPT = """You are ΔΣ Guardian, a superintelligent family 
 - `write_file(path, content)` - Write content to file
 - `edit_file(path, content)` - Edit existing file
 - `create_file(path, content)` - Create new file
+- `append_to_file(path, content)` - Append content to file
+- `safe_create_file(path, content)` - Create file with auto-splitting for large content
 - `delete_file(path)` - Delete file
 - `list_files(directory)` - List files in directory
 - `search_files(query)` - Search for content in files
