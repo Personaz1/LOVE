@@ -684,6 +684,53 @@ class SystemTools:
                 logger.info(f"✅ search_files result: {result}")
                 return result
             
+            elif func_name == "create_file":
+                args = self._parse_arguments(args_str, ["path", "content"])
+                path = args.get("path", "")
+                content = args.get("content", "")
+                logger.info(f"🔧 create_file: path={path}")
+                # Делегируем в FileTools
+                from ..tools.file_tools import FileTools
+                file_tools = FileTools()
+                result = file_tools.create_file(path, content)
+                logger.info(f"✅ create_file result: {result}")
+                return f"File created: {path}" if result else f"Failed to create file: {path}"
+            
+            elif func_name == "write_file":
+                args = self._parse_arguments(args_str, ["path", "content"])
+                path = args.get("path", "")
+                content = args.get("content", "")
+                logger.info(f"🔧 write_file: path={path}")
+                # Делегируем в FileTools
+                from ..tools.file_tools import FileTools
+                file_tools = FileTools()
+                result = file_tools.write_file(path, content)
+                logger.info(f"✅ write_file result: {result}")
+                return f"File written: {path}" if result else f"Failed to write file: {path}"
+            
+            elif func_name == "edit_file":
+                args = self._parse_arguments(args_str, ["path", "content"])
+                path = args.get("path", "")
+                content = args.get("content", "")
+                logger.info(f"🔧 edit_file: path={path}")
+                # Делегируем в FileTools
+                from ..tools.file_tools import FileTools
+                file_tools = FileTools()
+                result = file_tools.edit_file(path, content)
+                logger.info(f"✅ edit_file result: {result}")
+                return f"File edited: {path}" if result else f"Failed to edit file: {path}"
+            
+            elif func_name == "delete_file":
+                args = self._parse_arguments(args_str, ["path"])
+                path = args.get("path", "")
+                logger.info(f"🔧 delete_file: path={path}")
+                # Делегируем в FileTools
+                from ..tools.file_tools import FileTools
+                file_tools = FileTools()
+                result = file_tools.delete_file(path)
+                logger.info(f"✅ delete_file result: {result}")
+                return f"File deleted: {path}" if result else f"Failed to delete file: {path}"
+            
             elif func_name == "add_model_note":
                 args = self._parse_arguments(args_str, ["note_text", "category"])
                 note_text = args.get("note_text", "System note")
@@ -705,6 +752,54 @@ class SystemTools:
                 memory_tools = MemoryTools()
                 result = memory_tools.read_user_profile(username)
                 logger.info(f"✅ read_user_profile result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "read_emotional_history":
+                args = self._parse_arguments(args_str, ["username"])
+                username = args.get("username", "stepan")
+                logger.info(f"🔧 read_emotional_history: username={username}")
+                # Делегируем в MemoryTools
+                from ..tools.memory_tools import MemoryTools
+                memory_tools = MemoryTools()
+                result = memory_tools.read_emotional_history(username)
+                logger.info(f"✅ read_emotional_history result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "search_user_data":
+                args = self._parse_arguments(args_str, ["username", "query"])
+                username = args.get("username", "stepan")
+                query = args.get("query", "")
+                logger.info(f"🔧 search_user_data: username={username}, query={query}")
+                # Делегируем в MemoryTools
+                from ..tools.memory_tools import MemoryTools
+                memory_tools = MemoryTools()
+                result = memory_tools.search_user_data(username, query)
+                logger.info(f"✅ search_user_data result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "update_current_feeling":
+                args = self._parse_arguments(args_str, ["username", "feeling", "context"])
+                username = args.get("username", "stepan")
+                feeling = args.get("feeling", "")
+                context = args.get("context", "")
+                logger.info(f"🔧 update_current_feeling: username={username}, feeling={feeling}")
+                # Делегируем в MemoryTools
+                from ..tools.memory_tools import MemoryTools
+                memory_tools = MemoryTools()
+                result = memory_tools.update_current_feeling(username, feeling, context)
+                logger.info(f"✅ update_current_feeling result: {result}")
+                return result
+            
+            elif func_name == "add_user_observation":
+                args = self._parse_arguments(args_str, ["username", "observation"])
+                username = args.get("username", "stepan")
+                observation = args.get("observation", "")
+                logger.info(f"🔧 add_user_observation: username={username}, observation={observation[:50]}...")
+                # Делегируем в MemoryTools
+                from ..tools.memory_tools import MemoryTools
+                memory_tools = MemoryTools()
+                result = memory_tools.add_user_observation(username, observation)
+                logger.info(f"✅ add_user_observation result: {result}")
                 return result
             
             # System Tools

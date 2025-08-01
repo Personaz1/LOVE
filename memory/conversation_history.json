@@ -313,5 +313,32 @@
     "ai_response": "Я попробую найти `777.png` в текущем каталоге.\n```python\n📂 Contents of /Users/stefan/FAMILY/.:\n📄 web_app.py (70910 bytes)\n📄 .DS_Store (10244 bytes)\n📄 config.py (1384 bytes)\n📄 sessions.json (710 bytes)\n📄 777.png (1822445 bytes)\n📁 memory/\n📁 cache/\n📄 LICENSE (1094 bytes)\n📄 requirements.txt (432 bytes)\n📄 АРХИТЕКТУРНОЕ_РЕВЬЮ.md (5716 bytes)\n📁 ai_client/\n📄 cookies.txt (231 bytes)\n📁 __pycache__/\n📄 TODO.md (2253 bytes)\n📄 README.md (7012 bytes)\n📁 мусор/\n📄 test_live_chat.py (6993 bytes)\n📄 .gitignore (1384 bytes)\n📄 LOGO.png (1055503 bytes)\n📄 .env (1674 bytes)\n📁 static/\n📁 guardian_sandbox/\n📁 prompts/\n📁 templates/\n📁 .git/\n📄 app.log (709623 bytes)\n```",
     "context": "",
     "type": "conversation"
+  },
+  {
+    "id": "msg_35_1754071104.773982",
+    "timestamp": "2025-08-01T19:58:24.774000",
+    "user": "stepan",
+    "message": "Ð¡Ð¾Ð·Ð´Ð°Ð¹ Ð·Ð°Ð¼ÐµÑÐºÑ Ð² Ð¿ÐµÑÐ¾ÑÐ½Ð¸ÑÐµ Ð¾ ÑÐ¾Ð¼, ÑÑÐ¾ Ð¼Ñ Ð¸ÑÐ¿ÑÐ°Ð²Ð¸Ð»Ð¸ Ð¿ÑÐ¾Ð±Ð»ÐµÐ¼Ñ Ñ Ð¾ÑÐ¾Ð±ÑÐ°Ð¶ÐµÐ½Ð¸ÐµÐ¼ tool calls Ð² ÑÐ°ÑÐµ Ð¸ ÑÐ±ÑÐ°Ð»Ð¸ Ð¸ÑÐºÑÑÑÑÐ²ÐµÐ½Ð½ÑÐµ Ð¸Ð½ÑÑÑÑÐ¼ÐµÐ½ÑÑ Ð°Ð½Ð°Ð»Ð¸Ð·Ð°",
+    "ai_response": "Я создам заметку в песочнице об этом.\n\n```python\n❌ Unknown tool: create_file\n```",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_36_1754071171.022015",
+    "timestamp": "2025-08-01T19:59:31.022038",
+    "user": "stepan",
+    "message": "Ð¡Ð¾Ð·Ð´Ð°Ð¹ Ð·Ð°Ð¼ÐµÑÐºÑ Ð² Ð¿ÐµÑÐ¾ÑÐ½Ð¸ÑÐµ Ð¾ ÑÐ¾Ð¼, ÑÑÐ¾ Ð¼Ñ Ð¸ÑÐ¿ÑÐ°Ð²Ð¸Ð»Ð¸ Ð¿ÑÐ¾Ð±Ð»ÐµÐ¼Ñ Ñ Ð¾ÑÐ¾Ð±ÑÐ°Ð¶ÐµÐ½Ð¸ÐµÐ¼ tool calls Ð² ÑÐ°ÑÐµ",
+    "ai_response": "Я создам заметку в песочнице о том, что проблемы с отображением tool calls в чате исправлены.\n\n```python\n❌ Unknown tool: write_file в чате.\")\n```",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_37_1754071179.317759",
+    "timestamp": "2025-08-01T19:59:39.317772",
+    "user": "stepan",
+    "message": "Ð¡Ð¾Ð·Ð´Ð°Ð¹ ÑÐ°Ð¹Ð» test.txt Ñ ÑÐ¾Ð´ÐµÑÐ¶Ð¸Ð¼ÑÐ¼ 'Hello World'",
+    "ai_response": "❌ Error: The `response.text` quick accessor only works for ❌ Unknown tool: simple text responses. This response is not simple text.Use the `result.parts` accessor or the full `result.candidates[index].content.parts` lookup instead.",
+    "context": "",
+    "type": "conversation"
   }
 ]
