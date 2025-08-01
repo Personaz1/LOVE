@@ -260,35 +260,7 @@ class SystemTools:
             logger.error(f"Error finding images: {e}")
             return f"❌ Error finding images: {str(e)}"
     
-    def _generate_login_greeting(self, user_profile: Optional[Dict[str, Any]] = None) -> str:
-        """Генерация приветствия при входе"""
-        try:
-            if not user_profile:
-                return "👋 Welcome back! How can I assist you today?"
-            
-            username = user_profile.get('username', 'User')
-            current_time = datetime.now().strftime("%I:%M %p")
-            current_feeling = user_profile.get('current_feeling', 'neutral')
-            
-            feeling_emoji = {
-                'happy': '😊', 'sad': '😢', 'excited': '🎉', 'tired': '😴',
-                'stressed': '😰', 'neutral': '😐'
-            }.get(current_feeling, '😐')
-            
-            # Используем модель для генерации приветствия
-            greeting = f"{feeling_emoji} Hello, {username}! "
-            greeting += f"It's {current_time}. "
-            
-            if current_feeling != 'neutral':
-                greeting += f"I see you're feeling {current_feeling}. "
-            
-            greeting += "How can I help you today?"
-            
-            return greeting
-            
-        except Exception as e:
-            logger.error(f"Error generating login greeting: {e}")
-            return "👋 Welcome back! How can I assist you today?"
+
     
     # ReAct архитектура
     def plan_step(self, goal: str) -> str:
