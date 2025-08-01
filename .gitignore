@@ -98,6 +98,14 @@ temp/
 *.temp
 
 # User data (keep structure but ignore content)
+
+# Мусор и временные файлы
+мусор/
+*.old
+*.backup
+*.tmp
+*.temp
+app.log
 memory/user_profiles/*.json
 memory/user_profiles/insights/*.json
 memory/user_profiles/diaries/*.json

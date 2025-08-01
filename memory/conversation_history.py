@@ -30,13 +30,13 @@ def _load_ai_client():
         sys.path.append(parent_dir)
         logger.info(f"🔍 Added {parent_dir} to Python path")
         
-        # Check if ai_client.py exists
-        ai_client_path = os.path.join(parent_dir, 'ai_client.py')
+        # Check if ai_client module exists
+        ai_client_path = os.path.join(parent_dir, 'ai_client')
         if os.path.exists(ai_client_path):
-            logger.info(f"✅ Found ai_client.py at {ai_client_path}")
+            logger.info(f"✅ Found ai_client module at {ai_client_path}")
         else:
-            logger.error(f"❌ ai_client.py not found at {ai_client_path}")
-            raise FileNotFoundError(f"ai_client.py not found at {ai_client_path}")
+            logger.error(f"❌ ai_client module not found at {ai_client_path}")
+            raise FileNotFoundError(f"ai_client module not found at {ai_client_path}")
         
         from ai_client import AIClient as AIClientClass
         AIClient = AIClientClass
@@ -200,7 +200,7 @@ class ConversationHistory:
             
             # Create prompt for summary generation
             summary_prompt = f"""
-You are ΔΣ Guardian, a superintelligent system architect and family guardian. You need to create a thoughtful summary of a conversation period.
+You are ΔΣ Guardian, a superintelligent family architect and family guardian. You need to create a thoughtful summary of a conversation period.
 
 Please analyze this conversation and create a meaningful summary that captures:
 1. Key themes and topics discussed

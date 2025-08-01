@@ -1,210 +1,504 @@
 """
-Gemini Client for ΔΣ Guardian AI
-Handles all interactions with Google Gemini models
+Gemini API клиент
 """
 
 import os
 import time
 import logging
-import re
 from typing import Optional, Dict, Any, AsyncGenerator, List
 from datetime import datetime
 import json
 
 import google.generativeai as genai
+from google.cloud import vision
 
 from ..utils.config import Config
-from ..utils.error_handler import error_handler
-from ..utils.logger import ai_logger
+from ..utils.logger import Logger
+from ..utils.error_handler import ErrorHandler
 
-logger = logging.getLogger(__name__)
+logger = Logger()
 
 class GeminiClient:
-    """Gemini model client with quota management and error handling"""
+    """Класс для работы с Gemini API"""
     
     def __init__(self):
-        # Initialize Gemini
+        """Инициализация Gemini клиента"""
         self.config = Config()
-        genai.configure(api_key=self.config.GEMINI_API_KEY)
+        self.error_handler = ErrorHandler()
         
-        # Model management
+        # Инициализируем Gemini
+        api_key = self.config.get_gemini_api_key()
+        genai.configure(api_key=api_key)
+        
+        # Инициализируем Vision API
+        self.vision_client = None
+        try:
+            vision_api_key = self.config.get_vision_api_key()
+            if vision_api_key:
+                self.vision_api_key = vision_api_key
+                logger.info("✅ Google Cloud Vision API key configured")
+            else:
+                logger.warning("⚠️ No Google Cloud Vision API key provided")
+        except Exception as e:
+            logger.warning(f"⚠️ Google Cloud Vision API not available: {e}")
+        
+        # Определяем доступные модели
+        self.models = [
+            {
+                'name': 'gemini-2.5-pro',
+                'quota': 100,
+                'model': None,
+                'vision': True
+            },
+            {
+                'name': 'gemini-1.5-pro',
+                'quota': 150,
+                'model': None,
+                'vision': True
+            },
+            {
+                'name': 'gemini-2.5-flash',
+                'quota': 250,
+                'model': None,
+                'vision': True
+            },
+            {
+                'name': 'gemini-1.5-flash',
+                'quota': 500,
+                'model': None,
+                'vision': True
+            },
+            {
+                'name': 'gemini-2.0-flash', 
+                'quota': 200,
+                'model': None,
+                'vision': True
+            },
+            {
+                'name': 'gemini-2.0-flash-lite',
+                'quota': 1000,
+                'model': None,
+                'vision': False
+            },
+            {
+                'name': 'gemini-2.5-flash-lite',
+                'quota': 1000,
+                'model': None,
+                'vision': False
+            }
+        ]
+        
         self.current_model_index = 0
-        self.model_errors = {}
-        
-        # Initialize models
-        self.models = {}
-        for model_config in self.config.MODELS:
-            try:
-                model = genai.GenerativeModel(model_config['name'])
-                self.models[model_config['name']] = model
-            except Exception as e:
-                logger.error(f"Failed to initialize model {model_config['name']}: {e}")
-        
-        logger.info("✅ Gemini client initialized")
+    
+    def get_models(self) -> List[Dict[str, Any]]:
+        """Получить список моделей"""
+        return self.models
     
     def _get_current_model(self):
-        """Get current model"""
-        model_config = self.config.MODELS[self.current_model_index]
-        model_name = model_config['name']
-        return self.models.get(model_name)
+        """Получить текущую модель"""
+        return self.models[self.current_model_index]['name']
+    
+    def _get_current_model_index(self):
+        """Получить индекс текущей модели"""
+        return self.current_model_index
     
     def _switch_to_next_model(self):
-        """Switch to next available model"""
-        self.current_model_index = (self.current_model_index + 1) % len(self.config.MODELS)
-        new_model_config = self.config.MODELS[self.current_model_index]
-        
-        ai_logger.log_model_switch(
-            self.config.MODELS[self.current_model_index - 1]['name'],
-            new_model_config['name'],
-            "quota exceeded"
-        )
-        
-        return self.models.get(new_model_config['name'])
+        """Переключиться на следующую модель"""
+        self.current_model_index = (self.current_model_index + 1) % len(self.models)
+        model_name = self.models[self.current_model_index]['name']
+        logger.info(f"🚀 Using model: {model_name}")
+        return model_name
     
-    def _handle_quota_error(self, error: Exception, model_name: str):
-        """Handle quota exceeded errors"""
-        # Record error
-        self.model_errors[model_name] = time.time()
-        
-        # Switch to next model
-        new_model = self._switch_to_next_model()
-        
-        if new_model:
-            return new_model
-        else:
-            raise Exception("No available models")
+    def switch_to_model(self, model_name: str) -> bool:
+        """Переключиться на конкретную модель"""
+        for i, model in enumerate(self.models):
+            if model['name'] == model_name:
+                self.current_model_index = i
+                logger.info(f"🚀 Switched to model: {model_name}")
+                return True
+        logger.error(f"❌ Model {model_name} not found")
+        return False
     
-    def generate_response(self, message: str, user_profile: Optional[Dict[str, Any]] = None,
-                         context: Optional[str] = None, system_prompt: Optional[str] = None) -> str:
-        """Generate response using current model"""
-        max_retries = len(self.config.MODELS)
-        
-        for attempt in range(max_retries):
-            try:
-                model = self._get_current_model()
-                if not model:
-                    raise Exception("No model available")
-                
-                # Build prompt
-                prompt = self._build_prompt(message, user_profile, context, system_prompt)
-                
-                # Generate response
-                response = model.generate_content(prompt)
-                
-                if response.text:
-                    return response.text
-                else:
-                    return "No response generated"
-                    
-            except Exception as e:
-                error_msg = str(e)
-                
-                if "429" in error_msg or "quota" in error_msg.lower():
-                    # Quota exceeded, try next model
-                    try:
-                        self._handle_quota_error(e, self.config.MODELS[self.current_model_index]['name'])
-                        continue
-                    except Exception as switch_error:
-                        return f"All models exhausted: {str(switch_error)}"
-                else:
-                    # Other error
-                    return f"Model error: {error_msg}"
-        
-        return "All models failed"
-    
-    async def generate_streaming_response(self, system_prompt: str, user_message: str,
-                                        context: Optional[str] = None,
-                                        user_profile: Optional[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
-        """Generate streaming response"""
-        max_retries = len(self.config.MODELS)
-        
-        for attempt in range(max_retries):
-            try:
-                model = self._get_current_model()
-                if not model:
-                    raise Exception("No model available")
-                
-                # Build prompt
-                prompt = self._build_prompt(user_message, user_profile, context, system_prompt)
-                
-                # Generate streaming response
-                response = model.generate_content(prompt, stream=True)
-                
-                total_chunks = 0
-                tool_calls = []
-                
-                async for chunk in response:
-                    if chunk.text:
-                        total_chunks += 1
-                        yield chunk.text
-                    
-                    # Check for tool calls
-                    if hasattr(chunk, 'candidates') and chunk.candidates:
-                        for candidate in chunk.candidates:
-                            if hasattr(candidate, 'content') and candidate.content:
-                                for part in candidate.content.parts:
-                                    if hasattr(part, 'function_call'):
-                                        tool_calls.append(part.function_call)
-                
-                # Log completion
-                ai_logger.log_info(f"🌐 Multi-step streaming completed in {time.time():.2f}s")
-                ai_logger.log_info(f"📊 Total chunks received: {total_chunks}")
-                
-                return
-                
-            except Exception as e:
-                error_msg = str(e)
-                
-                if "429" in error_msg or "quota" in error_msg.lower():
-                    # Quota exceeded, try next model
-                    try:
-                        self._handle_quota_error(e, self.config.MODELS[self.current_model_index]['name'])
-                        continue
-                    except Exception as switch_error:
-                        yield f"All models exhausted: {str(switch_error)}"
-                        return
-                else:
-                    # Other error
-                    yield f"Model error: {error_msg}"
-                    return
-        
-        yield "All models failed"
-    
-    def _build_prompt(self, message: str, user_profile: Optional[Dict[str, Any]] = None,
-                      context: Optional[str] = None, system_prompt: Optional[str] = None) -> str:
-        """Build complete prompt for model"""
-        # Use provided system prompt or default
-        if not system_prompt:
-            from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
-            system_prompt = AI_GUARDIAN_SYSTEM_PROMPT
-        
-        # Build context
-        context_parts = []
-        
-        if context:
-            context_parts.append(f"CONTEXT:\n{context}")
-        
-        if user_profile:
-            profile_text = json.dumps(user_profile, indent=2)
-            context_parts.append(f"USER PROFILE:\n{profile_text}")
-        
-        # Combine all parts
-        full_prompt = f"{system_prompt}\n\n"
-        
-        if context_parts:
-            full_prompt += "\n\n".join(context_parts) + "\n\n"
-        
-        full_prompt += f"USER MESSAGE:\n{message}\n\nRESPONSE:"
-        
-        return full_prompt
+    def _handle_quota_error(self, error_msg: str):
+        """Обработка ошибок квоты"""
+        if self.error_handler.is_quota_error(error_msg):
+            logger.warning(f"⚠️ Quota exceeded for {self._get_current_model()}, switching model")
+            return self._switch_to_next_model()
+        return None
     
     def get_model_status(self) -> Dict[str, Any]:
-        """Get current model status"""
-        current_model_config = self.config.MODELS[self.current_model_index]
+        """Получить статус моделей"""
+        current_model = self._get_current_model()
+        current_quota = "undefined"  # Будем получать из модели
+        
+        # Формируем полную информацию о моделях
+        available_models = []
+        model_errors = 0
+        
+        for i, model in enumerate(self.models):
+            model_info = {
+                'name': model['name'],
+                'quota': model.get('quota', 'undefined'),
+                'has_error': False  # Будем проверять при необходимости
+            }
+            available_models.append(model_info)
         
         return {
-            "current_model": current_model_config['name'],
-            "model_errors": self.model_errors,
-            "available_models": [m['name'] for m in self.config.MODELS],
-            "current_model_index": self.current_model_index
-        } 
+            'current_model': current_model,
+            'current_quota': current_quota,
+            'model_index': self.current_model_index,
+            'total_models': len(self.models),
+            'available_models': available_models,
+            'model_errors': model_errors
+        }
+    
+    def get_current_model(self) -> str:
+        """Получить имя текущей модели"""
+        return self._get_current_model()
+    
+    def _analyze_image_with_vision_api(self, image_path: str) -> str:
+        """Анализ изображения через Vision API"""
+        try:
+            if not self.config.is_vision_configured():
+                return "❌ Vision API not configured"
+            
+            # Читаем изображение
+            with open(image_path, 'rb') as image_file:
+                content = image_file.read()
+            
+            # Создаем запрос к Vision API
+            import requests
+            
+            url = f"https://vision.googleapis.com/v1/images:annotate?key={self.vision_api_key}"
+            
+            request_data = {
+                "requests": [
+                    {
+                        "image": {
+                            "content": content.decode('latin1')
+                        },
+                        "features": [
+                            {
+                                "type": "LABEL_DETECTION",
+                                "maxResults": 10
+                            },
+                            {
+                                "type": "TEXT_DETECTION"
+                            },
+                            {
+                                "type": "FACE_DETECTION"
+                            },
+                            {
+                                "type": "OBJECT_LOCALIZATION",
+                                "maxResults": 5
+                            }
+                        ]
+                    }
+                ]
+            }
+            
+            response = requests.post(url, json=request_data)
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # Извлекаем результаты
+                analysis = []
+                
+                # Labels
+                if 'labelAnnotations' in result['responses'][0]:
+                    labels = [label['description'] for label in result['responses'][0]['labelAnnotations']]
+                    analysis.append(f"Labels: {', '.join(labels)}")
+                
+                # Text
+                if 'textAnnotations' in result['responses'][0]:
+                    text = result['responses'][0]['textAnnotations'][0]['description']
+                    analysis.append(f"Text: {text}")
+                
+                # Faces
+                if 'faceAnnotations' in result['responses'][0]:
+                    faces = len(result['responses'][0]['faceAnnotations'])
+                    analysis.append(f"Faces detected: {faces}")
+                
+                # Objects
+                if 'localizedObjectAnnotations' in result['responses'][0]:
+                    objects = [obj['name'] for obj in result['responses'][0]['localizedObjectAnnotations']]
+                    analysis.append(f"Objects: {', '.join(objects)}")
+                
+                return " | ".join(analysis)
+            else:
+                return f"❌ Vision API error: {response.status_code}"
+                
+        except Exception as e:
+            return f"❌ Vision API error: {str(e)}"
+    
+    async def generate_streaming_response(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> AsyncGenerator[str, None]:
+        """Генерация streaming ответа"""
+        async for chunk in self._generate_gemini_streaming_response(
+            system_prompt, user_message, context, user_profile
+        ):
+            yield chunk
+    
+    async def _generate_gemini_streaming_response(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ):
+        """Внутренний метод для streaming ответов"""
+        try:
+            # Получаем текущую модель
+            model_name = self._get_current_model()
+            model = genai.GenerativeModel(model_name)
+            
+            # Строим промпт
+            full_prompt = self._build_prompt(system_prompt, user_message, context, user_profile)
+            
+            # Генерируем ответ
+            response = model.generate_content(full_prompt, stream=True)
+            
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+                    
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Gemini streaming error: {error_msg}")
+            
+            # Пробуем переключить модель при ошибке
+            if self._handle_quota_error(error_msg):
+                # Рекурсивно пробуем с новой моделью
+                async for chunk in self._generate_gemini_streaming_response(
+                    system_prompt, user_message, context, user_profile
+                ):
+                    yield chunk
+            else:
+                yield f"❌ Error: {error_msg}"
+    
+    async def _generate_gemini_response(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Генерация обычного ответа"""
+        try:
+            # Получаем текущую модель
+            model_name = self._get_current_model()
+            model = genai.GenerativeModel(model_name)
+            
+            # Строим промпт
+            full_prompt = self._build_prompt(system_prompt, user_message, context, user_profile)
+            
+            # Генерируем ответ
+            response = model.generate_content(full_prompt)
+            
+            # Проверяем finish_reason и text
+            if hasattr(response, 'finish_reason') and response.finish_reason == 1:  # SAFETY
+                return "❌ Ответ заблокирован системой безопасности"
+            elif response.text:
+                return response.text
+            else:
+                return "❌ Не удалось сгенерировать ответ"
+            
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Gemini non-streaming error: {error_msg}")
+            
+            # Пробуем переключить модель при ошибке
+            if self._handle_quota_error(error_msg):
+                # Рекурсивно пробуем с новой моделью
+                return await self._generate_gemini_response(
+                    system_prompt, user_message, context, user_profile
+                )
+            else:
+                return f"❌ Error: {error_msg}"
+    
+    def chat(
+        self, 
+        message: str, 
+        user_profile: Optional[Dict[str, Any]] = None,
+        conversation_context: Optional[str] = None,
+        system_prompt: Optional[str] = None
+    ) -> str:
+        """Основной метод чата"""
+        try:
+            # Используем стандартный промпт если не указан
+            if not system_prompt:
+                system_prompt = "You are a helpful AI assistant."
+            
+            # Генерируем ответ синхронно через sync версию
+            response = self._generate_gemini_response_sync(
+                system_prompt, message, conversation_context, user_profile
+            )
+            
+            return response
+            
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Chat error: {error_msg}")
+            return f"❌ Error: {error_msg}"
+
+    def _generate_gemini_response_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Синхронная версия генерации ответа"""
+        try:
+            # Формируем промпт
+            full_prompt = self._build_prompt_sync(system_prompt, user_message, conversation_context, user_profile)
+            
+            # Получаем модель
+            model_name = self._get_current_model()
+            model = genai.GenerativeModel(model_name)
+            
+            # Устанавливаем таймаут и ограничения
+            generation_config = {
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 2048,
+            }
+            
+            # Генерируем ответ
+            response = model.generate_content(
+                full_prompt,
+                generation_config=generation_config
+            )
+            
+            # Проверяем finish_reason и text
+            if hasattr(response, 'finish_reason') and response.finish_reason == 1:  # SAFETY
+                return "❌ Ответ заблокирован системой безопасности"
+            elif response.text:
+                return response.text
+            else:
+                return "❌ Не удалось сгенерировать ответ"
+                
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"❌ Sync generation error: {error_msg}")
+            
+            # Если таймаут или квота - пробуем другую модель
+            if "504" in error_msg or "Deadline" in error_msg or "429" in error_msg or "quota" in error_msg.lower():
+                logger.warning("⚠️ API ошибка (таймаут/квота), пробуем другую модель...")
+                return self._try_fallback_model_sync(system_prompt, user_message, conversation_context, user_profile)
+            
+            return f"❌ Error: {error_msg}"
+
+    def _build_prompt_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Синхронная версия построения промпта"""
+        prompt_parts = [system_prompt]
+        
+        # Добавляем контекст пользователя
+        if user_profile:
+            prompt_parts.append(f"\nUser Profile: {json.dumps(user_profile, ensure_ascii=False)}")
+        
+        # Добавляем контекст разговора
+        if conversation_context:
+            prompt_parts.append(f"\nConversation Context: {conversation_context}")
+        
+        # Добавляем сообщение пользователя
+        prompt_parts.append(f"\nUser: {user_message}")
+        prompt_parts.append("\nAssistant:")
+        
+        return "\n".join(prompt_parts)
+
+    def _try_fallback_model_sync(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        conversation_context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Пробуем другую модель при ошибках API"""
+        current_index = self._get_current_model_index()
+        
+        # Пробуем все доступные модели, начиная со следующей
+        for attempt in range(len(self.models) - 1):  # -1 чтобы не пробовать ту же модель
+            try:
+                # Получаем следующую модель
+                next_index = (current_index + attempt + 1) % len(self.models)
+                fallback_model_dict = self.models[next_index]
+                fallback_model_name = fallback_model_dict['name']
+                
+                logger.info(f"🔄 Попытка {attempt + 1}: переключаемся на модель: {fallback_model_name}")
+                
+                # Формируем промпт
+                full_prompt = self._build_prompt_sync(system_prompt, user_message, conversation_context, user_profile)
+                
+                # Создаем модель с fallback
+                model = genai.GenerativeModel(fallback_model_name)
+                
+                # Генерируем с более строгими ограничениями
+                generation_config = {
+                    "temperature": 0.5,
+                    "top_p": 0.7,
+                    "top_k": 30,
+                    "max_output_tokens": 1024,
+                }
+                
+                response = model.generate_content(
+                    full_prompt,
+                    generation_config=generation_config
+                )
+                
+                # Проверяем finish_reason и text
+                if hasattr(response, 'finish_reason') and response.finish_reason == 1:  # SAFETY
+                    logger.warning(f"⚠️ Модель {fallback_model_name} заблокирована системой безопасности")
+                    continue
+                elif response.text:
+                    logger.info(f"✅ Успешно использована модель: {fallback_model_name}")
+                    return response.text
+                    
+            except Exception as e:
+                error_msg = str(e)
+                logger.warning(f"⚠️ Модель {fallback_model_name} недоступна: {error_msg}")
+                continue
+        
+        # Если все модели недоступны
+        logger.error("❌ Все модели недоступны")
+        return "❌ Все модели недоступны. Попробуйте позже."
+    
+    def _build_prompt(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        context: Optional[str] = None,
+        user_profile: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Построение полного промпта"""
+        prompt_parts = []
+        
+        # Системный промпт
+        prompt_parts.append(system_prompt)
+        
+        # Контекст пользователя
+        if user_profile:
+            profile_text = f"User profile: {json.dumps(user_profile, indent=2)}"
+            prompt_parts.append(profile_text)
+        
+        # Дополнительный контекст
+        if context:
+            prompt_parts.append(f"Context: {context}")
+        
+        # Сообщение пользователя
+        prompt_parts.append(f"User: {user_message}")
+        
+        return "\n\n".join(prompt_parts) 

@@ -100,6 +100,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize file upload functionality
     initializeFileUpload();
+    
+    // Initialize terminal
+    initializeTerminal();
 });
 
 // Initialize technical steps toggles
@@ -620,10 +623,55 @@ function formatMessage(text) {
         }
     }
     
+    // Enhanced formatting with rich text support
+    return formatRichText(text);
+}
+
+function formatRichText(text) {
     // Convert URLs to links
     text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>');
     
-    // Convert line breaks to <br>
+    // Markdown-style formatting
+    // Bold text: **text** or __text__
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Italic text: *text* or _text_
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    
+    // Code blocks: ```code``` or `code`
+    text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
+    text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    
+    // Headers: # Header, ## Header, ### Header
+    text = text.replace(/^### (.*$)/gm, '<h3 class="message-header">$1</h3>');
+    text = text.replace(/^## (.*$)/gm, '<h2 class="message-header">$1</h2>');
+    text = text.replace(/^# (.*$)/gm, '<h1 class="message-header">$1</h1>');
+    
+    // Lists: - item or * item
+    text = text.replace(/^[\s]*[-*] (.*$)/gm, '<li>$1</li>');
+    text = text.replace(/(<li>.*<\/li>)/s, '<ul class="message-list">$1</ul>');
+    
+    // Numbered lists: 1. item
+    text = text.replace(/^[\s]*\d+\. (.*$)/gm, '<li>$1</li>');
+    text = text.replace(/(<li>.*<\/li>)/s, '<ol class="message-list">$1</ol>');
+    
+    // Blockquotes: > text
+    text = text.replace(/^> (.*$)/gm, '<blockquote class="message-quote">$1</blockquote>');
+    
+    // Horizontal rules: ---
+    text = text.replace(/^---$/gm, '<hr class="message-divider">');
+    
+    // Special formatting for system messages
+    text = text.replace(/^🔧 (.*$)/gm, '<div class="system-step executing">🔧 $1</div>');
+    text = text.replace(/^✅ (.*$)/gm, '<div class="system-step success">✅ $1</div>');
+    text = text.replace(/^❌ (.*$)/gm, '<div class="system-step error">❌ $1</div>');
+    text = text.replace(/^⚠️ (.*$)/gm, '<div class="system-step warning">⚠️ $1</div>');
+    text = text.replace(/^🎯 (.*$)/gm, '<div class="system-step target">🎯 $1</div>');
+    text = text.replace(/^💬 (.*$)/gm, '<div class="system-step chat">💬 $1</div>');
+    
+    // Convert line breaks to <br> (after all other formatting)
     text = text.replace(/\n/g, '<br>');
     
     return text;
@@ -649,7 +697,12 @@ function formatFinalResponse(response) {
 // Scroll to bottom of messages
 function scrollToBottom() {
     const messagesContainer = document.getElementById('messagesContainer');
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (messagesContainer) {
+        // Use requestAnimationFrame for smooth scrolling
+        requestAnimationFrame(() => {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+    }
 }
 
 // Loading banner functions
@@ -794,19 +847,19 @@ function displayConversationHistory(history) {
     
     // Wait for avatars to load, then display messages
     Promise.all(avatarPromises).then(() => {
-    // Add each message from history
-    history.forEach(entry => {
+        // Add each message from history
+        history.forEach(entry => {
             // Add user message with correct username
-        if (entry.message) {
+            if (entry.message) {
                 const sender = entry.user || 'user'; // Use actual username from history
                 addMessage(entry.message, sender, entry.timestamp, entry.id);
-        }
-        
-        // Add AI response
-        if (entry.ai_response) {
+            }
+            
+            // Add AI response
+            if (entry.ai_response) {
                 addMessage(entry.ai_response, 'ai', entry.timestamp, entry.id);
-        }
-    });
+            }
+        });
         
         // Update avatars after loading history
         updateUserAvatars();
@@ -814,9 +867,11 @@ function displayConversationHistory(history) {
         
         // Update avatars for specific users
         updateSpecificUserAvatars();
-    
-    // Scroll to bottom
-    scrollToBottom();
+        
+        // Scroll to bottom AFTER all messages are added
+        setTimeout(() => {
+            scrollToBottom();
+        }, 100);
     });
 }
 
@@ -1085,6 +1140,30 @@ async function loadSystemAnalysis() {
     }
 }
 
+// Force refresh system analysis (clear cache)
+async function forceRefreshSystemAnalysis() {
+    try {
+        console.log('⚡ Force refreshing system analysis...');
+        
+        // Сначала очищаем кэш на сервере
+        const clearResponse = await fetch('/api/system-analysis/clear-cache', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+        
+        if (clearResponse.ok) {
+            console.log('✅ Cache cleared, refreshing...');
+        }
+        
+        // Затем загружаем свежий анализ
+        await loadSystemAnalysis();
+    } catch (error) {
+        console.error('Error force refreshing system analysis:', error);
+        // Fallback to normal refresh
+        await loadSystemAnalysis();
+    }
+}
+
 // Apply theme automatically
 function applyTheme(themeName) {
     // Remove existing theme classes
@@ -1115,22 +1194,15 @@ async function showModelStatus() {
                 console.log('📈 Model index:', status.model_index);
                 
                 let statusHtml = `
-                    <div class="model-status-modal">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h2>🤖 AI Model Status</h2>
-                                <span class="close" onclick="closeModal('modelStatusModal')">&times;</span>
-                            </div>
-                            <div class="modal-body">
-                                <div class="current-model">
-                                    <h3>Current Model: ${status.current_model}</h3>
-                                    <p>Quota: ${status.current_quota} requests/day</p>
-                                    <p>Model ${status.model_index + 1} of ${status.total_models}</p>
-                                </div>
-                                
-                                <div class="model-list">
-                                    <h3>Available Models:</h3>
-                                    <div class="model-grid">
+                    <div class="current-model">
+                        <h3>Current Model: ${status.current_model}</h3>
+                        <p>Quota: ${status.current_quota} requests/day</p>
+                        <p>Model ${status.model_index + 1} of ${status.total_models}</p>
+                    </div>
+                    
+                    <div class="model-list">
+                        <h3>Available Models:</h3>
+                        <div class="model-grid">
                 `;
                 
                 status.available_models.forEach((model, index) => {
@@ -1152,40 +1224,35 @@ async function showModelStatus() {
                 });
                 
                 statusHtml += `
-                                    </div>
-                                </div>
-                                
-                                <div class="model-info">
-                                    <p><strong>Auto-fallback:</strong> System automatically switches models when quota is exceeded</p>
-                                    <p><strong>Error count:</strong> ${status.model_errors} models with quota issues</p>
-                                </div>
-                            </div>
                         </div>
+                    </div>
+                    
+                    <div class="model-info">
+                        <p><strong>Auto-fallback:</strong> System automatically switches models when quota is exceeded</p>
+                        <p><strong>Error count:</strong> ${status.model_errors} models with quota issues</p>
                     </div>
                 `;
                 
-                // Remove existing modal if it exists
-                const existingModal = document.getElementById('modelStatusModal');
-                if (existingModal) {
-                    existingModal.remove();
+                // Update existing modal content
+                const modalContent = document.getElementById('modelStatusContent');
+                if (modalContent) {
+                    modalContent.innerHTML = statusHtml;
+                    
+                    // Show modal
+                    const modal = document.getElementById('modelStatusModal');
+                    modal.style.display = 'block';
+                    
+                    // Add event listeners for model items
+                    const modelItems = modalContent.querySelectorAll('.model-item.clickable');
+                    modelItems.forEach(item => {
+                        const modelName = item.getAttribute('data-model');
+                        item.addEventListener('click', () => switchModel(modelName));
+                    });
+                    
+                    console.log('✅ Model status modal displayed');
+                } else {
+                    console.error('Modal content element not found');
                 }
-                
-                // Add modal to page
-                const modalContainer = document.createElement('div');
-                modalContainer.id = 'modelStatusModal';
-                modalContainer.className = 'modal';
-                modalContainer.innerHTML = statusHtml;
-                document.body.appendChild(modalContainer);
-                
-                // Show modal
-                modalContainer.style.display = 'block';
-                
-                // Add event listeners for model items
-                const modelItems = modalContainer.querySelectorAll('.model-item.clickable');
-                modelItems.forEach(item => {
-                    const modelName = item.getAttribute('data-model');
-                    item.addEventListener('click', () => switchModel(modelName));
-                });
             }
         } else {
             console.error('Failed to load model status');
@@ -1805,5 +1872,229 @@ async function startLoginGreeting() {
         }
     } catch (error) {
         console.error('Error in login greeting:', error);
+    }
+}
+
+// Terminal functionality
+let terminalWebSocket = null;
+let terminalOutput = null;
+
+function initializeTerminal() {
+    terminalOutput = document.getElementById('terminalOutput');
+    
+    // Connect to WebSocket
+    connectTerminalWebSocket();
+    
+    // Add terminal controls
+    document.querySelector('.terminal-header').addEventListener('click', function(e) {
+        if (!e.target.classList.contains('terminal-btn')) {
+            toggleTerminal();
+        }
+    });
+}
+
+function connectTerminalWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/logs`;
+    
+    terminalWebSocket = new WebSocket(wsUrl);
+    
+    terminalWebSocket.onopen = function() {
+        console.log('WebSocket connected'); // Debug
+    };
+    
+    terminalWebSocket.onmessage = function(event) {
+        const logLine = event.data;
+        console.log('WebSocket received:', logLine); // Debug
+        addTerminalLine(logLine);
+    };
+    
+    terminalWebSocket.onclose = function() {
+        addTerminalLine('🔌 Disconnected from log stream', 'error');
+        // Try to reconnect after 5 seconds
+        setTimeout(connectTerminalWebSocket, 5000);
+    };
+    
+    terminalWebSocket.onerror = function(error) {
+        addTerminalLine('❌ WebSocket error: ' + error, 'error');
+    };
+}
+
+function addTerminalLine(text, type = 'info') {
+    if (!terminalOutput) return;
+    
+    const line = document.createElement('div');
+    line.className = `terminal-line ${type}`;
+    
+    // Определяем тип сообщения по содержимому
+    let displayType = type;
+    if (text.includes('ERROR') || text.includes('❌')) {
+        displayType = 'error';
+    } else if (text.includes('WARNING') || text.includes('⚠️')) {
+        displayType = 'warning';
+    } else if (text.includes('INFO') || text.includes('✅') || text.includes('🔧') || text.includes('💾')) {
+        displayType = 'info';
+    } else if (text.includes('SUCCESS') || text.includes('✅')) {
+        displayType = 'success';
+    } else if (text.includes('🔌') || text.includes('📊')) {
+        displayType = 'system';
+    }
+    
+    line.className = `terminal-line ${displayType}`;
+    line.textContent = text;
+    
+    terminalOutput.appendChild(line);
+    
+    // Auto-scroll to bottom
+    const terminalWindow = terminalOutput.closest('.terminal-window');
+    if (terminalWindow) {
+        terminalWindow.scrollTop = terminalWindow.scrollHeight;
+    }
+    
+    // Limit number of lines to prevent memory issues
+    const lines = terminalOutput.querySelectorAll('.terminal-line');
+    if (lines.length > 1000) {
+        lines[0].remove();
+    }
+}
+
+function toggleTerminal() {
+    const terminal = document.getElementById('terminalPanel');
+    terminal.classList.toggle('expanded');
+}
+
+function clearTerminal() {
+    if (terminalOutput) {
+        terminalOutput.innerHTML = '';
+        addTerminalLine('🗑️ Terminal cleared', 'system');
+    }
+}
+
+function scrollTerminalToBottom() {
+    const terminalWindow = document.querySelector('.terminal-window');
+    if (terminalWindow) {
+        terminalWindow.scrollTop = terminalWindow.scrollHeight;
+    }
+}
+
+// Мобильное меню функции
+function toggleMobileMenu() {
+    const mobileMenu = document.getElementById('mobileMenu');
+    if (mobileMenu) {
+        mobileMenu.classList.toggle('active');
+        console.log('Mobile menu toggled:', mobileMenu.classList.contains('active'));
+    }
+}
+
+function showSystemAnalysisModal() {
+    const modal = document.getElementById('systemAnalysisModal');
+    if (modal) {
+        modal.classList.add('active');
+        console.log('System Analysis modal opened');
+        
+        // Загружаем System Analysis в модальное окно
+        loadMobileSystemAnalysis();
+    }
+}
+
+function closeSystemAnalysisModal() {
+    const modal = document.getElementById('systemAnalysisModal');
+    if (modal) {
+        modal.classList.remove('active');
+        console.log('System Analysis modal closed');
+    }
+}
+
+// Улучшенный обработчик клика вне модального окна
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('systemAnalysisModal');
+    const modalContent = document.querySelector('.system-analysis-modal-content');
+    
+    if (modal && modal.classList.contains('active')) {
+        // Проверяем, что клик был вне модального окна
+        if (event.target === modal || (modalContent && !modalContent.contains(event.target))) {
+            console.log('Click outside modal detected, closing...');
+            closeSystemAnalysisModal();
+        }
+    }
+    
+    // Обработчик для закрытия мобильного меню
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileMenuContent = document.querySelector('.mobile-menu-content');
+    
+    if (mobileMenu && mobileMenu.classList.contains('active')) {
+        // Проверяем, что клик был вне мобильного меню
+        if (event.target === mobileMenu || (mobileMenuContent && !mobileMenuContent.contains(event.target))) {
+            console.log('Click outside mobile menu detected, closing...');
+            toggleMobileMenu();
+        }
+    }
+});
+
+// Добавляем обработчик для клавиши Escape
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modal = document.getElementById('systemAnalysisModal');
+        const mobileMenu = document.getElementById('mobileMenu');
+        
+        if (modal && modal.classList.contains('active')) {
+            console.log('Escape key pressed, closing System Analysis modal');
+            closeSystemAnalysisModal();
+        }
+        
+        if (mobileMenu && mobileMenu.classList.contains('active')) {
+            console.log('Escape key pressed, closing mobile menu');
+            toggleMobileMenu();
+        }
+    }
+});
+
+// Проверка на мобильные устройства
+function isMobileDevice() {
+    return window.innerWidth <= 768;
+}
+
+async function loadMobileSystemAnalysis() {
+    try {
+        console.log('Loading mobile system analysis...');
+        const response = await fetch('/api/system-analysis');
+        const data = await response.json();
+        
+        if (data.success) {
+            console.log('Mobile system analysis loaded successfully');
+            updateMobileSystemPanel(data.analysis);
+        } else {
+            console.error('Mobile system analysis failed:', data.error);
+            showMobileSystemError(data.error || 'Failed to load system analysis');
+        }
+    } catch (error) {
+        console.error('Error loading mobile system analysis:', error);
+        showMobileSystemError('Failed to load system analysis');
+    }
+}
+
+function updateMobileSystemPanel(analysis) {
+    const statusElement = document.getElementById('mobileSystemStatus');
+    const tipsElement = document.getElementById('mobileSystemTips');
+    
+    if (statusElement) {
+        statusElement.innerHTML = formatMessage(analysis.status || 'No status available');
+        console.log('Mobile system status updated');
+    }
+    
+    if (tipsElement && analysis.tips) {
+        const tipsHtml = analysis.tips.map(tip => 
+            `<div class="tip-item">${tip}</div>`
+        ).join('');
+        tipsElement.innerHTML = tipsHtml;
+        console.log('Mobile system tips updated');
+    }
+}
+
+function showMobileSystemError(message) {
+    const statusElement = document.getElementById('mobileSystemStatus');
+    if (statusElement) {
+        statusElement.innerHTML = `<div class="error-message">${message}</div>`;
+        console.error('Mobile system error displayed:', message);
     }
 } 

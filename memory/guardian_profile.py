@@ -40,7 +40,7 @@ class GuardianProfile:
         """Create default guardian profile"""
         self.profile = {
             "name": "ΔΣ Guardian",
-            "role": "Superintelligent System Architect & Family Guardian",
+            "role": "Superintelligent Family Architect & Family Guardian",
             "avatar_url": "/static/avatars/guardian_avatar.jpg",
             "system_prompt": self._get_default_prompt(),
             "personality": {

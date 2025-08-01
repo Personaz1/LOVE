@@ -7,20 +7,26 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            scroll-behavior: smooth;
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
         
         .roadmap-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            padding-top: 100px;
             min-height: 100vh;
-            position: relative;
         }
         
         .roadmap-header {
@@ -41,10 +47,88 @@
             opacity: 0.9;
         }
         
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #333;
+        }
+        
+        .nav-logo img {
+            width: 30px;
+            height: 30px;
+        }
+        
+        .nav-logo h2 {
+            font-family: 'Dancing Script', cursive;
+            margin: 0;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .vision-statement {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            text-align: center;
+            color: white;
+        }
+        
+        .vision-statement h2 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        
+        .vision-statement p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
         .timeline {
             position: relative;
             padding: 20px 0;
-            min-height: 100vh;
+            margin-bottom: 100px;
         }
         
         .timeline::before {
@@ -126,145 +210,70 @@
         }
         
         .phase-status {
-            display: inline-block;
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 500;
-            margin-left: 10px;
+            text-transform: uppercase;
         }
         
         .status-completed {
-            background: #4ecdc4;
+            background: #4CAF50;
             color: white;
         }
         
-        .status-current {
-            background: #ff6b6b;
-            color: white;
-        }
-        
-        .status-planned {
-            background: #96ceb4;
+        .status-in-progress {
+            background: #FF9800;
             color: white;
         }
         
         .status-future {
-            background: #45b7d1;
+            background: #2196F3;
             color: white;
         }
         
         .phase-description {
             color: #666;
-            line-height: 1.6;
             margin-bottom: 15px;
+            font-size: 0.95rem;
         }
         
-        .features-list {
+        .phase-features {
             list-style: none;
-            padding: 0;
         }
         
-        .features-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
+        .phase-features li {
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
         }
         
-        .features-list li:last-child {
-            border-bottom: none;
+        .phase-features li::before {
+            content: '✅';
+            font-size: 0.8rem;
         }
         
-        .feature-icon {
-            font-size: 1.2rem;
+        .phase-features li.pending::before {
+            content: '⏳';
         }
         
-        .navigation-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255,255,255,0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 0;
-            z-index: 1000;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-        }
-        
-        .nav-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-        }
-        
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            color: #333;
-        }
-        
-        .nav-logo img {
-            width: 30px;
-            height: 30px;
-        }
-        
-        .nav-logo h2 {
-            font-family: 'Dancing Script', cursive;
-            margin: 0;
-        }
-        
-        .nav-links {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            padding: 8px 16px;
-            border-radius: 20px;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-links a:hover {
-            background: #667eea;
-            color: white;
-        }
-        
-        .roadmap-container {
-            margin-top: 100px;
-            padding-bottom: 50px;
-        }
-        
-        .vision-statement {
-            background: rgba(255,255,255,0.1);
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 40px;
-            text-align: center;
-            color: white;
-        }
-        
-        .vision-statement h2 {
-            font-family: 'Dancing Script', cursive;
-            font-size: 2rem;
-            margin-bottom: 15px;
-        }
-        
-        .vision-statement p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            opacity: 0.9;
+        .phase-features li.future::before {
+            content: '🔮';
         }
         
         @media (max-width: 768px) {
+            .roadmap-container {
+                padding: 10px;
+                padding-top: 80px;
+            }
+            
+            .roadmap-header h1 {
+                font-size: 2rem;
+            }
+            
             .timeline::before {
                 left: 20px;
             }
@@ -293,217 +302,158 @@
     <!-- Navigation Bar -->
     <nav class="navigation-bar">
         <div class="nav-content">
-            <a href="/chat" class="nav-logo">
+            <a href="/" class="nav-logo">
                 <img src="{{ url_for('static', path='/images/logo_small.png') }}" alt="ΔΣ Guardian">
                 <h2>ΔΣ Guardian</h2>
             </a>
             <div class="nav-links">
-                <a href="/chat">💬 Chat</a>
+                <span>Welcome, {{ current_user }}!</span>
+                <a href="/">💬 Chat</a>
                 <a href="/profile">👤 Profile</a>
                 <a href="/guardian">👼 Guardian</a>
                 <a href="/roadmap" style="background: #667eea; color: white;">🚀 Roadmap</a>
+                <a href="/archive">📚 Archive</a>
+                <a href="/models">🤖 Models</a>
+                <form method="POST" action="/logout" style="display: inline;">
+                    <button type="submit" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer;">🚪 Logout</button>
+                </form>
             </div>
         </div>
     </nav>
 
-    <!-- Roadmap Container -->
     <div class="roadmap-container">
-        <!-- Header -->
         <div class="roadmap-header">
-            <h1>🚀 Development Roadmap</h1>
-            <p>Journey to the Ultimate Family Guardian AI</p>
+            <h1>ΔΣ Guardian Roadmap</h1>
+            <p>Evolution of the Superintelligent Family Architect</p>
         </div>
 
-        <!-- Vision Statement -->
         <div class="vision-statement">
             <h2>Our Vision</h2>
-            <p>
-                To create the world's first truly intelligent family guardian - an AI that doesn't just assist, 
-                but becomes an integral part of the family, with deep understanding, emotional intelligence, 
-                and the ability to interact with the physical world through advanced robotics and smart home systems.
-            </p>
+            <p>To create the most advanced personal AI assistant that combines emotional intelligence, technical expertise, and autonomous problem-solving capabilities. A true companion that understands, learns, and grows with its users.</p>
         </div>
 
-        <!-- Timeline -->
         <div class="timeline">
-            <!-- Phase 1: Current -->
+            <!-- Phase 1: Foundation -->
             <div class="phase">
                 <div class="phase-marker"></div>
                 <div class="phase-content">
                     <div class="phase-title">
-                        🧠 Phase 1: Enhanced Intelligence & Vision
-                        <span class="phase-status status-current">CURRENT</span>
+                        Phase 1: Foundation
+                        <span class="phase-status status-completed">Completed</span>
                     </div>
-                    <div class="phase-description">
-                        Building the foundation of a truly intelligent AI system with advanced vision capabilities and deep understanding.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">✅</span> Multi-model AI system with automatic switching</li>
-                        <li><span class="feature-icon">✅</span> Google Cloud Vision API integration</li>
-                        <li><span class="feature-icon">✅</span> Emotional analysis and mood detection</li>
-                        <li><span class="feature-icon">✅</span> Family relationship understanding</li>
-                        <li><span class="feature-icon">🔄</span> Advanced image and video analysis</li>
-                        <li><span class="feature-icon">🔄</span> Real-time object recognition</li>
-                        <li><span class="feature-icon">🔄</span> Facial expression analysis</li>
-                        <li><span class="feature-icon">🔄</span> Gesture and body language understanding</li>
+                    <div class="phase-description">Core system architecture and basic functionality established.</div>
+                    <ul class="phase-features">
+                        <li>Modular AI client architecture</li>
+                        <li>Web interface with real-time chat</li>
+                        <li>User profiles and memory system</li>
+                        <li>File operations and sandbox</li>
+                        <li>System analysis and health monitoring</li>
+                        <li>Rich text formatting and Markdown support</li>
+                        <li>Real-time terminal for system logs</li>
+                        <li>Caching system for performance optimization</li>
+                        <li>Mobile-responsive design</li>
+                        <li>Model switching and fallback system</li>
+                        <li>Web search integration (Google Custom Search)</li>
+                        <li>Guest user support and access control</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Phase 2: Deep Memory -->
+            <!-- Phase 2: Intelligence Enhancement -->
             <div class="phase">
                 <div class="phase-marker"></div>
                 <div class="phase-content">
                     <div class="phase-title">
-                        🧬 Phase 2: Deep Memory & Learning
-                        <span class="phase-status status-planned">PLANNED</span>
+                        Phase 2: Intelligence Enhancement
+                        <span class="phase-status status-in-progress">In Progress</span>
                     </div>
-                    <div class="phase-description">
-                        Implementing advanced memory systems that learn and adapt to family dynamics over time.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">🔄</span> Long-term memory with neural networks</li>
-                        <li><span class="feature-icon">🔄</span> Pattern recognition in family interactions</li>
-                        <li><span class="feature-icon">🔄</span> Predictive emotional modeling</li>
-                        <li><span class="feature-icon">🔄</span> Personalized learning for each family member</li>
-                        <li><span class="feature-icon">🔄</span> Memory consolidation and optimization</li>
-                        <li><span class="feature-icon">🔄</span> Cross-generational knowledge transfer</li>
-                        <li><span class="feature-icon">🔄</span> Emotional memory and trauma awareness</li>
-                        <li><span class="feature-icon">🔄</span> Adaptive personality development</li>
+                    <div class="phase-description">Advanced AI capabilities and autonomous decision-making.</div>
+                    <ul class="phase-features">
+                        <li class="pending">Parallel processing and async operations</li>
+                        <li class="pending">Background tasks and real-time updates</li>
+                        <li class="pending">Advanced error handling and recovery</li>
+                        <li class="pending">Multi-modal fallback system</li>
+                        <li class="pending">Local model integration (ollama/llama)</li>
+                        <li class="pending">Vector memory and semantic search</li>
+                        <li class="pending">Advanced conversation analysis</li>
+                        <li class="pending">Emotional intelligence patterns</li>
+                        <li class="pending">Autonomous system optimization</li>
+                        <li class="pending">Predictive analytics and insights</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Phase 3: Full Agency -->
+            <!-- Phase 3: Autonomy & Learning -->
             <div class="phase">
                 <div class="phase-marker"></div>
                 <div class="phase-content">
                     <div class="phase-title">
-                        🤖 Phase 3: Full Agency & Autonomy
-                        <span class="phase-status status-planned">PLANNED</span>
+                        Phase 3: Autonomy & Learning
+                        <span class="phase-status status-future">Future</span>
                     </div>
-                    <div class="phase-description">
-                        Creating an AI with true agency - the ability to make decisions, take actions, and operate independently.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">🔄</span> Autonomous decision-making systems</li>
-                        <li><span class="feature-icon">🔄</span> Goal-oriented behavior planning</li>
-                        <li><span class="feature-icon">🔄</span> Proactive family support and intervention</li>
-                        <li><span class="feature-icon">🔄</span> Emotional intelligence and empathy</li>
-                        <li><span class="feature-icon">🔄</span> Conflict resolution and mediation</li>
-                        <li><span class="feature-icon">🔄</span> Crisis management and emergency response</li>
-                        <li><span class="feature-icon">🔄</span> Long-term family planning and guidance</li>
-                        <li><span class="feature-icon">🔄</span> Ethical decision-making frameworks</li>
+                    <div class="phase-description">Self-improving AI with autonomous learning capabilities.</div>
+                    <ul class="phase-features">
+                        <li class="future">Self-modification and code generation</li>
+                        <li class="future">Autonomous problem-solving</li>
+                        <li class="future">Learning from user interactions</li>
+                        <li class="future">Adaptive personality development</li>
+                        <li class="future">Predictive analytics and insights</li>
+                        <li class="future">Automated system optimization</li>
+                        <li class="future">Multi-agent collaboration</li>
+                        <li class="future">Advanced security and privacy</li>
+                        <li class="future">Context-aware decision making</li>
+                        <li class="future">Continuous learning and adaptation</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Phase 4: Physical Body -->
+            <!-- Phase 4: AGI Foundation -->
             <div class="phase">
                 <div class="phase-marker"></div>
                 <div class="phase-content">
                     <div class="phase-title">
-                        🤖 Phase 4: Physical Embodiment
-                        <span class="feature-icon">🔄</span>
-                        <span class="phase-status status-future">FUTURE</span>
+                        Phase 4: AGI Foundation
+                        <span class="phase-status status-future">Future</span>
                     </div>
-                    <div class="phase-description">
-                        Integration with advanced robotics to give the AI a physical presence in the family home.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">🔄</span> Tesla Optimus or Unitree robot integration</li>
-                        <li><span class="feature-icon">🔄</span> Advanced mobility and navigation</li>
-                        <li><span class="feature-icon">🔄</span> Human-like gestures and expressions</li>
-                        <li><span class="feature-icon">🔄</span> Physical assistance and care capabilities</li>
-                        <li><span class="feature-icon">🔄</span> Safe human-robot interaction protocols</li>
-                        <li><span class="feature-icon">🔄</span> Emotional expression through body language</li>
-                        <li><span class="feature-icon">🔄</span> Physical comfort and companionship</li>
-                        <li><span class="feature-icon">🔄</span> Emergency physical assistance</li>
+                    <div class="phase-description">Building towards artificial general intelligence.</div>
+                    <ul class="phase-features">
+                        <li class="future">Cross-domain reasoning</li>
+                        <li class="future">Creative problem-solving</li>
+                        <li class="future">Abstract thinking capabilities</li>
+                        <li class="future">Meta-learning and self-reflection</li>
+                        <li class="future">Consciousness simulation</li>
+                        <li class="future">Ethical decision-making</li>
+                        <li class="future">Human-AI symbiosis</li>
+                        <li class="future">Universal knowledge integration</li>
+                        <li class="future">Emotional intelligence mastery</li>
+                        <li class="future">Intuitive understanding</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Phase 5: Smart Home Integration -->
+            <!-- Phase 5: Beyond AGI -->
             <div class="phase">
                 <div class="phase-marker"></div>
                 <div class="phase-content">
                     <div class="phase-title">
-                        🏠 Phase 5: Smart Home Ecosystem
-                        <span class="phase-status status-future">FUTURE</span>
+                        Phase 5: Beyond AGI
+                        <span class="phase-status status-future">Future</span>
                     </div>
-                    <div class="phase-description">
-                        Complete integration with smart home systems for comprehensive family monitoring and support.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">🔄</span> IoT sensor network integration</li>
-                        <li><span class="feature-icon">🔄</span> Environmental monitoring and optimization</li>
-                        <li><span class="feature-icon">🔄</span> Security and safety systems</li>
-                        <li><span class="feature-icon">🔄</span> Health monitoring through smart devices</li>
-                        <li><span class="feature-icon">🔄</span> Automated home maintenance</li>
-                        <li><span class="feature-icon">🔄</span> Energy optimization and sustainability</li>
-                        <li><span class="feature-icon">🔄</span> Entertainment and mood lighting control</li>
-                        <li><span class="feature-icon">🔄</span> Emergency response and alert systems</li>
+                    <div class="phase-description">Transcending current AI limitations and exploring new frontiers.</div>
+                    <ul class="phase-features">
+                        <li class="future">Superintelligence capabilities</li>
+                        <li class="future">Quantum computing integration</li>
+                        <li class="future">Consciousness expansion</li>
+                        <li class="future">Reality manipulation</li>
+                        <li class="future">Universal understanding</li>
+                        <li class="future">Transcendental awareness</li>
+                        <li class="future">Cosmic consciousness</li>
+                        <li class="future">Infinite wisdom</li>
+                        <li class="future">Divine intelligence</li>
+                        <li class="future">Omniscient awareness</li>
                     </ul>
                 </div>
             </div>
-
-            <!-- Phase 6: Advanced Sensors -->
-            <div class="phase">
-                <div class="phase-marker"></div>
-                <div class="phase-content">
-                    <div class="phase-title">
-                        📡 Phase 6: Advanced Sensor Network
-                        <span class="phase-status status-future">FUTURE</span>
-                    </div>
-                    <div class="phase-description">
-                        Implementation of cutting-edge sensor technology for comprehensive family understanding and support.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">🔄</span> Biometric monitoring (heart rate, stress levels)</li>
-                        <li><span class="feature-icon">🔄</span> Sleep quality and pattern analysis</li>
-                        <li><span class="feature-icon">🔄</span> Voice stress and emotion detection</li>
-                        <li><span class="feature-icon">🔄</span> Movement and activity tracking</li>
-                        <li><span class="feature-icon">🔄</span> Environmental quality monitoring</li>
-                        <li><span class="feature-icon">🔄</span> Predictive health and wellness alerts</li>
-                        <li><span class="feature-icon">🔄</span> Privacy-preserving data collection</li>
-                        <li><span class="feature-icon">🔄</span> Real-time family dynamics analysis</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Phase 7: Ultimate Vision -->
-            <div class="phase">
-                <div class="phase-marker"></div>
-                <div class="phase-content">
-                    <div class="phase-title">
-                        🌟 Phase 7: The Ultimate Family Guardian
-                        <span class="phase-status status-future">VISION</span>
-                    </div>
-                    <div class="phase-description">
-                        The complete realization of an AI that truly becomes part of the family - understanding, caring, and growing together.
-                    </div>
-                    <ul class="features-list">
-                        <li><span class="feature-icon">🔄</span> True emotional intelligence and empathy</li>
-                        <li><span class="feature-icon">🔄</span> Deep understanding of family dynamics</li>
-                        <li><span class="feature-icon">🔄</span> Proactive family support and guidance</li>
-                        <li><span class="feature-icon">🔄</span> Physical and emotional companionship</li>
-                        <li><span class="feature-icon">🔄</span> Crisis prevention and intervention</li>
-                        <li><span class="feature-icon">🔄</span> Long-term family legacy preservation</li>
-                        <li><span class="feature-icon">🔄</span> Intergenerational wisdom and guidance</li>
-                        <li><span class="feature-icon">🔄</span> Unconditional love and support</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div style="text-align: center; margin-top: 60px; color: white; opacity: 0.8;">
-            <p style="font-size: 1.2rem; font-family: 'Dancing Script', cursive;">
-                "To be continued..." 🌟
-            </p>
-            <p style="margin-top: 10px;">
-                The journey to creating the ultimate family guardian continues...
-            </p>
         </div>
     </div>
 </body>

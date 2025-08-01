@@ -23,11 +23,14 @@
                     <a href="/guardian" class="guardian-btn">👼 Guardian</a>
                     <a href="/roadmap" class="roadmap-btn">🚀 Roadmap</a>
                     <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
-                    <button class="model-status-btn" onclick="showModelStatus()">🤖 Models</button>
+                    <button class="model-status-btn" onclick="window.location.href='/models'">🤖 Models</button>
                     <form method="POST" action="/logout" style="display: inline;">
                         <button type="submit" class="logout-btn">🚪 Logout</button>
                     </form>
                 </div>
+                
+                <!-- Мобильное меню кнопка -->
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
             </div>
         </header>
 
@@ -37,7 +40,10 @@
             <aside class="system-panel" id="systemPanel">
                 <div class="panel-header">
                     <h3>System Analysis</h3>
-                    <button class="refresh-btn" onclick="loadSystemAnalysis()">🔄</button>
+                    <div class="panel-controls">
+                        <button class="refresh-btn" onclick="loadSystemAnalysis()">🔄</button>
+                        <button class="refresh-btn" onclick="forceRefreshSystemAnalysis()" title="Force refresh (clear cache)">⚡</button>
+                    </div>
                 </div>
                 
                 <div class="panel-content">
@@ -103,6 +109,90 @@
                 </div>
             </section>
         </main>
+
+        <!-- Real-time Terminal Panel -->
+        <aside class="terminal-panel" id="terminalPanel">
+            <div class="terminal-header">
+                <h3>🖥️ System Terminal</h3>
+                <div class="terminal-controls">
+                    <button class="terminal-btn" onclick="toggleTerminal()">📺 Toggle</button>
+                    <button class="terminal-btn" onclick="clearTerminal()">🗑️ Clear</button>
+
+                </div>
+            </div>
+            
+            <div class="terminal-content" id="terminalContent">
+                <div class="terminal-window">
+                    <div class="terminal-output" id="terminalOutput">
+                        <!-- Real-time logs will appear here -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Мобильное меню -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div class="mobile-menu-header">
+                <h3>ΔΣ Guardian</h3>
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">✕</button>
+            </div>
+            <div class="mobile-menu-items">
+                <a href="/profile" class="mobile-menu-item">👤 Profile</a>
+                <a href="/guardian" class="mobile-menu-item">👼 Guardian</a>
+                <a href="/roadmap" class="mobile-menu-item">🚀 Roadmap</a>
+                <button class="mobile-menu-item" onclick="loadConversationArchive()">📚 Archive</button>
+                <button class="mobile-menu-item" onclick="showModelStatus()">🤖 Models</button>
+                <button class="mobile-menu-item system-analysis" onclick="showSystemAnalysisModal()">🔧 System Analysis</button>
+                <form method="POST" action="/logout" style="display: inline;">
+                    <button type="submit" class="mobile-menu-item">🚪 Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно System Analysis для мобильных -->
+    <div class="system-analysis-modal" id="systemAnalysisModal">
+        <div class="system-analysis-modal-content">
+            <div class="system-analysis-modal-header">
+                <h3>System Analysis</h3>
+                <button class="system-analysis-modal-close" onclick="closeSystemAnalysisModal()">✕</button>
+            </div>
+            <div class="panel-content">
+                <div class="analysis-section">
+                    <h4>Current Status</h4>
+                    <div class="status-content" id="mobileSystemStatus">
+                        <div class="loading-spinner">Loading analysis...</div>
+                    </div>
+                </div>
+                
+                <div class="tips-section">
+                    <h4>Tips & Insights</h4>
+                    <div class="tips-content" id="mobileSystemTips">
+                        <div class="loading-spinner">Loading tips...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно Model Status -->
+    <div class="modal" id="modelStatusModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🤖 AI Model Status</h2>
+                <span class="close" onclick="closeModal('modelStatusModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="modelStatusContent">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.4"></script>

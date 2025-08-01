@@ -310,11 +310,18 @@ function showErrorModal(message) {
     }
 }
 
-function closeModal() {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.style.display = 'none';
-    });
+function closeModal(modalId) {
+    if (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    } else {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
 }
 
 // Utility functions

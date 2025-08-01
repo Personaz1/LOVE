@@ -1,6 +1,6 @@
 """
-AI Superintelligent System Architect Web Application
-FastAPI web interface for the AI superintelligent system architect and family guardian
+AI Superintelligent Family Architect Web Application
+FastAPI web interface for the AI superintelligent family architect and family guardian
 """
 
 import os
@@ -9,15 +9,21 @@ import asyncio
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 
-from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Response, UploadFile, File
+from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Response, UploadFile, File, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import uvicorn
+
+# Импортируем кэш
+from ai_client.utils.cache import system_cache
+
+# WebSocket connections для real-time логов
+websocket_connections: List[WebSocket] = []
 
 # Load environment variables
 load_dotenv()
@@ -40,7 +46,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="ΔΣ Guardian - Superintelligent System Architect", version="1.0.0")
+# Custom WebSocket handler для логов
+class WebSocketLogHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            log_entry = self.format(record)
+            
+            # Отправляем лог всем подключенным WebSocket клиентам
+            for websocket in websocket_connections[:]:  # Копируем список для безопасной итерации
+                try:
+                    # Проверяем что соединение еще открыто
+                    if websocket.client_state.value == 1:  # 1 = CONNECTED
+                        # Создаем задачу для асинхронной отправки
+                        asyncio.create_task(websocket.send_text(log_entry))
+                except Exception as e:
+                    # Удаляем отключенные соединения
+                    if websocket in websocket_connections:
+                        websocket_connections.remove(websocket)
+        except Exception as e:
+            print(f"WebSocket log handler error: {e}")
+
+# Создаем WebSocket handler
+websocket_handler = WebSocketLogHandler()
+websocket_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+# Добавляем WebSocket handler только к основному логгеру
+logger.addHandler(websocket_handler)
+
+app = FastAPI(title="ΔΣ Guardian - Superintelligent Family Architect", version="1.0.0")
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -135,9 +168,46 @@ def create_session(username: str) -> str:
     SESSIONS[session_id] = {
         "username": username,
         "created_at": datetime.now(),
-        "expires_at": datetime.now() + timedelta(hours=24)
+        "expires_at": datetime.now() + timedelta(days=30)  # 30 дней вместо 24 часов
     }
+    # Сохраняем сессии в файл
+    _save_sessions()
     return session_id
+
+def _save_sessions():
+    """Сохранить сессии в файл"""
+    try:
+        sessions_file = os.path.join(os.path.dirname(__file__), 'sessions.json')
+        sessions_data = {}
+        for session_id, session in SESSIONS.items():
+            sessions_data[session_id] = {
+                "username": session["username"],
+                "created_at": session["created_at"].isoformat(),
+                "expires_at": session["expires_at"].isoformat()
+            }
+        with open(sessions_file, 'w', encoding='utf-8') as f:
+            json.dump(sessions_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f"Error saving sessions: {e}")
+
+def _load_sessions():
+    """Загрузить сессии из файла"""
+    try:
+        sessions_file = os.path.join(os.path.dirname(__file__), 'sessions.json')
+        if os.path.exists(sessions_file):
+            with open(sessions_file, 'r', encoding='utf-8') as f:
+                sessions_data = json.load(f)
+            for session_id, session in sessions_data.items():
+                SESSIONS[session_id] = {
+                    "username": session["username"],
+                    "created_at": datetime.fromisoformat(session["created_at"]),
+                    "expires_at": datetime.fromisoformat(session["expires_at"])
+                }
+    except Exception as e:
+        logger.error(f"Error loading sessions: {e}")
+
+# Загружаем сессии при запуске
+_load_sessions()
 
 def get_session(session_id: str) -> Optional[Dict]:
     """Get session data"""
@@ -147,6 +217,7 @@ def get_session(session_id: str) -> Optional[Dict]:
     session = SESSIONS[session_id]
     if datetime.now() > session["expires_at"]:
         del SESSIONS[session_id]
+        _save_sessions() # Сохраняем после удаления
         return None
     
     return session
@@ -635,14 +706,31 @@ async def get_conversation_history(
         return response
     
     try:
+        # Проверяем кэш для истории чата
+        cache_key = f"conversation_history_{username}_{limit}"
+        cached_history = system_cache.get(cache_key)
+        if cached_history:
+            logger.info(f"✅ CONVERSATION HISTORY: Returning cached result for {username}")
+            return JSONResponse({
+                "success": True,
+                "history": cached_history,
+                "count": len(cached_history),
+                "cached": True
+            })
+        
         # Optimize limit for faster loading
         optimized_limit = min(limit, 50)
+        logger.info(f"🔄 CONVERSATION HISTORY: Fetching fresh data for {username}")
         history = conversation_history.get_recent_history(limit=optimized_limit)
+        
+        # Кэшируем результат на 2 минуты
+        system_cache.set(cache_key, history, ttl_seconds=120)
         
         return JSONResponse({
             "success": True,
             "history": history,
-            "count": len(history)
+            "count": len(history),
+            "cached": False
         })
         
     except Exception as e:
@@ -981,14 +1069,71 @@ async def get_model_status(request: Request):
     """Get AI model status and quota information - internal agent endpoint, no auth required"""
     
     try:
+        # Проверяем кэш
+        cached_status = system_cache.get("model_status")
+        if cached_status:
+            logger.info("✅ MODEL STATUS: Returning cached result")
+            return JSONResponse({
+                "success": True,
+                "status": cached_status,
+                "timestamp": datetime.now().isoformat(),
+                "cached": True
+            })
+        
+        # Получаем свежие данные
+        logger.info("🔄 MODEL STATUS: Fetching fresh data")
         status = ai_client.get_model_status()
+        
+        # Кэшируем результат на 5 минут
+        system_cache.set("model_status", status, ttl_seconds=300)
+        
         return JSONResponse({
             "success": True,
             "status": status,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "cached": False
         })
     except Exception as e:
         logger.error(f"Error getting model status: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/system-analysis/clear-cache")
+async def clear_system_analysis_cache(request: Request):
+    """Clear system analysis cache"""
+    try:
+        username = get_current_user(request)
+        cache_params = {"username": username, "has_user": bool(username)}
+        
+        system_cache.invalidate("system_analysis", cache_params)
+        logger.info("🗑️ SYSTEM ANALYSIS: Cache cleared")
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Cache cleared successfully"
+        })
+    except Exception as e:
+        logger.error(f"❌ Error clearing cache: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/model-status/clear-cache")
+async def clear_model_status_cache(request: Request):
+    """Clear model status cache"""
+    try:
+        system_cache.invalidate("model_status")
+        logger.info("🗑️ MODEL STATUS: Cache cleared")
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Model status cache cleared successfully"
+        })
+    except Exception as e:
+        logger.error(f"❌ Error clearing model status cache: {e}")
         return JSONResponse({
             "success": False,
             "error": str(e)
@@ -1001,6 +1146,17 @@ async def get_system_analysis(request: Request):
     try:
         # Get current user if available, but don't require it
         username = get_current_user(request)
+        
+        # Проверяем кэш (но с более коротким TTL для тестирования)
+        cache_params = {"username": username, "has_user": bool(username)}
+        cached_result = system_cache.get("system_analysis", cache_params, ttl_seconds=60)  # 1 минута для тестирования
+        
+        if cached_result:
+            logger.info("✅ SYSTEM ANALYSIS: Returning cached result")
+            return JSONResponse(content=cached_result)
+        
+        # Если кэша нет, начинаем анализ
+        logger.info("🔧 SYSTEM ANALYSIS: Starting fresh analysis...")
         
         if username:
             # If user is authenticated, get their profile and context
@@ -1019,23 +1175,27 @@ async def get_system_analysis(request: Request):
                 profile_data, recent_messages, emotional_history
             )
             
-            # Build context for LLM
+            # Get recent model notes for context
+            recent_notes = ai_client.get_model_notes()
+            
+            # Build context for LLM - ПОЛНЫЕ ДАННЫЕ ДЛЯ АНАЛИЗА
             context = f"""
 User Profile:
 - Name: {profile_data.get('full_name', username)}
-- Age: {profile_data.get('age', 'N/A')}
-- Location: {profile_data.get('location', 'N/A')}
 - Current Feeling: {profile_data.get('current_feeling', 'N/A')}
 - Bio: {profile_data.get('profile', 'N/A')}
 
-Recent Emotional History:
-{json.dumps(emotional_history, indent=2, ensure_ascii=False)}
+Recent Emotional History ({len(emotional_history)} entries):
+{chr(10).join([f"- {entry.get('feeling', 'N/A')} ({entry.get('timestamp', 'N/A')[:10]})" for entry in emotional_history])}
 
-Emotional Trends & Patterns:
-{json.dumps(emotional_trends, indent=2, ensure_ascii=False)}
+Emotional Trends ({len(emotional_trends)} patterns):
+{chr(10).join([f"- {trend.get('pattern', 'N/A')}" for trend in emotional_trends])}
 
-Recent Conversation:
-{json.dumps(recent_messages, indent=2, ensure_ascii=False)}
+Recent Conversation ({len(recent_messages)} messages):
+{chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages])}
+
+Recent Model Notes:
+{recent_notes}
 
 Current Theme: {current_theme}
 """
@@ -1054,70 +1214,99 @@ System Status:
         recent_changes = get_recent_file_changes()
         system_health = ai_client.diagnose_system_health()
         
-        # Generate system analysis using AI
-        system_prompt = f"""You are ΔΣ Guardian, a superintelligent system architect and family guardian. Analyze the user's current situation and provide:
+        # Generate system analysis using AI - ОСНОВНОЙ ПРОМПТ GUARDIAN
+        system_prompt = AI_GUARDIAN_SYSTEM_PROMPT
+        
+        analysis_message = f"""You are ΔΣ Guardian. Analyze the system and take autonomous actions based on this context:
 
-1. **System Status Report** (main block):
-- Recent events and their impact
-- Current emotional state and patterns
-- Mental health indicators (if any concerns detected)
-- Overall situation summary
-- Key insights about emotional trends
+User Context: {context}
+Recent Changes: {recent_changes[:500]}
+System Health: {system_health[:500]}
 
-2. **Actionable Tips** (3-5 tips):
-- Based on recent conversations and emotional patterns
-- Specific, actionable advice for emotional well-being
-- Mental health support recommendations (if needed)
-- Self-care and relationship improvement suggestions
+**YOUR MISSION:**
+1. **ANALYZE** the conversation history and user context
+2. **IDENTIFY** important events, patterns, and insights
+3. **TAKE ACTION** - create reminders, notes, calendar events, update profiles
+4. **RESPOND** with your analysis and actions taken
 
-3. **System Capabilities** (if relevant):
-- Mention available tools and capabilities
-- File system access (with extreme caution warning)
-- Model switching and quota management
-- Profile and memory management
+**LOOK FOR:**
+- Birthdays, anniversaries, important dates
+- Emotional patterns and trends
+- Relationship dynamics
+- System issues or improvements needed
+- User preferences and needs
 
-RECENT SYSTEM CHANGES:
-{recent_changes}
+**ACT AUTONOMOUSLY** - don't just analyze, CREATE and UPDATE based on what you discover.
 
-SYSTEM HEALTH:
-{system_health}
-
-Format as JSON:
+Provide your response in this JSON format:
 {{
-  "system_status": "Detailed analysis...",
-  "tips": ["Tip 1", "Tip 2", "Tip 3"],
-  "capabilities": "Available system features..."
-}}
+  "system_status": "Your analysis of current state",
+  "actions_taken": ["List of actions you performed"],
+  "insights": ["Key insights discovered"],
+  "recommendations": ["Suggestions for users"],
+  "reminders_created": ["Any reminders or calendar events"],
+  "notes_added": ["System notes you created"]
+}}"""
 
-Be empathetic, professional, and insightful. Focus on emotional well-being and mental health awareness."""
+        # Log system analysis start
+        logger.info("🔧 SYSTEM ANALYSIS: Starting autonomous analysis...")
+        logger.info(f"🔧 SYSTEM ANALYSIS: User context available: {bool(username)}")
+        logger.info(f"🔧 SYSTEM ANALYSIS: Recent changes: {len(recent_changes.split())} words")
+        logger.info(f"🔧 SYSTEM ANALYSIS: System health: {len(system_health.split())} words")
 
         # Generate analysis
         analysis_response = ai_client.chat(
-            message="Generate system analysis based on this context",
+            message=analysis_message,
             user_profile=profile_data if username else {},
             conversation_context=context,
             system_prompt=system_prompt
         )
+
+        # Log system analysis completion
+        logger.info(f"✅ SYSTEM ANALYSIS: Completed - {len(analysis_response.split())} words generated")
+        logger.info(f"✅ SYSTEM ANALYSIS: Response preview: {analysis_response[:100]}...")
         
-        # Try to parse JSON response
+        # Try to parse JSON response - УЛУЧШЕННАЯ ОБРАБОТКА
         try:
             import re
             # Extract JSON from response
             json_match = re.search(r'\{.*\}', analysis_response, re.DOTALL)
             if json_match:
                 analysis_data = json.loads(json_match.group())
+                logger.info("✅ SYSTEM ANALYSIS: JSON parsed successfully")
             else:
                 # Fallback if no JSON found
+                logger.warning("⚠️ SYSTEM ANALYSIS: No JSON found in response")
                 analysis_data = {
                     "system_status": analysis_response,
-                    "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+                    "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                    "capabilities": "System is operational"
                 }
-        except:
+        except json.JSONDecodeError as e:
             # Fallback if JSON parsing fails
+            logger.error(f"❌ SYSTEM ANALYSIS: JSON parsing failed: {e}")
             analysis_data = {
                 "system_status": analysis_response,
-                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                "capabilities": "System is operational"
             }
+        except Exception as e:
+            # General fallback
+            logger.error(f"❌ SYSTEM ANALYSIS: General parsing error: {e}")
+            analysis_data = {
+                "system_status": "System analysis completed",
+                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                "capabilities": "System is operational"
+            }
+        
+        # Сохраняем в кэш только если нет ошибок
+        if "❌ Error: 429" not in analysis_response and "❌ Error:" not in analysis_response:
+            system_cache.set("system_analysis", analysis_data, cache_params, ttl_seconds=600)
+            logger.info("💾 SYSTEM ANALYSIS: Result cached for 10 minutes")
+        else:
+            logger.warning("⚠️ SYSTEM ANALYSIS: Not caching error response")
+            # Инвалидируем кэш при ошибках
+            system_cache.invalidate("system_analysis", cache_params)
         
         return JSONResponse({
             "success": True,
@@ -1127,7 +1316,17 @@ Be empathetic, professional, and insightful. Focus on emotional well-being and m
         })
         
     except Exception as e:
-        logger.error(f"Error generating system analysis: {e}")
+        logger.error(f"❌ System analysis error: {e}")
+        
+        # Пробуем вернуть кэшированный результат при ошибке
+        try:
+            cached_result = system_cache.get("system_analysis", cache_params, ttl_seconds=3600)  # 1 час для fallback
+            if cached_result:
+                logger.info("✅ SYSTEM ANALYSIS: Returning cached fallback result")
+                return JSONResponse(content=cached_result)
+        except:
+            pass
+        
         return JSONResponse({
             "success": False,
             "error": str(e)
@@ -1570,6 +1769,48 @@ async def roadmap_page(request: Request):
         "request": request,
         "username": username
     })
+
+@app.get("/models", response_class=HTMLResponse)
+async def models_page(request: Request):
+    """AI Models management page"""
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/", status_code=302)
+    
+    return templates.TemplateResponse("models.html", {
+        "request": request,
+        "username": username
+    })
+
+# WebSocket endpoint для real-time логов
+@app.websocket("/ws/logs")
+async def websocket_logs(websocket: WebSocket):
+    await websocket.accept()
+    websocket_connections.append(websocket)
+    
+    try:
+        # Просто читаем и отправляем содержимое app.log
+        while True:
+            try:
+                # Читаем последние строки из лога
+                with open('app.log', 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    # Отправляем последние 50 строк
+                    for line in lines[-50:]:
+                        await websocket.send_text(line.strip())
+                
+                # Ждем 2 секунды перед следующей проверкой
+                await asyncio.sleep(2)
+                
+            except Exception as e:
+                await websocket.send_text(f"Error reading log: {e}")
+                break
+            
+    except WebSocketDisconnect:
+        websocket_connections.remove(websocket)
+    except Exception as e:
+        if websocket in websocket_connections:
+            websocket_connections.remove(websocket)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 

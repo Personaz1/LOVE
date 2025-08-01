@@ -4,163 +4,180 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ΔΣ Guardian - Profile</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/guardian.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
-    <header class="guardian-header">
-        <div class="header-content">
-            <div class="logo">
-                <span class="guardian-icon">👼</span>
-                <h1>ΔΣ Guardian Profile</h1>
-            </div>
-            <div class="user-info">
-                <span class="welcome-text">Welcome, {{ username.title() }}!</span>
-                <a href="/chat" class="chat-btn">💬 Chat</a>
-                <a href="/profile" class="profile-btn">👤 My Profile</a>
-                <a href="/roadmap" class="roadmap-btn">🚀 Roadmap</a>
-                <form method="POST" action="/logout" style="display: inline;">
-                    <button type="submit" class="logout-btn">🚪 Logout</button>
-                </form>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="guardian-main">
-        <div class="guardian-container">
-            <!-- Guardian Avatar Section -->
-            <section class="avatar-section">
-                <div class="avatar-container">
-                    <div class="avatar" id="guardianAvatar">
-                        {% if guardian.avatar_url %}
-                            <img src="{{ guardian.avatar_url }}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                        {% else %}
-                            <i class="fas fa-user"></i>
-                        {% endif %}
-                    </div>
-                    <div class="avatar-upload">
-                        <input type="file" id="guardianAvatarInput" accept="image/*" style="display: none;">
-                        <button type="button" class="upload-btn" onclick="document.getElementById('guardianAvatarInput').click()">
-                            📷 Change Avatar
-                        </button>
-                    </div>
+    <!-- Guardian Container -->
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="{{ url_for('static', path='/images/logo_small.png') }}" alt="ΔΣ Guardian" class="guardian-icon">
+                    <h1>ΔΣ Guardian</h1>
                 </div>
-            </section>
+                <div class="user-info">
+                    <span class="welcome-text">Welcome, {{ username.title() }}!</span>
+                    <a href="/chat" class="profile-btn">💬 Chat</a>
+                    <a href="/profile" class="guardian-btn">👤 My Profile</a>
+                    <a href="/roadmap" class="roadmap-btn">🚀 Roadmap</a>
+                    <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
+                    <button class="model-status-btn" onclick="window.location.href='/models'">🤖 Models</button>
+                    <form method="POST" action="/logout" style="display: inline;">
+                        <button type="submit" class="logout-btn">🚪 Logout</button>
+                    </form>
+                </div>
+                <!-- Мобильное меню -->
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            </div>
+        </header>
 
-            <!-- Guardian Profile Form -->
-            <section class="profile-section">
-                <form id="guardianForm" class="guardian-form">
-                    <!-- Basic Information -->
-                    <div class="form-group">
-                        <h3>Basic Information</h3>
-                        <div class="input-group">
-                            <label for="guardianName">Name:</label>
-                            <input type="text" id="guardianName" name="name" value="{{ guardian.name or 'ΔΣ Guardian' }}" placeholder="Guardian Name">
+        <!-- Main Content -->
+        <main class="chat-main">
+            <div class="guardian-content">
+                <!-- Guardian Avatar Section -->
+                <section class="avatar-section">
+                    <div class="avatar-container">
+                        <div class="avatar" id="guardianAvatar">
+                            {% if guardian.avatar_url %}
+                                <img src="{{ guardian.avatar_url }}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
                         </div>
-                        <div class="input-group">
-                            <label for="guardianRole">Role:</label>
-                            <input type="text" id="guardianRole" name="role" value="{{ guardian.role or 'Family Guardian Angel' }}" placeholder="Guardian Role">
+                        <div class="avatar-upload">
+                            <input type="file" id="guardianAvatarInput" accept="image/*" style="display: none;">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('guardianAvatarInput').click()">
+                                📷 Change Avatar
+                            </button>
                         </div>
                     </div>
+                </section>
 
-                    <!-- Personality Settings -->
-                    <div class="form-group">
-                        <h3>Personality Settings</h3>
-                        <div class="input-group">
-                            <label for="communicationStyle">Communication Style:</label>
-                            <select id="communicationStyle" name="communication_style">
-                                <option value="empathetic" {% if guardian.personality.communication_style == 'empathetic' %}selected{% endif %}>Empathetic</option>
-                                <option value="direct" {% if guardian.personality.communication_style == 'direct' %}selected{% endif %}>Direct</option>
-                                <option value="gentle" {% if guardian.personality.communication_style == 'gentle' %}selected{% endif %}>Gentle</option>
-                                <option value="analytical" {% if guardian.personality.communication_style == 'analytical' %}selected{% endif %}>Analytical</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="specialization">Specialization:</label>
-                            <select id="specialization" name="specialization">
-                                <option value="communication" {% if guardian.personality.specialization == 'communication' %}selected{% endif %}>Communication</option>
-                                <option value="conflict_resolution" {% if guardian.personality.specialization == 'conflict_resolution' %}selected{% endif %}>Conflict Resolution</option>
-                                <option value="intimacy" {% if guardian.personality.specialization == 'intimacy' %}selected{% endif %}>Intimacy</option>
-                                <option value="life_transitions" {% if guardian.personality.specialization == 'life_transitions' %}selected{% endif %}>Life Transitions</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label for="relationshipPhase">Relationship Phase:</label>
-                            <select id="relationshipPhase" name="relationship_phase">
-                                <option value="new" {% if guardian.personality.relationship_phase == 'new' %}selected{% endif %}>New Relationship</option>
-                                <option value="established" {% if guardian.personality.relationship_phase == 'established' %}selected{% endif %}>Established</option>
-                                <option value="long_term" {% if guardian.personality.relationship_phase == 'long_term' %}selected{% endif %}>Long-term</option>
-                                <option value="crisis" {% if guardian.personality.relationship_phase == 'crisis' %}selected{% endif %}>Crisis</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- System Prompt -->
-                    <div class="form-group">
-                        <h3>System Prompt</h3>
-                        <div class="input-group">
-                            <label for="systemPrompt">Core System Prompt:</label>
-                            <textarea id="systemPrompt" name="system_prompt" rows="20" placeholder="Enter the system prompt that defines ΔΣ Guardian's behavior...">{{ guardian.system_prompt or '' }}</textarea>
-                            <div class="prompt-info">
-                                <p><strong>Note:</strong> This prompt defines how ΔΣ Guardian behaves, communicates, and responds. Changes will take effect immediately.</p>
+                <!-- Guardian Profile Form -->
+                <section class="profile-section">
+                    <form id="guardianForm" class="guardian-form">
+                        <!-- Basic Information -->
+                        <div class="form-group">
+                            <h3>Basic Information</h3>
+                            <div class="input-group">
+                                <label for="guardianName">Name:</label>
+                                <input type="text" id="guardianName" name="name" value="{{ guardian.name or 'ΔΣ Guardian' }}" placeholder="Guardian Name">
+                            </div>
+                            <div class="input-group">
+                                <label for="guardianRole">Role:</label>
+                                <input type="text" id="guardianRole" name="role" value="{{ guardian.role or 'Family Guardian Angel' }}" placeholder="Guardian Role">
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Action Buttons -->
-                    <div class="form-actions">
-                        <button type="submit" class="save-btn">💾 Save Changes</button>
-                        <button type="button" class="reset-btn" onclick="resetGuardianProfile()">🔄 Reset to Defaults</button>
-                        <button type="button" class="update-prompt-btn" onclick="updatePromptFromFile()">📝 Update Prompt from File</button>
-                        <button type="button" class="preview-btn" onclick="previewPrompt()">👁️ Preview Prompt</button>
-                        <button id="resetPromptBtn">Сбросить промпт по умолчанию</button>
-                    </div>
+                        <!-- Personality Settings -->
+                        <div class="form-group">
+                            <h3>Personality Settings</h3>
+                            <div class="input-group">
+                                <label for="communicationStyle">Communication Style:</label>
+                                <select id="communicationStyle" name="communication_style">
+                                    <option value="empathetic" {% if guardian.personality.communication_style == 'empathetic' %}selected{% endif %}>Empathetic</option>
+                                    <option value="direct" {% if guardian.personality.communication_style == 'direct' %}selected{% endif %}>Direct</option>
+                                    <option value="gentle" {% if guardian.personality.communication_style == 'gentle' %}selected{% endif %}>Gentle</option>
+                                    <option value="analytical" {% if guardian.personality.communication_style == 'analytical' %}selected{% endif %}>Analytical</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="specialization">Specialization:</label>
+                                <select id="specialization" name="specialization">
+                                    <option value="communication" {% if guardian.personality.specialization == 'communication' %}selected{% endif %}>Communication</option>
+                                    <option value="conflict_resolution" {% if guardian.personality.specialization == 'conflict_resolution' %}selected{% endif %}>Conflict Resolution</option>
+                                    <option value="intimacy" {% if guardian.personality.specialization == 'intimacy' %}selected{% endif %}>Intimacy</option>
+                                    <option value="life_transitions" {% if guardian.personality.specialization == 'life_transitions' %}selected{% endif %}>Life Transitions</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="relationshipPhase">Relationship Phase:</label>
+                                <select id="relationshipPhase" name="relationship_phase">
+                                    <option value="new" {% if guardian.personality.relationship_phase == 'new' %}selected{% endif %}>New Relationship</option>
+                                    <option value="established" {% if guardian.personality.relationship_phase == 'established' %}selected{% endif %}>Established</option>
+                                    <option value="long_term" {% if guardian.personality.relationship_phase == 'long_term' %}selected{% endif %}>Long-term</option>
+                                    <option value="crisis" {% if guardian.personality.relationship_phase == 'crisis' %}selected{% endif %}>Crisis</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- System Prompt -->
+                        <div class="form-group">
+                            <h3>System Prompt</h3>
+                            <div class="input-group">
+                                <label for="systemPrompt">Custom System Prompt:</label>
+                                <textarea id="systemPrompt" name="system_prompt" rows="8" placeholder="Enter custom system prompt...">{{ guardian.system_prompt or '' }}</textarea>
+                                <small>This will override the default system prompt. Leave empty to use default.</small>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="form-actions">
+                            <button type="submit" class="save-btn">
+                                <i class="fas fa-save"></i> Save Changes
+                            </button>
+                            <button type="button" class="reset-btn" onclick="resetGuardianProfile()">
+                                <i class="fas fa-undo"></i> Reset to Default
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Мобильное меню -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div class="mobile-menu-header">
+                <h3>ΔΣ Guardian</h3>
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+            </div>
+            <div class="mobile-menu-items">
+                <a href="/chat" class="mobile-menu-item">💬 Chat</a>
+                <a href="/profile" class="mobile-menu-item">👤 Profile</a>
+                <a href="/guardian" class="mobile-menu-item">👼 Guardian</a>
+                <a href="/roadmap" class="mobile-menu-item">🚀 Roadmap</a>
+                <button class="mobile-menu-item" onclick="loadConversationArchive()">📚 Archive</button>
+                <a href="/models" class="mobile-menu-item">🤖 Models</a>
+                <button class="mobile-menu-item system-analysis" onclick="showSystemAnalysisModal()">🔧 System Analysis</button>
+                <form method="POST" action="/logout" style="display: inline;">
+                    <button type="submit" class="mobile-menu-item">🚪 Logout</button>
                 </form>
-            </section>
-        </div>
-    </main>
-
-    <!-- Success Modal -->
-    <div id="success-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Success!</h2>
-            <p id="success-message">Guardian profile updated successfully!</p>
-            <button onclick="closeModal()" class="modal-btn">OK</button>
+            </div>
         </div>
     </div>
 
-    <!-- Error Modal -->
-    <div id="error-modal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Error</h2>
-            <p id="error-message">An error occurred while updating the profile.</p>
-            <button onclick="closeModal()" class="modal-btn">OK</button>
+    <!-- System Analysis Modal -->
+    <div class="system-analysis-modal" id="systemAnalysisModal">
+        <div class="system-analysis-modal-content">
+            <div class="system-analysis-modal-header">
+                <h3>System Analysis</h3>
+                <button class="system-analysis-modal-close" onclick="closeSystemAnalysisModal()">×</button>
+            </div>
+            <div class="system-analysis-modal-body">
+                <div id="mobileSystemStatus">Loading...</div>
+                <div id="mobileSystemTips"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Preview Modal -->
-    <div id="preview-modal" class="modal">
-        <div class="modal-content preview-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>System Prompt Preview</h2>
-            <div class="prompt-preview" id="promptPreview"></div>
-            <button onclick="closeModal()" class="modal-btn">Close</button>
+    <!-- Модальное окно Model Status -->
+    <div class="modal" id="modelStatusModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🤖 AI Model Status</h2>
+                <span class="close" onclick="closeModal('modelStatusModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="modelStatusContent">
+                <!-- Content will be loaded here -->
+            </div>
         </div>
     </div>
 
     <script src="{{ url_for('static', path='/js/guardian.js') }}"></script>
-    <script>
-document.getElementById('resetPromptBtn').onclick = async function() {
-    const resp = await fetch('/api/guardian/prompt/reset', {method: 'POST'});
-    const data = await resp.json();
-    if (data.prompt) {
-        document.getElementById('systemPrompt').value = data.prompt;
-    }
-};
-</script>
+    <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.4"></script>
 </body>
 </html> 

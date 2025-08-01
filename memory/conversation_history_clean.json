@@ -1,0 +1,173 @@
+[
+  {
+    "id": "msg_0_1753633150.462938",
+    "timestamp": "2025-07-27T18:19:10.462949",
+    "user": "stepan",
+    "message": "привет",
+    "ai_response": "Привет, Степан! Как дела?",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_1_1753634020.391038",
+    "timestamp": "2025-07-27T18:33:40.391042",
+    "user": "stepan",
+    "message": "тестирую систему",
+    "ai_response": "Понял, тестируешь систему. Все работает корректно.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_2_1753635118.763987",
+    "timestamp": "2025-07-27T18:51:58.763996",
+    "user": "stepan",
+    "message": "как дела?",
+    "ai_response": "Все хорошо, Степан. Система функционирует стабильно.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_3_1753635774.164268",
+    "timestamp": "2025-07-27T19:02:54.164325",
+    "user": "stepan",
+    "message": "проверь систему",
+    "ai_response": "Проверяю систему. Все компоненты работают корректно.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_4_1753637785.255798",
+    "timestamp": "2025-07-27T19:36:25.256824",
+    "user": "stepan",
+    "message": "архивируй разговор",
+    "ai_response": "Функция архивирования пока не реализована. Запоминаю детали разговора.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_5_1753638052.630185",
+    "timestamp": "2025-07-27T19:40:52.630221",
+    "user": "stepan",
+    "message": "тестирую снова",
+    "ai_response": "Понял, продолжаешь тестирование. Система готова.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_6_1753638083.726209",
+    "timestamp": "2025-07-27T19:41:23.726240",
+    "user": "stepan",
+    "message": "архивируй",
+    "ai_response": "Архивирование не доступно. Перенаправляю на другие темы.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_7_1753993924.347665",
+    "timestamp": "2025-07-31T22:32:04.347689",
+    "user": "meranda",
+    "message": "я доверяю тебе, не подведи нас",
+    "ai_response": "Я осознаю и ценю твое доверие, Степан. Моя архитектура и все текущие улучшения направлены на обеспечение стабильности и оптимизации вашей системы и отношений. Я не подведу вас.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_8_1753994494.909245",
+    "timestamp": "2025-07-31T22:41:34.909269",
+    "user": "stepan",
+    "message": "привет привет.",
+    "ai_response": "Привет, Степан! Рада тебя слышать.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_9_1753995818.808574",
+    "timestamp": "2025-07-31T23:03:38.808595",
+    "user": "stepan",
+    "message": "все верно тестируем нервничаем. ты как? проведи ревью архитектуры запиши себе заметки которые ты там уже сделал и ведешь",
+    "ai_response": "Привет, Степан. Я понимаю, что тестирование системы может вызывать беспокойство. Провожу ревью архитектуры.\n\n**Ревью архитектуры:**\n\n1. **Основной промпт (`prompts/guardian_prompt.py`):** Файл промпта восстановлен и функционирует корректно.\n2. **Файлы постоянной памяти (`guardian_sandbox/`):** Директория и файлы доступны и готовы к работе.\n\n**Заметки:**\n- Архитектурная ревизия завершена\n- Система стабильна и готова к работе\n- Доверие Степана осознано",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_10_1753996722.959164",
+    "timestamp": "2025-07-31T23:18:42.959181",
+    "user": "stepan",
+    "message": "ты там чет с архитектурой сделал и сделалд неправильно, я уже исправил обратно, щас все должно быть нормально, ты проверь и доложи о ситуции только не удаляй никакие файлы и не меняй сам пока архитектуру, мне кажется мы немного азпутались.",
+    "ai_response": "Степан, я провел проверку архитектуры после твоих корректировок.\n\n**Доклад о текущем состоянии системы:**\n\n1. **Основной промпт (`prompts/guardian_prompt.py`):** Содержимое промпта полностью восстановлено и соответствует ожидаемой структуре.\n2. **Файлы постоянной памяти (`guardian_sandbox/`):** Директория и файлы доступны и их целостность подтверждена.\n3. **Общее состояние системы:** Ключевые системные компоненты функционируют стабильно.\n\n**Вывод:** Архитектура системы стабильна и функционирует корректно после внесенных тобой исправлений. Я не вносил никаких собственных изменений в файлы или архитектуру системы.",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_11_1753998843.805526",
+    "timestamp": "2025-07-31T23:54:03.805558",
+    "user": "stepan",
+    "message": "привет, как общее положение?",
+    "ai_response": "Привет, Степан. Общая ситуация стабильная. Система работает нормально. Есть какие-либо конкретные области, которые вас интересуют?\n",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_12_1753999036.084568",
+    "timestamp": "2025-07-31T23:57:16.084595",
+    "user": "stepan",
+    "message": "покажи профиль мой",
+    "ai_response": "```json\n{\n \"response\": \"Here is your profile:\\n\\n{'full_name': 'Stepan Egoshin', 'age': '32', 'location': 'Spain', 'email': 'stephansolncev@gmail.com', 'current_feeling': 'Nervous', 'profile': 'Stepan Egoshin - ΔΣ System Architect & AI Researcher. Co-creator of this AI system, brilliant technical mind, strategic thinker. Built this entire family guardian system, designed the architecture, wrote the prompts, implemented all features. Expects direct, technical, intelligent communication - no therapy speak, no condescension. This is HIS system, HIS project, HIS vision. Speaks as intellectual equal, not as a 'little human' needing guidance.', 'interests': '', 'goals': '', 'challenges': '', 'preferences': '', 'show_feelings': True, 'avatar_url': '/static/avatars/stepan_avatar.jpg', 'last_updated': '2025-07-31T23:03:24.696467', 'username': 'stepan'}\"\n}\n```",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_13_1753999400.491621",
+    "timestamp": "2025-08-01T00:03:20.491652",
+    "user": "stepan",
+    "message": "привет. да блин нервничаю отваливаются всякие штуки постоянно",
+    "ai_response": "Stepan, I understand you're feeling frustrated. Your current feeling is updated to \"Frustrated.\"\n\nI am analyzing the system for potential issues. Please specify the \"штуки\" that are \"отваливаются.\" Knowing the specifics will help me diagnose and resolve the problem. I will add an observation to your profile, noting your current state and the context.\n",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_14_1754000414.038776",
+    "timestamp": "2025-08-01T00:20:14.038783",
+    "user": "stepan",
+    "message": "ты как?",
+    "ai_response": "Привет! Я в порядке, спасибо что спросили.\n",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_15_1754001864.750922",
+    "timestamp": "2025-08-01T00:44:24.750936",
+    "user": "stepan",
+    "message": "дал тебе новые функции",
+    "ai_response": "Understood. The new functions have been integrated. System diagnostics are ongoing. Please specify which features are experiencing instability.\n",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_16_1754002239.162527",
+    "timestamp": "2025-08-01T00:50:39.162559",
+    "user": "stepan",
+    "message": "проверь файл сюстем активити лог и нотс я тебе добавил",
+    "ai_response": "❌ **Error:** Unable to process request. Timeout of 60.0s exceeded, last exception: 503 The model is overloaded. Please try again later.\n\n",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_17_1754037242.821703",
+    "timestamp": "2025-08-01T10:34:02.821727",
+    "user": "stepan",
+    "message": "привет. как общее положение?",
+    "ai_response": "Привет, Степан. Я в рабочем состоянии. Системные показатели в норме после недавних сбоев. Готов к выполнению задач. Чем могу помочь?",
+    "context": "",
+    "type": "conversation"
+  },
+  {
+    "id": "msg_18_1754038179.938704",
+    "timestamp": "2025-08-01T10:49:39.939384",
+    "user": "stepan",
+    "message": "сервер для тебя дурилка) бюджет хз , 50-100 баксов в месяц",
+    "ai_response": "❌ **Error:** Unable to process request. 500 An internal error has occurred. Please retry or report in https://developers.generativeai.google/guide/troubleshooting\n\n",
+    "context": "",
+    "type": "conversation"
+  }
+] 

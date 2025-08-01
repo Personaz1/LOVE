@@ -1,94 +1,35 @@
 """
-Configuration management for ΔΣ Guardian AI Client
-Centralized settings and environment variables
+Конфигурация системы
 """
 
 import os
-from typing import Dict, List, Any
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
+from typing import Dict, Any
 
 class Config:
-    """Centralized configuration for the AI client"""
+    """Класс для управления конфигурацией системы"""
     
-    # API Keys
-    GEMINI_API_KEY: str = os.getenv('GEMINI_API_KEY', '')
-    VISION_API_KEY: str = os.getenv('GOOGLE_CLOUD_VISION_API_KEY', 'AIzaSyCxdKfHptmqDDdLHSx8C2xOhjg9RLjCm_w')
+    def __init__(self):
+        """Инициализация конфигурации"""
+        self.gemini_api_key = os.getenv('GEMINI_API_KEY')
+        self.vision_api_key = os.getenv('GOOGLE_CLOUD_VISION_API_KEY')
+        self.project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        
+        # Валидация обязательных переменных
+        if not self.gemini_api_key:
+            raise ValueError("GEMINI_API_KEY не установлен в переменных окружения")
     
-    # Model Configuration
-    MODELS: List[Dict[str, Any]] = [
-        {
-            'name': 'gemini-2.5-pro',
-            'quota': 100,
-            'vision': True
-        },
-        {
-            'name': 'gemini-1.5-pro',
-            'quota': 150,
-            'vision': True
-        },
-        {
-            'name': 'gemini-2.5-flash',
-            'quota': 250,
-            'vision': True
-        },
-        {
-            'name': 'gemini-1.5-flash',
-            'quota': 500,
-            'vision': True
-        },
-        {
-            'name': 'gemini-2.0-flash',
-            'quota': 200,
-            'vision': True
-        },
-        {
-            'name': 'gemini-2.0-flash-lite',
-            'quota': 1000,
-            'vision': False
-        },
-        {
-            'name': 'gemini-2.5-flash-lite',
-            'quota': 1000,
-            'vision': False
-        }
-    ]
+    def get_gemini_api_key(self) -> str:
+        """Получить API ключ Gemini"""
+        return self.gemini_api_key
     
-    # System Limits
-    LIMITS = {
-        'max_steps': 666,
-        'react_max_steps': 20,
-        'memory_limit': 1000,
-        'file_size_limit': 10 * 1024 * 1024,  # 10MB
-        'command_timeout': 30
-    }
+    def get_vision_api_key(self) -> str:
+        """Получить API ключ Vision"""
+        return self.vision_api_key
     
-    # File Paths
-    PATHS = {
-        'sandbox': 'guardian_sandbox/',
-        'memory': 'memory/',
-        'prompts': 'prompts/',
-        'static': 'static/',
-        'templates': 'templates/',
-        'logs': 'app.log'
-    }
+    def get_project_root(self) -> str:
+        """Получить корневую директорию проекта"""
+        return self.project_root
     
-    # Security
-    SECURITY = {
-        'blocked_commands': [
-            'rm -rf', 'sudo', 'chmod', 'dd', 'shutdown', 'halt',
-            'reboot', 'init', 'killall', 'pkill', 'kill -9'
-        ],
-        'allowed_directories': [
-            '.', 'guardian_sandbox', 'memory', 'prompts', 'static', 'templates'
-        ]
-    }
-    
-    @classmethod
-    def validate(cls) -> bool:
-        """Validate configuration"""
-        if not cls.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY environment variable not set")
-        return True 
+    def is_vision_configured(self) -> bool:
+        """Проверить настройку Vision API"""
+        return bool(self.vision_api_key) 

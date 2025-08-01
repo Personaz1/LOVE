@@ -1,8 +1,8 @@
 """
-ΔΣ Guardian AI Client - Modular Architecture
-Main entry point that combines all AI client functionality
+ΔΣ Guardian AI Client - Модульная архитектура
 """
 
-from .core import AIClient
+from .core.client import AIClient
 
-__all__ = ['AIClient'] 
+__all__ = ['AIClient']
+__version__ = '2.0.0' 
