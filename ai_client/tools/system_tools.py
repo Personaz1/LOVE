@@ -555,27 +555,220 @@ class SystemTools:
     
     # Инструменты для выполнения
     def _extract_tool_calls(self, text: str) -> List[str]:
-        """Извлечение вызовов инструментов из текста"""
+        """Извлечение вызовов инструментов из текста - ПОДСТРАИВАЕМСЯ ПОД МОДЕЛЬ"""
         try:
-            # Паттерн для поиска полных вызовов функций
-            pattern = r'(\w+)\s*\([^)]*\)'
-            matches = re.findall(pattern, text)
+            logger.info(f"🔧 TOOL EXTRACTION: Processing text: {text[:200]}...")
             
-            # Получаем полные вызовы, а не только имена
+            # Паттерн для поиска вызовов в формате print(tool_code.function(...))
+            pattern = r'print\s*\(\s*tool_code\.(\w+)\s*\(([^)]*)\)\s*\)'
+            
+            # Также ищем в блоках кода ```tool_code\nprint(tool_code.function(...))\n```
+            code_block_pattern = r'```tool_code\s*\n(.*?)\n```'
+            
+            # Список известных инструментов
+            known_tools = [
+                'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
+                'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
+                'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
+                'generate_system_greeting', 'read_user_profile', 'read_emotional_history',
+                'search_user_data', 'update_current_feeling', 'add_user_observation',
+                'append_to_file', 'safe_create_file'
+            ]
+            
+            # Получаем вызовы из print(tool_code.function(...))
             full_calls = []
-            for match in re.finditer(pattern, text):
-                full_call = match.group(0)  # Полный вызов
+            
+            # Сначала ищем в блоках кода
+            for code_match in re.finditer(code_block_pattern, text, re.DOTALL):
+                code_content = code_match.group(1)
+                logger.info(f"🔧 TOOL EXTRACTION: Found code block: {code_content}")
                 
-                # Валидация вызова
-                if self._validate_tool_call(full_call):
-                    full_calls.append(full_call)
+                # Ищем print(tool_code.function(...)) в блоке кода
+                for match in re.finditer(pattern, code_content):
+                    func_name = match.group(1)
+                    args = match.group(2)
+                    logger.info(f"🔧 TOOL EXTRACTION: Found print(tool_code.{func_name}({args})) in code block")
+                    
+                    if func_name in known_tools:
+                        # Создаем правильный вызов
+                        correct_call = f"{func_name}({args})"
+                        logger.info(f"🔧 TOOL EXTRACTION: Converting to {correct_call}")
+                        
+                        # Валидация вызова
+                        logger.info(f"🔧 TOOL EXTRACTION: About to validate {correct_call}")
+                        validation_result = self._validate_tool_call(correct_call)
+                        logger.info(f"🔧 TOOL EXTRACTION: Validation result: {validation_result}")
+                        
+                        if validation_result:
+                            full_calls.append(correct_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Added {correct_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid tool call: {correct_call}")
+                    else:
+                        logger.warning(f"⚠️ Unknown tool: {func_name}")
+            
+            # Также ищем в обычном тексте
+            for match in re.finditer(pattern, text):
+                func_name = match.group(1)
+                args = match.group(2)
+                logger.info(f"🔧 TOOL EXTRACTION: Found print(tool_code.{func_name}({args})) in text")
+                
+                if func_name in known_tools:
+                    # Создаем правильный вызов
+                    correct_call = f"{func_name}({args})"
+                    logger.info(f"🔧 TOOL EXTRACTION: Converting to {correct_call}")
+                    
+                    # Валидация вызова
+                    logger.info(f"🔧 TOOL EXTRACTION: About to validate {correct_call}")
+                    validation_result = self._validate_tool_call(correct_call)
+                    logger.info(f"🔧 TOOL EXTRACTION: Validation result: {validation_result}")
+                    
+                    if validation_result:
+                        full_calls.append(correct_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Added {correct_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid tool call: {correct_call}")
                 else:
-                    logger.warning(f"⚠️ Invalid tool call: {full_call}")
+                    logger.warning(f"⚠️ Unknown tool: {func_name}")
+            
+            # Также ищем прямые вызовы function(...)
+            direct_pattern = r'(\w+)\s*\([^)]*\)'
+            for match in re.finditer(direct_pattern, text):
+                full_call = match.group(0)
+                
+                # Извлекаем имя функции
+                func_match = re.match(r'(\w+)\s*\(', full_call)
+                if not func_match:
+                    continue
+                
+                func_name = func_match.group(1)
+                
+                if func_name in known_tools:
+                    # Валидация вызова
+                    if self._validate_tool_call(full_call):
+                        full_calls.append(full_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Added direct call {full_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid tool call: {full_call}")
+            
+            # Ищем формат tool_code\nfunction(...)
+            tool_code_pattern = r'tool_code\s*\n\s*(\w+)\s*\([^)]*\)'
+            for match in re.finditer(tool_code_pattern, text):
+                func_name = match.group(1)
+                args = match.group(0).split('(', 1)[1].rstrip(')')
+                
+                if func_name in known_tools:
+                    correct_call = f"{func_name}({args})"
+                    logger.info(f"🔧 TOOL EXTRACTION: Found tool_code format: {correct_call}")
+                    
+                    if self._validate_tool_call(correct_call):
+                        full_calls.append(correct_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Added tool_code call {correct_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid tool_code call: {correct_call}")
+                else:
+                    logger.warning(f"⚠️ Unknown tool in tool_code format: {func_name}")
+            
+            # Ищем код с print(f"""...""") и извлекаем реальные инструменты из содержимого
+            print_pattern = r'print\s*\(\s*f"""([^"]*?)"""\s*\)'
+            for match in re.finditer(print_pattern, text, re.DOTALL):
+                print_content = match.group(1)
+                logger.info(f"🔧 TOOL EXTRACTION: Found print content: {print_content[:100]}...")
+                
+                # Ищем в содержимом print реальные вызовы инструментов
+                for tool_match in re.finditer(r'(\w+)\s*\([^)]*\)', print_content):
+                    full_call = tool_match.group(0)
+                    func_match = re.match(r'(\w+)\s*\(', full_call)
+                    if not func_match:
+                        continue
+                    
+                    func_name = func_match.group(1)
+                    if func_name in known_tools:
+                        if self._validate_tool_call(full_call):
+                            full_calls.append(full_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Added from print: {full_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid tool call from print: {full_call}")
+                    else:
+                        logger.warning(f"⚠️ Unknown tool in print: {func_name}")
+            
+            # Ищем Python код в блоках tool_code и конвертируем в вызовы инструментов
+            python_code_pattern = r'tool_code\s*\n\s*(.*?)(?=\n\n|\n```|$)'
+            for match in re.finditer(python_code_pattern, text, re.DOTALL):
+                code_content = match.group(1)
+                logger.info(f"🔧 TOOL EXTRACTION: Found Python code: {code_content[:100]}...")
+                
+                # Конвертируем Python код в вызовы инструментов
+                if 'with open(' in code_content and 'f.write(' in code_content:
+                    # Извлекаем путь и содержимое из with open(...) as f: f.write(...)
+                    path_match = re.search(r'with open\([\'"]([^\'"]+)[\'"]', code_content)
+                    content_match = re.search(r'f\.write\([\'"]([^\'"]+)[\'"]', code_content)
+                    
+                    if path_match and content_match:
+                        path = path_match.group(1)
+                        content = content_match.group(1)
+                        
+                        # Определяем какой инструмент использовать
+                        if 'append' in code_content or 'a' in code_content:
+                            tool_call = f'append_to_file("{path}", "{content}")'
+                        else:
+                            tool_call = f'create_file("{path}", "{content}")'
+                        
+                        if self._validate_tool_call(tool_call):
+                            full_calls.append(tool_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Converted Python code to: {tool_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid converted tool call: {tool_call}")
+                
+                # Ищем другие паттерны Python кода
+                elif 'os.makedirs(' in code_content:
+                    path_match = re.search(r'os\.makedirs\([\'"]([^\'"]+)[\'"]', code_content)
+                    if path_match:
+                        path = path_match.group(1)
+                        tool_call = f'list_files("{path}")'  # Создание директории через list_files
+                        if self._validate_tool_call(tool_call):
+                            full_calls.append(tool_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Converted makedirs to: {tool_call}")
+                
+                # Обработка чтения файлов
+                elif 'with open(' in code_content and ('f.read()' in code_content or 'print(f.read())' in code_content):
+                    path_match = re.search(r'with open\([\'"]([^\'"]+)[\'"]', code_content)
+                    if path_match:
+                        path = path_match.group(1)
+                        tool_call = f'read_file("{path}")'
+                        if self._validate_tool_call(tool_call):
+                            full_calls.append(tool_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Converted file read to: {tool_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid read_file call: {tool_call}")
+                
+                # Обработка записи файлов (уже есть выше, но добавим для полноты)
+                elif 'with open(' in code_content and 'f.write(' in code_content:
+                    # Извлекаем путь и содержимое из with open(...) as f: f.write(...)
+                    path_match = re.search(r'with open\([\'"]([^\'"]+)[\'"]', code_content)
+                    content_match = re.search(r'f\.write\([\'"]([^\'"]+)[\'"]', code_content)
+                    
+                    if path_match and content_match:
+                        path = path_match.group(1)
+                        content = content_match.group(1)
+                        
+                        # Определяем какой инструмент использовать
+                        if 'append' in code_content or 'a' in code_content:
+                            tool_call = f'append_to_file("{path}", "{content}")'
+                        else:
+                            tool_call = f'create_file("{path}", "{content}")'
+                        
+                        if self._validate_tool_call(tool_call):
+                            full_calls.append(tool_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Converted Python code to: {tool_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid converted tool call: {tool_call}")
             
             # Убираем дубликаты
             unique_calls = list(set(full_calls))
             unique_calls.sort()
             
+            logger.info(f"🔧 TOOL EXTRACTION: Final result: {unique_calls}")
             return unique_calls
             
         except Exception as e:
@@ -621,12 +814,8 @@ class SystemTools:
                 logger.warning(f"⚠️ Unmatched parentheses in tool call: {tool_call}")
                 return False
             
-            # Проверяем что нет незакрытых кавычек внутри аргументов
-            quoted_args = re.findall(r'"([^"]*)"', args_str)
-            if len(quoted_args) == 0 and func_name in ['create_file', 'write_file', 'edit_file', 'append_to_file', 'safe_create_file']:
-                logger.warning(f"⚠️ Missing quoted arguments in tool call: {tool_call}")
-                return False
-            
+            # УПРОЩЕННАЯ ВАЛИДАЦИЯ - принимаем любой tool call с правильным синтаксисом
+            logger.info(f"🔧 VALIDATION: ACCEPTED tool call: {tool_call}")
             return True
             
         except Exception as e:

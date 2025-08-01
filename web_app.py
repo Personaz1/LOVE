@@ -362,7 +362,7 @@ System Status: Guardian is ready to provide personalized greeting
 """
             
             # Generate dynamic greeting using Guardian AI
-            greeting_message = f"Generate a personalized, warm greeting for {username}. Consider their emotional state, recent activity, and current time. Be natural and caring."
+            greeting_message = f"Create a natural, contextual greeting for {username} based on their current situation and system state. Be creative and avoid generic phrases."
             
             greeting = ai_client.chat(
                 message=greeting_message,
@@ -470,6 +470,7 @@ async def chat_stream_endpoint(
             
             # ОБРАБОТКА TOOL CALLS В STREAMING
             logger.info(f"🔧 STREAMING CHAT: Processing response for tool calls...")
+            logger.info(f"🔧 STREAMING CHAT: Full response: {full_response[:500]}...")
             
             # Извлекаем tool calls из полного ответа
             tool_calls = ai_client._extract_tool_calls(full_response)
