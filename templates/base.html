@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ΔΣ Guardian{% endblock %}</title>
     
-    <!-- Base CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/layout.css') }}">
+               <!-- Base CSS -->
+           <link rel="stylesheet" href="{{ url_for('static', path='/css/base.css') }}">
+           <link rel="stylesheet" href="{{ url_for('static', path='/css/layout.css') }}">
+           <link rel="stylesheet" href="{{ url_for('static', path='/css/components.css') }}">
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -74,8 +75,9 @@
         </div>
     </div>
     
-    <!-- Base JavaScript -->
-    <script src="{{ url_for('static', path='/js/utils/mobile.js') }}"></script>
+               <!-- Base JavaScript -->
+           <script src="{{ url_for('static', path='/js/utils/mobile.js') }}"></script>
+           <script src="{{ url_for('static', path='/js/utils/theme.js') }}"></script>
     {% block script %}{% endblock %}
 </body>
 </html> 
