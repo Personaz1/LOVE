@@ -1,201 +1,165 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ΔΣ Guardian - Chat</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-</head>
-<body>
-    <!-- Chat Container -->
-    <div class="chat-container">
-        <!-- Header -->
-        <header class="chat-header">
-            <div class="header-content">
-                <div class="logo">
-                    <img src="{{ url_for('static', path='/images/logo_small.png') }}" alt="ΔΣ Guardian" class="guardian-icon">
-                    <h1>ΔΣ Guardian</h1>
-                </div>
-                <div class="user-info">
-                    <span class="welcome-text">Welcome, {{ username.title() }}!</span>
-                    <a href="/profile" class="profile-btn">👤 Profile</a>
-                    <a href="/guardian" class="guardian-btn">👼 Guardian</a>
-                    <a href="/roadmap" class="roadmap-btn">🚀 Roadmap</a>
-                    <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
-                    <button class="model-status-btn" onclick="window.location.href='/models'">🤖 Models</button>
-                    <form method="POST" action="/logout" style="display: inline;">
-                        <button type="submit" class="logout-btn">🚪 Logout</button>
-                    </form>
-                </div>
-                
-                <!-- Мобильное меню кнопка -->
-                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
-            </div>
-        </header>
+{% extends "base.html" %}
 
-        <!-- Main chat area -->
-        <main class="chat-main">
-            <!-- System Analysis Panel -->
-            <aside class="system-panel" id="systemPanel">
-                <div class="panel-header">
-                    <h3>System Analysis</h3>
-                    <div class="panel-controls">
-                        <button class="refresh-btn" onclick="loadSystemAnalysis()">🔄</button>
-                        <button class="refresh-btn" onclick="forceRefreshSystemAnalysis()" title="Force refresh (clear cache)">⚡</button>
-                    </div>
-                </div>
-                
-                <div class="panel-content">
-                    <div class="analysis-section">
-                        <h4>Current Status</h4>
-                        <div class="status-content" id="systemStatus">
-                            <div class="loading-spinner">Loading analysis...</div>
-                        </div>
-                    </div>
-                    
-                    <div class="tips-section">
-                        <h4>Tips & Insights</h4>
-                        <div class="tips-content" id="systemTips">
-                            <div class="loading-spinner">Loading tips...</div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
+{% block title %}Chat — ΔΣ Guardian{% endblock %}
 
-            <!-- Chat messages -->
-            <section class="chat-messages">
-                <!-- Loading banner -->
-                <div class="loading-banner" id="loadingBanner">
-                    <div class="loading-content">
-                        <div class="loading-spinner"></div>
-                        <p>Loading conversation history...</p>
-                    </div>
-                </div>
-                
-                <div class="messages-container" id="messagesContainer">
-                    <!-- Messages will be loaded here -->
-                </div>
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
+{% endblock %}
 
-                <!-- Message input -->
-                <div class="message-input-container">
-                    <form id="messageForm" class="message-form">
-                        <div class="input-wrapper">
-                            <input type="text" id="messageInput" placeholder="Type your message here..." maxlength="10000">
-                            <button type="submit" class="send-btn">
-                                <span class="send-icon">💕</span>
-                            </button>
-                        </div>
-                        
-                        <!-- Attached files preview -->
-                        <div id="attachedFilesContainer" class="attached-files-container" style="display: none;"></div>
-                        
-                        <div class="input-actions">
-                            <button type="button" class="action-btn-small" onclick="clearConversationHistory()">🗑️ Clear History</button>
-                            <button type="button" class="action-btn-small" onclick="exportChat()">📤 Export</button>
-                            <button type="button" class="action-btn-small" onclick="document.getElementById('fileInput').click()">📎 Attach</button>
-                            <button type="button" class="action-btn-small" onclick="demoReasoning()">🧠 Demo Reasoning</button>
-                        </div>
-                        <input type="file" id="fileInput" style="display: none;" accept="image/*,.txt,.pdf,.doc,.docx,.xls,.xlsx,.json,.csv">
-                    </form>
-                    
-                    <!-- File drop zone -->
-                    <div class="file-drop-zone" id="fileDropZone">
-                        <div class="drop-zone-content">
-                            <span class="drop-icon">📁</span>
-                            <p>Drop files here or click to upload</p>
-                            <p class="drop-hint">Images will be analyzed, other files go to sandbox</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <!-- Real-time Terminal Panel -->
-        <aside class="terminal-panel" id="terminalPanel">
-            <div class="terminal-header">
-                <h3>🖥️ System Terminal</h3>
-                <div class="terminal-controls">
-                    <button class="terminal-btn" onclick="toggleTerminal()">📺 Toggle</button>
-                    <button class="terminal-btn" onclick="clearTerminal()">🗑️ Clear</button>
-
+{% block content %}
+<div class="chat-container">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>💬 Chat Sessions</h3>
+        </div>
+        
+        <div class="sidebar-content">
+            <!-- Current Session -->
+            <div class="sidebar-section">
+                <h4>Current Session</h4>
+                <div class="session-info">
+                    <div class="session-name">ΔΣ Guardian Chat</div>
+                    <div class="session-status">🟢 Active</div>
                 </div>
             </div>
             
-            <div class="terminal-content" id="terminalContent">
-                <div class="terminal-window">
-                    <div class="terminal-output" id="terminalOutput">
-                        <!-- Real-time logs will appear here -->
+            <!-- Quick Actions -->
+            <div class="sidebar-section">
+                <h4>Quick Actions</h4>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="clearConversation()">🗑️ Clear Chat</button>
+                    <button class="action-btn" onclick="exportChat()">📤 Export</button>
+                    <button class="action-btn" onclick="showModelStatus()">🤖 Models</button>
+                </div>
+            </div>
+            
+            <!-- System Status -->
+            <div class="sidebar-section">
+                <h4>System Status</h4>
+                <div class="system-status" id="sidebarSystemStatus">
+                    <div class="status-item">
+                        <span class="status-label">Model:</span>
+                        <span class="status-value" id="currentModel">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Status:</span>
+                        <span class="status-value" id="systemStatus">🟢 Online</span>
                     </div>
                 </div>
             </div>
-        </aside>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main">
+        <!-- Messages Container -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Loading indicator -->
+            <div class="loading-indicator" id="loadingIndicator">
+                <div class="loading-spinner"></div>
+                <p>Loading conversation...</p>
+            </div>
+            
+            <!-- Messages will be inserted here -->
+        </div>
+
+        <!-- Chat Input -->
+        <div class="chat-input-container">
+            <form class="chat-input-form" id="chatForm">
+                <div class="chat-input-wrapper">
+                    <textarea 
+                        class="chat-input" 
+                        id="chatInput" 
+                        placeholder="Type your message here..."
+                        rows="1"
+                        maxlength="10000"
+                    ></textarea>
+                    
+                    <!-- File attachment preview -->
+                    <div class="attachment-preview" id="attachmentPreview" style="display: none;">
+                        <div class="attachment-item">
+                            <span class="attachment-name" id="attachmentName"></span>
+                            <button type="button" class="attachment-remove" onclick="removeAttachment()">✕</button>
                         </div>
                     </div>
                 </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Мобильное меню -->
-    <div class="mobile-menu" id="mobileMenu">
-        <div class="mobile-menu-content">
-            <div class="mobile-menu-header">
-                <h3>ΔΣ Guardian</h3>
-                <button class="mobile-menu-close" onclick="toggleMobileMenu()">✕</button>
-            </div>
-            <div class="mobile-menu-items">
-                <a href="/profile" class="mobile-menu-item">👤 Profile</a>
-                <a href="/guardian" class="mobile-menu-item">👼 Guardian</a>
-                <a href="/roadmap" class="mobile-menu-item">🚀 Roadmap</a>
-                <button class="mobile-menu-item" onclick="loadConversationArchive()">📚 Archive</button>
-                <button class="mobile-menu-item" onclick="showModelStatus()">🤖 Models</button>
-                <button class="mobile-menu-item system-analysis" onclick="showSystemAnalysisModal()">🔧 System Analysis</button>
-                <form method="POST" action="/logout" style="display: inline;">
-                    <button type="submit" class="mobile-menu-item">🚪 Logout</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно System Analysis для мобильных -->
-    <div class="system-analysis-modal" id="systemAnalysisModal">
-        <div class="system-analysis-modal-content">
-            <div class="system-analysis-modal-header">
-                <h3>System Analysis</h3>
-                <button class="system-analysis-modal-close" onclick="closeSystemAnalysisModal()">✕</button>
-            </div>
-            <div class="panel-content">
-                <div class="analysis-section">
-                    <h4>Current Status</h4>
-                    <div class="status-content" id="mobileSystemStatus">
-                        <div class="loading-spinner">Loading analysis...</div>
-                    </div>
-                </div>
                 
-                <div class="tips-section">
-                    <h4>Tips & Insights</h4>
-                    <div class="tips-content" id="mobileSystemTips">
-                        <div class="loading-spinner">Loading tips...</div>
-                    </div>
+                <button type="submit" class="chat-send-btn" id="sendBtn">
+                    <span class="send-icon">↩️</span>
+                </button>
+            </form>
+            
+            <!-- Input Actions -->
+            <div class="input-actions">
+                <button type="button" class="action-btn-small" onclick="attachFile()">📎 Attach</button>
+                <button type="button" class="action-btn-small" onclick="demoReasoning()">🧠 Demo</button>
+                <button type="button" class="action-btn-small" onclick="toggleSystemPanel()">⚙️ System</button>
+            </div>
+            
+            <!-- Hidden file input -->
+            <input type="file" id="fileInput" style="display: none;" accept="image/*,.txt,.pdf,.doc,.docx,.json,.csv">
+        </div>
+    </main>
+
+    <!-- Right System Panel -->
+    <aside class="system-panel" id="systemPanel">
+        <div class="system-panel-header">
+            <h3>System Analysis</h3>
+            <div class="system-panel-controls">
+                <button class="system-panel-btn" onclick="refreshSystemAnalysis()" title="Refresh">🔄</button>
+                <button class="system-panel-btn" onclick="forceRefreshSystemAnalysis()" title="Force Refresh">⚡</button>
+            </div>
+        </div>
+        
+        <div class="system-panel-content">
+            <!-- Current Status -->
+            <div class="system-section">
+                <h4>Current Status</h4>
+                <div class="system-content" id="systemStatusContent">
+                    <div class="loading-spinner"></div>
+                    <p>Loading system analysis...</p>
+                </div>
+            </div>
+            
+            <!-- Tips & Insights -->
+            <div class="system-section">
+                <h4>Tips & Insights</h4>
+                <div class="system-content" id="systemTipsContent">
+                    <div class="loading-spinner"></div>
+                    <p>Loading tips...</p>
+                </div>
+            </div>
+            
+            <!-- System Logs -->
+            <div class="system-section">
+                <h4>Recent Activity</h4>
+                <div class="system-content" id="systemLogsContent">
+                    <div class="loading-spinner"></div>
+                    <p>Loading logs...</p>
                 </div>
             </div>
         </div>
-    </div>
+    </aside>
+</div>
 
-    <!-- Модальное окно Model Status -->
-    <div class="modal" id="modelStatusModal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>🤖 AI Model Status</h2>
-                <span class="close" onclick="closeModal('modelStatusModal')">&times;</span>
-            </div>
-            <div class="modal-body" id="modelStatusContent">
-                <!-- Content will be loaded here -->
-            </div>
+<!-- System Terminal (Collapsible) -->
+<div class="terminal-panel" id="terminalPanel">
+    <div class="terminal-header">
+        <h3>System Terminal</h3>
+        <div class="terminal-controls">
+            <button class="terminal-btn" onclick="toggleTerminal()">Toggle</button>
+            <button class="terminal-btn" onclick="clearTerminal()">Clear</button>
         </div>
     </div>
+    <div class="terminal-content">
+        <div class="terminal-window" id="terminalWindow">
+            <!-- Terminal output will be inserted here -->
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-    <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.4"></script>
-</body>
-</html> 
+{% block script %}
+<script src="{{ url_for('static', path='/js/chat.js') }}"></script>
+{% endblock %} 

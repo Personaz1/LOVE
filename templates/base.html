@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ΔΣ Guardian{% endblock %}</title>
+    
+    <!-- Base CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/layout.css') }}">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    {% block head_extra %}{% endblock %}
+</head>
+<body class="theme-light">
+    <div id="app">
+        <!-- Header Navigation -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="{{ url_for('static', path='/images/logo_small.png') }}" alt="ΔΣ Guardian" class="guardian-icon">
+                    <h1>ΔΣ Guardian</h1>
+                </div>
+                
+                <nav class="main-nav">
+                    <a href="/chat" class="nav-link">💬 Chat</a>
+                    <a href="/profile" class="nav-link">👤 Profile</a>
+                    <a href="/guardian" class="nav-link">👼 Guardian</a>
+                    <a href="/roadmap" class="nav-link">🚀 Roadmap</a>
+                    <a href="/models" class="nav-link">🤖 Models</a>
+                </nav>
+                
+                <div class="header-actions">
+                    {% if username %}
+                        <span class="welcome-text">Welcome, {{ username.title() }}!</span>
+                        <form method="POST" action="/logout" style="display: inline;">
+                            <button type="submit" class="logout-btn">🚪 Logout</button>
+                        </form>
+                    {% endif %}
+                </div>
+                
+                <!-- Mobile menu button -->
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="app-main">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div class="mobile-menu-header">
+                <h3>Menu</h3>
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">✕</button>
+            </div>
+            <div class="mobile-menu-items">
+                <a href="/chat" class="mobile-menu-item">💬 Chat</a>
+                <a href="/profile" class="mobile-menu-item">👤 Profile</a>
+                <a href="/guardian" class="mobile-menu-item">👼 Guardian</a>
+                <a href="/roadmap" class="mobile-menu-item">🚀 Roadmap</a>
+                <a href="/models" class="mobile-menu-item">🤖 Models</a>
+                {% if username %}
+                    <form method="POST" action="/logout" style="display: block;">
+                        <button type="submit" class="mobile-menu-item logout-btn">🚪 Logout</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Base JavaScript -->
+    <script src="{{ url_for('static', path='/js/utils/mobile.js') }}"></script>
+    {% block script %}{% endblock %}
+</body>
+</html> 
