@@ -77,8 +77,10 @@ if not any(isinstance(handler, WebSocketLogHandler) for handler in logger.handle
     logger.addHandler(websocket_handler)
 
 # Отключаем дублирование логов в других модулях
-logging.getLogger('ai_client').handlers = []
-logging.getLogger('memory').handlers = []
+for module_logger in ['ai_client', 'memory', 'ai_client.utils.cache', 'ai_client.tools.tips_generator']:
+    module_logger_obj = logging.getLogger(module_logger)
+    module_logger_obj.handlers = []
+    module_logger_obj.propagate = False
 
 app = FastAPI(title="ΔΣ Guardian - Superintelligent Family Architect", version="1.0.0")
 
@@ -1243,7 +1245,7 @@ async def get_system_analysis(request: Request):
         
         # Проверяем кэш (но с более коротким TTL для тестирования)
         cache_params = {"username": username, "has_user": bool(username)}
-        cached_result = system_cache.get("system_analysis", cache_params, ttl_seconds=60)  # 1 минута для тестирования
+        cached_result = system_cache.get("system_analysis", cache_params, ttl_seconds=300)  # 5 минут
         
         if cached_result:
             logger.info("✅ SYSTEM ANALYSIS: Returning cached result")
@@ -1411,7 +1413,7 @@ Provide your response in this JSON format:
                 # Генерируем динамические советы на основе анализа
                 try:
                     # Получаем профиль как словарь
-                    user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                    user_profile_dict = profile_data if username and profile_data else None
                     tips = ai_client.tips.generate_tips(
                         context=f"System analysis: {analysis_data.get('system_status', '')[:200]}",
                         user_profile=user_profile_dict
@@ -1435,7 +1437,7 @@ Provide your response in this JSON format:
                 # Генерируем динамические советы
                 try:
                     # Получаем профиль как словарь
-                    user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                    user_profile_dict = profile_data if username and profile_data else None
                     tips = ai_client.tips.generate_tips(
                         context=f"System analysis response: {analysis_response[:200]}",
                         user_profile=user_profile_dict
@@ -1455,7 +1457,7 @@ Provide your response in this JSON format:
             # Генерируем динамические советы
             try:
                 # Получаем профиль как словарь
-                user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                user_profile_dict = profile_data if username and profile_data else None
                 tips = ai_client.tips.generate_tips(
                     context=f"System analysis failed: {analysis_response[:200]}",
                     user_profile=user_profile_dict
@@ -1475,7 +1477,7 @@ Provide your response in this JSON format:
             # Генерируем динамические советы
             try:
                 # Получаем профиль как словарь
-                user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                user_profile_dict = profile_data if username and profile_data else None
                 tips = ai_client.tips.generate_tips(
                     context=f"System analysis error: {str(e)}",
                     user_profile=user_profile_dict

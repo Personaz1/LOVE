@@ -581,8 +581,8 @@ class SystemTools:
             
             # Список известных инструментов
             known_tools = [
-                'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
-                'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
+                'read_file', 'write_file', 'edit_file', 'create_file', 'createfile', 'delete_file',
+                'list_files', 'search_files', 'add_model_note', 'addmodelnote', 'add_personal_thought',
                 'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
                 'generate_system_greeting', 'read_user_profile', 'read_emotional_history',
                 'search_user_data', 'update_current_feeling', 'add_user_observation',
@@ -647,7 +647,7 @@ class SystemTools:
             
             # Также ищем прямые вызовы function(...)
             direct_pattern = r'(\w+)\s*\([^)]*\)'
-            for match in re.finditer(direct_pattern, text):
+            for match in re.finditer(direct_pattern, text, re.DOTALL):
                 full_call = match.group(0)
                 
                 # Извлекаем имя функции
@@ -664,6 +664,62 @@ class SystemTools:
                         logger.info(f"✅ TOOL EXTRACTION: Added direct call {full_call}")
                     else:
                         logger.warning(f"⚠️ Invalid tool call: {full_call}")
+            
+            # Ищем tool calls в тексте с правильными кавычками
+            smart_pattern = r'(\w+)\s*\(\s*"([^"]*)"\s*(?:,\s*"([^"]*)"\s*)?\)'
+            for match in re.finditer(smart_pattern, text):
+                func_name = match.group(1)
+                arg1 = match.group(2)
+                arg2 = match.group(3) if match.group(3) else ""
+                
+                if func_name in known_tools:
+                    if arg2:
+                        full_call = f'{func_name}("{arg1}", "{arg2}")'
+                    else:
+                        full_call = f'{func_name}("{arg1}")'
+                    
+                    if self._validate_tool_call(full_call):
+                        full_calls.append(full_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Added smart call {full_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid smart tool call: {full_call}")
+            
+            # Ищем многострочные tool calls с незакрытыми скобками
+            multiline_pattern = r'(\w+)\s*\([^)]*$'
+            for match in re.finditer(multiline_pattern, text, re.MULTILINE):
+                func_name = match.group(1)
+                if func_name in known_tools:
+                    # Ищем закрывающую скобку в следующих строках
+                    start_pos = match.end()
+                    remaining_text = text[start_pos:]
+                    
+                    # Ищем закрывающую скобку
+                    bracket_pos = remaining_text.find(')')
+                    if bracket_pos != -1:
+                        args_part = remaining_text[:bracket_pos]
+                        full_call = f"{func_name}({args_part})"
+                        
+                        if self._validate_tool_call(full_call):
+                            full_calls.append(full_call)
+                            logger.info(f"✅ TOOL EXTRACTION: Added multiline call {full_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid multiline tool call: {full_call}")
+            
+            # Ищем многострочные кавычки """content"""
+            triple_quote_pattern = r'(\w+)\s*\(\s*["\']{3}([^"]*)["\']{3}\s*\)'
+            for match in re.finditer(triple_quote_pattern, text, re.DOTALL):
+                func_name = match.group(1)
+                content = match.group(2)
+                
+                if func_name in known_tools:
+                    # Создаем правильный tool call
+                    full_call = f'{func_name}("placeholder", "{content}")'
+                    
+                    if self._validate_tool_call(full_call):
+                        full_calls.append(full_call)
+                        logger.info(f"✅ TOOL EXTRACTION: Added triple quote call {full_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid triple quote tool call: {full_call}")
             
             # Ищем формат tool_code\nfunction(...)
             tool_code_pattern = r'tool_code\s*\n\s*(\w+)\s*\([^)]*\)'
@@ -828,7 +884,7 @@ class SystemTools:
             # Проверяем что это известный инструмент
             known_tools = [
                 'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
-                'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
+                'list_files', 'search_files', 'add_model_note', 'addmodelnote', 'add_personal_thought',
                 'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
                 'generate_system_greeting', 'read_user_profile', 'read_emotional_history',
                 'search_user_data', 'update_current_feeling', 'add_user_observation',
@@ -852,6 +908,14 @@ class SystemTools:
             if args_str.count('(') != args_str.count(')'):
                 logger.warning(f"⚠️ Unmatched parentheses in tool call: {tool_call}")
                 return False
+            
+            # Для add_model_note разрешаем более мягкую валидацию
+            if func_name in ["add_model_note", "addmodelnote"]:
+                # Проверяем только базовый синтаксис
+                if not args_str.strip():
+                    return False
+                logger.info(f"🔧 VALIDATION: ACCEPTED add_model_note call: {tool_call}")
+                return True
             
             # УПРОЩЕННАЯ ВАЛИДАЦИЯ - принимаем любой tool call с правильным синтаксисом
             logger.info(f"🔧 VALIDATION: ACCEPTED tool call: {tool_call}")
@@ -962,7 +1026,7 @@ class SystemTools:
                 logger.info(f"✅ search_files result: {result}")
                 return result
             
-            elif func_name == "create_file":
+            elif func_name in ["create_file", "createfile"]:
                 args = self._parse_arguments(args_str, ["path", "content"])
                 path = args.get("path", "")
                 content = args.get("content", "")
@@ -1033,7 +1097,7 @@ class SystemTools:
                 logger.info(f"✅ delete_file result: {result}")
                 return f"File deleted: {path}" if result else f"Failed to delete file: {path}"
             
-            elif func_name == "add_model_note":
+            elif func_name in ["add_model_note", "addmodelnote"]:
                 args = self._parse_arguments(args_str, ["note_text", "category"])
                 note_text = args.get("note_text", "System note")
                 category = args.get("category", "general")
