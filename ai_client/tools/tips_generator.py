@@ -47,12 +47,8 @@ class TipsGenerator:
             
         except Exception as e:
             logger.error(f"❌ Error generating tips: {e}")
-            # Fallback на базовые советы
-            return [
-                "Focus on open communication",
-                "Practice active listening", 
-                "Take time for self-care"
-            ]
+            # Fallback на базовые советы - только в крайнем случае
+            return self._get_fallback_tips()
     
     def _parse_tips_response(self, response: str) -> List[str]:
         """Парсит ответ LLM и извлекает советы"""
@@ -75,27 +71,23 @@ class TipsGenerator:
                 return tips[:3]
             # Если нашли меньше 3, дополняем базовыми
             elif len(tips) > 0:
-                fallback_tips = [
-                    "Focus on open communication",
-                    "Practice active listening",
-                    "Take time for self-care"
-                ]
+                fallback_tips = self._get_fallback_tips()
                 return tips + fallback_tips[:3-len(tips)]
             else:
                 # Если ничего не нашли, возвращаем базовые
-                return [
-                    "Focus on open communication",
-                    "Practice active listening", 
-                    "Take time for self-care"
-                ]
+                return self._get_fallback_tips()
                 
         except Exception as e:
             logger.error(f"❌ Error parsing tips response: {e}")
-            return [
-                "Focus on open communication",
-                "Practice active listening",
-                "Take time for self-care"
-            ]
+            return self._get_fallback_tips()
+
+    def _get_fallback_tips(self) -> List[str]:
+        """Возвращает базовые советы для fallback"""
+        return [
+            "Focus on open communication",
+            "Practice active listening", 
+            "Take time for self-care"
+        ]
 
 # Экспортируем для использования
 __all__ = ['TipsGenerator'] 

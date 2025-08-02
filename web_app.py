@@ -1252,19 +1252,36 @@ async def get_system_analysis(request: Request):
         # Если кэша нет, начинаем анализ В ФОНЕ
         logger.info("🔧 SYSTEM ANALYSIS: Starting background analysis...")
         
-        # Возвращаем пустой результат сразу, анализ идет в фоне
-        return JSONResponse({
-            "success": True,
-            "analysis": {
-                "system_status": "Analysis in progress...",
-                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
-                "capabilities": "System is operational"
-            },
-            "theme": "neutral",
-            "timestamp": datetime.now().isoformat(),
-            "background": True
-        })
+        # Генерируем динамические советы для placeholder
+        try:
+            user_profile_dict = None
+            if username:
+                user_profile = UserProfile(username)
+                user_profile_dict = user_profile.get_profile()
+            
+            tips = ai_client.tips.generate_tips(
+                context="System analysis in progress",
+                user_profile=user_profile_dict
+            )
+        except Exception as e:
+            logger.error(f"❌ Tips generation failed: {e}")
+            tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
         
+        # ВОЗВРАЩАЕМ РЕЗУЛЬТАТ ТОЛЬКО ЕСЛИ НЕТ ПОЛЬЗОВАТЕЛЯ
+        if not username:
+            return JSONResponse({
+                "success": True,
+                "analysis": {
+                    "system_status": "Analysis in progress...",
+                    "tips": tips,
+                    "capabilities": "System is operational"
+                },
+                "theme": "neutral",
+                "timestamp": datetime.now().isoformat(),
+                "background": True
+            })
+        
+        # ЕСЛИ ЕСТЬ ПОЛЬЗОВАТЕЛЬ - ВЫПОЛНЯЕМ ПОЛНЫЙ АНАЛИЗ
         if username:
             # If user is authenticated, get their profile and context
             user_profile = UserProfile(username)
@@ -1403,7 +1420,15 @@ Provide your response in this JSON format:
                     logger.info("✅ SYSTEM ANALYSIS: Dynamic tips generated")
                 except Exception as e:
                     logger.error(f"❌ SYSTEM ANALYSIS: Tips generation failed: {e}")
-                    analysis_data["tips"] = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+                    # Используем TipsGenerator для fallback
+                    try:
+                        tips = ai_client.tips.generate_tips(
+                            context="System analysis fallback",
+                            user_profile=user_profile_dict
+                        )
+                        analysis_data["tips"] = tips
+                    except:
+                        analysis_data["tips"] = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
             else:
                 # Fallback if no JSON found
                 logger.warning("⚠️ SYSTEM ANALYSIS: No JSON found in response")
@@ -1415,7 +1440,8 @@ Provide your response in this JSON format:
                         context=f"System analysis response: {analysis_response[:200]}",
                         user_profile=user_profile_dict
                     )
-                except:
+                except Exception as e:
+                    logger.error(f"❌ Tips generation fallback failed: {e}")
                     tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
                 
                 analysis_data = {
@@ -1434,7 +1460,8 @@ Provide your response in this JSON format:
                     context=f"System analysis failed: {analysis_response[:200]}",
                     user_profile=user_profile_dict
                 )
-            except:
+            except Exception as e:
+                logger.error(f"❌ Tips generation JSON fallback failed: {e}")
                 tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
             
             analysis_data = {
@@ -1453,7 +1480,8 @@ Provide your response in this JSON format:
                     context=f"System analysis error: {str(e)}",
                     user_profile=user_profile_dict
                 )
-            except:
+            except Exception as e2:
+                logger.error(f"❌ Tips generation general fallback failed: {e2}")
                 tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
             
             analysis_data = {
