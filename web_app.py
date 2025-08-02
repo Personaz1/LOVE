@@ -348,6 +348,18 @@ async def login_greeting(request: Request):
                 user_profile_dict, recent_messages, emotional_history
             )
             
+            # Get recent model notes for scheduled actions
+            recent_notes = await asyncio.get_event_loop().run_in_executor(
+                None, ai_client.memory.get_model_notes
+            )
+            
+            # Check for scheduled actions (birthday greetings, etc.)
+            scheduled_actions = []
+            if recent_notes and isinstance(recent_notes, dict) and 'notes' in recent_notes:
+                for note in recent_notes['notes']:
+                    if isinstance(note, dict) and 'scheduled_attunement' in str(note.get('category', '')):
+                        scheduled_actions.append(note.get('text', ''))
+            
             # Build rich context for Guardian
             context = f"""
 User Profile:
@@ -366,11 +378,24 @@ Recent Conversation ({len(recent_messages)} messages):
 
 Current Theme: {current_theme}
 
+Recent Model Notes:
+{recent_notes}
+
+Scheduled Actions:
+{chr(10).join([f"- {action}" for action in scheduled_actions])}
+
 System Status: Guardian is ready to provide personalized greeting
 """
             
             # Generate dynamic greeting using Guardian AI
-            greeting_message = f"Create a natural, contextual greeting for {username} based on their current situation and system state. Be creative and avoid generic phrases."
+            greeting_message = f"""Create a natural, contextual greeting for {username} based on their current situation and system state.
+
+IMPORTANT: Check the scheduled actions and execute them if applicable:
+- If there are scheduled birthday greetings or special actions, execute them naturally
+- If this is Meranda's first login and there are birthday greetings scheduled, deliver them warmly
+- If there are any pending actions for this user, incorporate them into the greeting
+
+Be creative and avoid generic phrases. If there are scheduled actions, make them feel natural and contextual."""
             
             greeting = ai_client.chat(
                 message=greeting_message,

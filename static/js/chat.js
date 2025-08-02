@@ -1137,6 +1137,7 @@ async function loadSystemAnalysis() {
         
         if (response.ok) {
             const data = await response.json();
+            console.log('📊 System analysis response:', data);
             
             if (data.success && data.analysis) {
                 updateSystemPanel(data.analysis);
@@ -1145,6 +1146,12 @@ async function loadSystemAnalysis() {
                 if (data.theme) {
                     applyTheme(data.theme);
                 }
+            } else if (data.system_status || data.tips) {
+                // Handle direct response format
+                console.log('📊 Using direct response format');
+                updateSystemPanel(data);
+            } else {
+                console.warn('⚠️ Unknown response format:', data);
             }
         } else {
             console.log('System analysis not available or failed to load');
@@ -1279,6 +1286,8 @@ async function showModelStatus() {
 }
 
 function updateSystemPanel(analysis) {
+    console.log('🔧 Updating system panel with:', analysis);
+    
     // Update system status
     const statusElement = document.getElementById('systemStatus');
     if (statusElement && analysis.system_status) {
@@ -1300,16 +1309,44 @@ function updateSystemPanel(analysis) {
             statusHtml = `<div class="status-text">${analysis.system_status.replace(/\n/g, '<br>')}</div>`;
         }
         statusElement.innerHTML = statusHtml;
+        console.log('✅ System status updated');
     }
     
-    // Update tips
+    // Update tips - check for insights and recommendations
     const tipsElement = document.getElementById('systemTips');
-    if (tipsElement && analysis.tips) {
-        tipsElement.innerHTML = analysis.tips.map(tip => `
-            <div class="tip-item">
-                 ${tip}
-            </div>
-        `).join('');
+    if (tipsElement) {
+        let tipsHtml = '';
+        
+        // Check for insights
+        if (analysis.insights && Array.isArray(analysis.insights)) {
+            tipsHtml += '<div class="tips-section-title">💡 Insights:</div>';
+            analysis.insights.forEach(insight => {
+                tipsHtml += `<div class="tip-item insight">${insight}</div>`;
+            });
+        }
+        
+        // Check for recommendations
+        if (analysis.recommendations && Array.isArray(analysis.recommendations)) {
+            tipsHtml += '<div class="tips-section-title">🎯 Recommendations:</div>';
+            analysis.recommendations.forEach(rec => {
+                tipsHtml += `<div class="tip-item recommendation">${rec}</div>`;
+            });
+        }
+        
+        // Check for old tips format
+        if (analysis.tips && Array.isArray(analysis.tips)) {
+            tipsHtml += '<div class="tips-section-title">💡 Tips:</div>';
+            analysis.tips.forEach(tip => {
+                tipsHtml += `<div class="tip-item">${tip}</div>`;
+            });
+        }
+        
+        if (tipsHtml) {
+            tipsElement.innerHTML = tipsHtml;
+            console.log('✅ Tips updated');
+        } else {
+            tipsElement.innerHTML = '<div class="no-tips">No insights available</div>';
+        }
     }
 }
 
@@ -1328,6 +1365,23 @@ function showSystemError(message) {
 
 // Auto-refresh system analysis every 5 minutes
 setInterval(loadSystemAnalysis, 5 * 60 * 1000);
+
+// Add event listeners for system analysis buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // System analysis refresh buttons (both regular and force refresh)
+    const refreshBtns = document.querySelectorAll('.refresh-btn');
+    refreshBtns.forEach((btn, index) => {
+        if (index === 0) {
+            // First button - regular refresh
+            btn.addEventListener('click', loadSystemAnalysis);
+        } else if (index === 1) {
+            // Second button - force refresh
+            btn.addEventListener('click', forceRefreshSystemAnalysis);
+        }
+    });
+    
+    console.log('🔧 System analysis buttons initialized');
+});
 
 // File upload functionality
 function initializeFileUpload() {
