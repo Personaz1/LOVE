@@ -11,6 +11,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
+import time
 
 from fastapi import FastAPI, Request, Form, Depends, HTTPException, status, Response, UploadFile, File, BackgroundTasks, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, RedirectResponse, FileResponse
@@ -2093,6 +2094,367 @@ async def websocket_logs(websocket: WebSocket):
         pass
     except Exception as e:
         pass
+
+# ===== НОВЫЕ API ENDPOINTS =====
+
+# 1. Голосовой ввод / озвучка
+@app.post("/api/speech-to-text")
+async def speech_to_text(request: Request):
+    """Преобразование голоса в текст"""
+    try:
+        # TODO: Implement Whisper/Google STT
+        return {"text": "Voice input placeholder", "confidence": 0.95}
+    except Exception as e:
+        logger.error(f"Speech-to-text error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/text-to-speech")
+async def text_to_speech(request: Request):
+    """Преобразование текста в голос"""
+    try:
+        # TODO: Implement ElevenLabs/Bark TTS
+        return {"audio_url": "/static/audio/generated.mp3", "duration": 3.5}
+    except Exception as e:
+        logger.error(f"Text-to-speech error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 2. Пользовательские заметки
+@app.post("/api/notes/add")
+async def add_note(request: Request):
+    """Добавить заметку"""
+    try:
+        data = await request.json()
+        note_id = f"note_{int(time.time())}"
+        note_data = {
+            "id": note_id,
+            "content": data.get("content", ""),
+            "tags": data.get("tags", []),
+            "created_at": datetime.now().isoformat(),
+            "pinned": data.get("pinned", False)
+        }
+        # TODO: Save to database/file
+        return {"success": True, "note_id": note_id}
+    except Exception as e:
+        logger.error(f"Add note error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/notes/list")
+async def list_notes(request: Request):
+    """Получить список заметок"""
+    try:
+        # TODO: Load from database/file
+        notes = [
+            {"id": "note_1", "content": "Sample note", "tags": ["important"], "pinned": True}
+        ]
+        return {"notes": notes}
+    except Exception as e:
+        logger.error(f"List notes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/notes/{note_id}")
+async def delete_note(request: Request, note_id: str):
+    """Удалить заметку"""
+    try:
+        # TODO: Delete from database/file
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Delete note error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 3. Filechat / PDF/CSV upload + QA
+@app.post("/api/files/upload")
+async def upload_file_for_chat(
+    request: Request,
+    file: UploadFile = File(...)
+):
+    """Загрузить файл для чата"""
+    try:
+        # TODO: Implement PDF/CSV processing
+        file_id = f"file_{int(time.time())}"
+        return {
+            "file_id": file_id,
+            "filename": file.filename,
+            "size": file.size,
+            "type": file.content_type
+        }
+    except Exception as e:
+        logger.error(f"File upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/files/query")
+async def query_file(request: Request):
+    """Задать вопрос по файлу"""
+    try:
+        data = await request.json()
+        # TODO: Implement file QA with embeddings
+        return {"answer": "File query response placeholder"}
+    except Exception as e:
+        logger.error(f"File query error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 4. Динамическая память и аннотации
+@app.post("/api/memory/add_context_chunk")
+async def add_memory_chunk(request: Request):
+    """Добавить кусок контекста в память"""
+    try:
+        data = await request.json()
+        chunk_id = f"chunk_{int(time.time())}"
+        # TODO: Save to vector database
+        return {"chunk_id": chunk_id, "success": True}
+    except Exception as e:
+        logger.error(f"Add memory chunk error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/memory/search")
+async def search_memory(request: Request, query: str):
+    """Поиск в памяти"""
+    try:
+        # TODO: Implement vector search
+        return {"results": [], "query": query}
+    except Exception as e:
+        logger.error(f"Memory search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/memory/tag")
+async def tag_memory(request: Request):
+    """Тегировать память"""
+    try:
+        data = await request.json()
+        # TODO: Implement memory tagging
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Memory tag error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 5. Расширенные system_tools
+@app.get("/api/tools/network/ping")
+async def ping_host(request: Request, host: str):
+    """Ping хоста"""
+    try:
+        # TODO: Implement ping
+        return {"host": host, "status": "reachable", "latency": 15}
+    except Exception as e:
+        logger.error(f"Ping error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tools/network/ports")
+async def scan_ports(request: Request, host: str):
+    """Сканирование портов"""
+    try:
+        # TODO: Implement port scanning
+        return {"host": host, "open_ports": [80, 443, 22]}
+    except Exception as e:
+        logger.error(f"Port scan error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 6. Интерактивные утилиты
+@app.post("/api/tools/code_exec")
+async def execute_code(request: Request):
+    """Безопасное выполнение кода"""
+    try:
+        data = await request.json()
+        # TODO: Implement sandboxed code execution
+        return {"output": "Code execution placeholder", "success": True}
+    except Exception as e:
+        logger.error(f"Code execution error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/tools/terminal")
+async def terminal_command(request: Request):
+    """Безопасные команды терминала"""
+    try:
+        data = await request.json()
+        # TODO: Implement read-only terminal
+        return {"output": "Terminal command placeholder", "success": True}
+    except Exception as e:
+        logger.error(f"Terminal command error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 7. API действий (как у GPTs)
+@app.post("/api/action/search_web")
+async def search_web_action(request: Request):
+    """Действие: поиск в вебе"""
+    try:
+        data = await request.json()
+        # TODO: Implement web search
+        return {"results": [], "query": data.get("query", "")}
+    except Exception as e:
+        logger.error(f"Web search action error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/action/generate_image")
+async def generate_image_action(request: Request):
+    """Действие: генерация изображения"""
+    try:
+        data = await request.json()
+        # TODO: Implement image generation
+        return {"image_url": "/static/images/generated.png"}
+    except Exception as e:
+        logger.error(f"Image generation action error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/action/fill_form")
+async def fill_form_action(request: Request):
+    """Действие: заполнение формы"""
+    try:
+        data = await request.json()
+        # TODO: Implement form filling
+        return {"success": True, "form_data": data}
+    except Exception as e:
+        logger.error(f"Form fill action error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ===== AGI UI GENERATION =====
+
+@app.post("/api/ui/generate")
+async def generate_ui_interface(request: Request):
+    """Генерация UI интерфейса моделью в реальном времени"""
+    try:
+        data = await request.json()
+        context = data.get("context", "")
+        user_intent = data.get("intent", "")
+        current_state = data.get("state", {})
+        
+        # Получаем пользователя
+        username = await get_current_user(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        # Генерируем UI описание через модель
+        ui_prompt = f"""
+        You are an AGI interface designer. Generate a JSON description of the UI based on:
+        
+        CONTEXT: {context}
+        USER INTENT: {user_intent}
+        CURRENT STATE: {current_state}
+        USER: {username}
+        
+        Return a JSON object with this structure:
+        {{
+            "type": "interface",
+            "layout": "vertical|horizontal|grid",
+            "theme": "light|dark|auto",
+            "components": [
+                {{
+                    "type": "text|input|button|card|chat|image|chart|sidebar|header",
+                    "id": "unique_id",
+                    "content": "text content",
+                    "props": {{...}},
+                    "actions": ["action_name"],
+                    "style": {{...}}
+                }}
+            ],
+            "events": [
+                {{
+                    "trigger": "click|input|load",
+                    "action": "action_name",
+                    "target": "component_id"
+                }}
+            ]
+        }}
+        
+        Available component types:
+        - text: Simple text display
+        - input: Text input field
+        - button: Clickable button
+        - card: Container with content
+        - chat: Chat interface
+        - image: Image display
+        - chart: Data visualization
+        - sidebar: Side navigation
+        - header: Top navigation
+        
+        Make the interface adaptive to user context and intent.
+        """
+        
+        # Вызываем модель для генерации UI
+        ai_client = AIClient()
+        ui_response = ai_client.chat(ui_prompt)
+        
+        # Парсим JSON из ответа
+        try:
+            import re
+            json_match = re.search(r'\{.*\}', ui_response, re.DOTALL)
+            if json_match:
+                ui_description = json.loads(json_match.group())
+                return {
+                    "success": True,
+                    "ui": ui_description,
+                    "raw_response": ui_response
+                }
+            else:
+                # Fallback - базовый интерфейс
+                return {
+                    "success": True,
+                    "ui": {
+                        "type": "interface",
+                        "layout": "vertical",
+                        "theme": "auto",
+                        "components": [
+                            {
+                                "type": "text",
+                                "id": "welcome",
+                                "content": f"Welcome {username}! How can I help you?",
+                                "style": {"fontSize": "1.5rem", "marginBottom": "1rem"}
+                            },
+                            {
+                                "type": "input",
+                                "id": "user_input",
+                                "placeholder": "Describe what you want to do...",
+                                "style": {"width": "100%", "padding": "0.5rem"}
+                            },
+                            {
+                                "type": "button",
+                                "id": "submit",
+                                "content": "Generate Interface",
+                                "actions": ["generate_ui"],
+                                "style": {"backgroundColor": "#3b82f6", "color": "white"}
+                            }
+                        ]
+                    },
+                    "raw_response": ui_response
+                }
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse UI JSON: {e}")
+            raise HTTPException(status_code=500, detail="Invalid UI description")
+            
+    except Exception as e:
+        logger.error(f"UI generation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ui/action")
+async def handle_ui_action(request: Request):
+    """Обработка действий от UI компонентов"""
+    try:
+        data = await request.json()
+        action = data.get("action")
+        component_id = data.get("component_id")
+        payload = data.get("payload", {})
+        
+        username = await get_current_user(request)
+        if not username:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        # Обрабатываем действия
+        if action == "generate_ui":
+            # Генерируем новый UI на основе действия
+            return await generate_ui_interface(request)
+        elif action == "reset_context":
+            # Сброс контекста
+            return {"success": True, "message": "Context reset"}
+        elif action == "analyze_file":
+            # Анализ файла
+            return {"success": True, "message": "File analysis started"}
+        elif action == "memory_search":
+            # Поиск в памяти
+            query = payload.get("query", "")
+            return {"success": True, "results": []}
+        else:
+            return {"success": False, "error": f"Unknown action: {action}"}
+            
+    except Exception as e:
+        logger.error(f"UI action error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
