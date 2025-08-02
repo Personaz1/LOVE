@@ -30,6 +30,9 @@ class Logger:
             file_handler = logging.FileHandler('app.log')
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
+        else:
+            # Если обработчики уже есть, просто используем существующий логгер
+            pass
     
     def info(self, message: str):
         """Логирование информационного сообщения"""

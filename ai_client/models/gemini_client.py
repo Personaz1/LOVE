@@ -2,6 +2,7 @@
 Gemini API клиент - УПРОЩЕННАЯ АРХИТЕКТУРА
 """
 
+import base64
 import os
 import time
 import logging
@@ -32,10 +33,12 @@ class GeminiClient:
         
         # Инициализируем Vision API
         self.vision_client = None
+        self.vision_api_key = None
         try:
             vision_api_key = self.config.get_vision_api_key()
             if vision_api_key:
                 self.vision_api_key = vision_api_key
+                self.vision_client = True  # Mark as available
                 logger.info("✅ Google Cloud Vision API key configured")
             else:
                 logger.warning("⚠️ No Google Cloud Vision API key provided")
@@ -98,73 +101,57 @@ class GeminiClient:
             return "❌ Не удалось сгенерировать ответ"
             
         except Exception as e:
-            logger.error(f"❌ Error parsing Gemini response: {e}")
-            return f"❌ Error parsing response: {str(e)}"
+            logger.error(f"❌ Parse error: {e}")
+            return f"❌ Parse error: {str(e)}"
     
-    def _get_current_model(self):
-        """Получить текущую модель"""
+    def _get_current_model(self) -> str:
+        """Получаем текущую модель"""
         return self.models[self.current_model_index]['name']
     
     def _switch_to_next_model(self):
-        """Переключиться на следующую модель"""
+        """Переключаемся на следующую модель"""
         self.current_model_index = (self.current_model_index + 1) % len(self.models)
-        model_name = self.models[self.current_model_index]['name']
-        logger.info(f"🚀 Using model: {model_name}")
-        return model_name
+        logger.info(f"🚀 Using model: {self._get_current_model()}")
     
     def switch_to_model(self, model_name: str) -> bool:
-        """Переключиться на конкретную модель"""
+        """Переключаемся на конкретную модель"""
         for i, model in enumerate(self.models):
             if model['name'] == model_name:
                 self.current_model_index = i
                 logger.info(f"🚀 Switched to model: {model_name}")
                 return True
-        logger.error(f"❌ Model {model_name} not found")
         return False
     
     def get_model_status(self) -> Dict[str, Any]:
-        """Получить статус моделей"""
-        current_model = self._get_current_model()
-        
-        available_models = []
-        for i, model in enumerate(self.models):
-            model_info = {
-                'name': model['name'],
-                'quota': model.get('quota', 'undefined'),
-                'has_error': False
-            }
-            available_models.append(model_info)
-        
+        """Получаем статус моделей"""
+        current_model = self.models[self.current_model_index]
         return {
-            'current_model': current_model,
-            'current_quota': "undefined",
-            'model_index': self.current_model_index,
-            'total_models': len(self.models),
-            'available_models': available_models,
-            'model_errors': 0
+            'current_model': current_model['name'],
+            'current_quota': current_model['quota'],
+            'available_models': [model['name'] for model in self.models],
+            'model_index': self.current_model_index
         }
     
     def get_current_model(self) -> str:
-        """Получить имя текущей модели"""
+        """Получаем имя текущей модели"""
         return self._get_current_model()
     
     def _build_prompt(self, system_prompt: str, user_message: str, context: Optional[str] = None, user_profile: Optional[Dict[str, Any]] = None) -> str:
-        """Построение промпта"""
-        prompt_parts = [system_prompt]
-        
-        if user_profile:
-            prompt_parts.append(f"\nUser Profile: {json.dumps(user_profile, ensure_ascii=False)}")
+        """Строим промпт с контекстом"""
+        full_prompt = system_prompt
         
         if context:
-            prompt_parts.append(f"\nContext: {context}")
+            full_prompt += f"\n\nContext: {context}"
         
-        prompt_parts.append(f"\nUser: {user_message}")
-        prompt_parts.append("\nAssistant:")
+        if user_profile:
+            profile_info = f"User Profile: {json.dumps(user_profile, ensure_ascii=False)}"
+            full_prompt += f"\n\n{profile_info}"
         
-        return "\n".join(prompt_parts)
+        full_prompt += f"\n\nUser: {user_message}"
+        return full_prompt
     
     async def generate_streaming_response(self, system_prompt: str, user_message: str, context: Optional[str] = None, user_profile: Optional[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
-        """Streaming ответ - УПРОЩЕННАЯ ВЕРСИЯ"""
+        """Генерируем стриминг ответ"""
         try:
             model_name = self._get_current_model()
             model = genai.GenerativeModel(model_name)
@@ -172,7 +159,6 @@ class GeminiClient:
             full_prompt = self._build_prompt(system_prompt, user_message, context, user_profile)
             response = model.generate_content(full_prompt, stream=True)
             
-            # Обрабатываем streaming ответ через универсальный парсер
             for chunk in response:
                 # Используем универсальный парсер для каждого chunk
                 chunk_text = self._parse_gemini_response(chunk)
@@ -219,10 +205,42 @@ class GeminiClient:
             else:
                 return f"❌ Error: {error_msg}"
     
+    def _analyze_image_with_llm(self, image_path: str, prompt: str = "") -> str:
+        """Анализ изображения через LLM модель с vision"""
+        try:
+            import base64
+            
+            # Читаем изображение
+            with open(image_path, 'rb') as image_file:
+                image_data = image_file.read()
+            
+            # Кодируем в base64
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            
+            # Создаем модель с vision
+            model_name = self._get_current_model()
+            model = genai.GenerativeModel(model_name)
+            
+            # Создаем prompt с изображением
+            if not prompt:
+                prompt = "Analyze this image and describe what you see in detail."
+            
+            # Генерируем ответ
+            response = model.generate_content([
+                prompt,
+                {"mime_type": "image/png", "data": image_base64}
+            ])
+            
+            return self._parse_gemini_response(response)
+            
+        except Exception as e:
+            logger.error(f"LLM vision analysis error: {e}")
+            return f"❌ LLM vision analysis failed: {str(e)}"
+    
     def _analyze_image_with_vision_api(self, image_path: str) -> str:
         """Анализ изображения через Vision API"""
         try:
-            if not self.config.is_vision_configured():
+            if not self.vision_api_key:
                 return "❌ Vision API not configured"
             
             with open(image_path, 'rb') as image_file:
@@ -234,7 +252,7 @@ class GeminiClient:
             request_data = {
                 "requests": [
                     {
-                        "image": {"content": content.decode('latin1')},
+                        "image": {"content": base64.b64encode(content).decode("utf-8")},
                         "features": [
                             {"type": "LABEL_DETECTION", "maxResults": 10},
                             {"type": "TEXT_DETECTION"},

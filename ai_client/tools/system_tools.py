@@ -167,7 +167,7 @@ class SystemTools:
             return f"❌ Error diagnosing system health: {str(e)}"
     
     def analyze_image(self, image_path: str, user_context: str = "") -> str:
-        """Анализ изображения"""
+        """Анализ изображения с fallback на Vision API"""
         try:
             # Проверяем существование файла
             if not os.path.exists(image_path):
@@ -180,20 +180,34 @@ class SystemTools:
             if file_ext not in image_extensions:
                 return f"❌ Not a valid image file: {image_path}"
             
-            # Анализируем через Vision API
-            if self.config.is_vision_configured():
-                # Используем Vision API из gemini_client
+            # Сначала пробуем через LLM модель с vision
+            try:
                 from ..models.gemini_client import GeminiClient
                 gemini_client = GeminiClient()
+                
+                # Пробуем через Gemini с vision
+                prompt = f"Analyze this image and describe what you see. {user_context if user_context else ''}"
+                llm_result = gemini_client._analyze_image_with_llm(image_path, prompt)
+                
+                if llm_result and not llm_result.startswith("❌"):
+                    result = f"🔍 LLM Analysis: {llm_result}"
+                    if user_context:
+                        result += f"\n\nUser Context: {user_context}"
+                    return result
+                    
+            except Exception as e:
+                logger.warning(f"LLM vision analysis failed: {e}")
+            
+            # Fallback на Vision API
+            if self.config.is_vision_configured():
                 vision_result = gemini_client._analyze_image_with_vision_api(image_path)
                 
-                # Добавляем контекст пользователя
+                result = f"🔍 Vision API Analysis: {vision_result}"
                 if user_context:
-                    return f"🔍 Image Analysis: {vision_result}\n\nUser Context: {user_context}"
-                else:
-                    return f"🔍 Image Analysis: {vision_result}"
+                    result += f"\n\nUser Context: {user_context}"
+                return result
             else:
-                return f"❌ Vision API not configured for image analysis"
+                return f"❌ No vision capabilities available"
             
         except Exception as e:
             logger.error(f"Error analyzing image {image_path}: {e}")

@@ -66,7 +66,9 @@ websocket_handler = WebSocketLogHandler()
 websocket_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 
 # Добавляем WebSocket handler только к основному логгеру
-logger.addHandler(websocket_handler)
+# Проверяем, не добавлен ли уже WebSocket handler
+if not any(isinstance(handler, WebSocketLogHandler) for handler in logger.handlers):
+    logger.addHandler(websocket_handler)
 
 app = FastAPI(title="ΔΣ Guardian - Superintelligent Family Architect", version="1.0.0")
 
@@ -237,7 +239,8 @@ def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
     # Valid credentials
     valid_credentials = {
         "meranda": "musser",
-        "stepan": "stepan"
+        "stepan": "stepan",
+        "guest": "guest"
     }
     
     # Simple authentication - in production, use proper password hashing
@@ -264,7 +267,8 @@ def get_current_user(request: Request) -> Optional[str]:
     # Valid credentials
     valid_credentials = {
         "meranda": "musser",
-        "stepan": "stepan"
+        "stepan": "stepan",
+        "guest": "guest"
     }
     
     if username in valid_credentials and password == valid_credentials[username]:
@@ -288,7 +292,8 @@ async def login(
     # Valid credentials
     valid_credentials = {
         "meranda": "musser",
-        "stepan": "stepan"  # Add stepan user
+        "stepan": "stepan",  # Add stepan user
+        "guest": "guest"
     }
     
     # Debug logging
@@ -794,25 +799,10 @@ async def get_conversation_history(
         return response
     
     try:
-        # Проверяем кэш для истории чата
-        cache_key = f"conversation_history_{username}_{limit}"
-        cached_history = system_cache.get(cache_key)
-        if cached_history:
-            logger.info(f"✅ CONVERSATION HISTORY: Returning cached result for {username}")
-            return JSONResponse({
-                "success": True,
-                "history": cached_history,
-                "count": len(cached_history),
-                "cached": True
-            })
-        
-        # Optimize limit for faster loading
+        # Убираем кэш для истории - всегда получаем свежие данные
         optimized_limit = min(limit, 50)
         logger.info(f"🔄 CONVERSATION HISTORY: Fetching fresh data for {username}")
         history = conversation_history.get_recent_history(limit=optimized_limit)
-        
-        # Кэшируем результат на 2 минуты
-        system_cache.set(cache_key, history, ttl_seconds=120)
         
         return JSONResponse({
             "success": True,
@@ -1639,7 +1629,7 @@ async def analyze_image(request: Request):
         return JSONResponse({
             "success": True,
             "analysis": analysis,
-            "model_used": ai_client.models[ai_client.current_model_index]['name'],
+            "model_used": ai_client.gemini_client.get_current_model(),
             "vision_api_available": ai_client.gemini_client.vision_client is not None
         })
         
