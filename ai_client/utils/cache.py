@@ -5,6 +5,7 @@
 import time
 import json
 import os
+import asyncio
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
@@ -12,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SystemCache:
-    """Кэш для системных операций"""
+    """Кэш для системных операций с Redis"""
     
     def __init__(self):
         self.cache_dir = "cache"
@@ -20,6 +21,16 @@ class SystemCache:
         
         # Кэш в памяти для быстрого доступа
         self.memory_cache = {}
+        
+        # Redis для кэширования
+        try:
+            import redis
+            self.redis_client = redis.Redis(host='localhost', port=6379, db=0)
+            self.redis_available = True
+            logger.info("✅ Redis cache initialized")
+        except Exception as e:
+            self.redis_available = False
+            logger.warning(f"⚠️ Redis not available, using file cache: {e}")
         
     def ensure_cache_dir(self):
         """Создаем директорию кэша если не существует"""
@@ -39,6 +50,16 @@ class SystemCache:
         """Получить данные из кэша"""
         try:
             cache_key = self.get_cache_key(operation, params)
+            
+            # Сначала проверяем Redis
+            if self.redis_available:
+                try:
+                    data = self.redis_client.get(cache_key)
+                    if data:
+                        logger.info(f"✅ Cache HIT (Redis): {operation}")
+                        return json.loads(data)
+                except Exception as e:
+                    logger.warning(f"⚠️ Redis get error: {e}")
             
             # Проверяем память
             if cache_key in self.memory_cache:
@@ -90,15 +111,23 @@ class SystemCache:
                 "created_at": datetime.now().isoformat()
             }
             
+            # Сначала сохраняем в Redis
+            if self.redis_available:
+                try:
+                    self.redis_client.setex(cache_key, ttl_seconds, json.dumps(data))
+                    logger.info(f"💾 Cache SET (Redis): {operation} (TTL: {ttl_seconds}s)")
+                except Exception as e:
+                    logger.warning(f"⚠️ Redis set error: {e}")
+            
             # Сохраняем в память
             self.memory_cache[cache_key] = cache_data
             
-            # Сохраняем в файл
+            # Сохраняем в файл как fallback
             cache_file = os.path.join(self.cache_dir, f"{cache_key}.json")
             with open(cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, indent=2, ensure_ascii=False)
             
-            logger.info(f"💾 Cache SET: {operation} (TTL: {ttl_seconds}s)")
+            logger.info(f"💾 Cache SET (file): {operation} (TTL: {ttl_seconds}s)")
             
         except Exception as e:
             logger.error(f"❌ Cache set error: {e}")
