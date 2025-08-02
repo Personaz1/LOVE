@@ -2854,3 +2854,156 @@ body.theme-dark .input-group textarea {
     border-color: var(--border-color);
     color: var(--text-primary);
 } 
+
+/* REASONING VISUALIZATION STYLES */
+
+/* Thought bubble container */
+.thought-container {
+    margin: 10px 0;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+    border-left: 4px solid #4a90e2;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    animation: thoughtSlideIn 0.5s ease-out;
+    position: relative;
+}
+
+.thought-container::before {
+    content: "🤖";
+    position: absolute;
+    left: -8px;
+    top: 8px;
+    background: #4a90e2;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+.thought-label {
+    font-size: 12px;
+    color: #4a90e2;
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.thought-text {
+    font-style: italic;
+    color: #2c3e50;
+    line-height: 1.4;
+    font-size: 14px;
+}
+
+/* Thinking animation */
+.thinking-dots {
+    display: inline-block;
+    animation: thinkingDots 1.5s infinite;
+}
+
+@keyframes thinkingDots {
+    0%, 20% { content: "."; }
+    40% { content: ".."; }
+    60% { content: "..."; }
+    80%, 100% { content: ""; }
+}
+
+@keyframes thoughtSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Thought vs Answer distinction */
+.message-content.thought-message {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid #6c757d;
+}
+
+.message-content.answer-message {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-left: 4px solid #28a745;
+}
+
+/* Reasoning indicator */
+.reasoning-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 8px;
+    padding: 4px 8px;
+    background: rgba(108, 117, 125, 0.1);
+    border-radius: 12px;
+}
+
+.reasoning-indicator::before {
+    content: "🧠";
+    font-size: 14px;
+}
+
+/* Thought bubble variations */
+.thought-container.analysis {
+    border-left-color: #17a2b8;
+    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+}
+
+.thought-container.planning {
+    border-left-color: #ffc107;
+    background: linear-gradient(135deg, #fffbf0 0%, #fff3cd 100%);
+}
+
+.thought-container.decision {
+    border-left-color: #28a745;
+    background: linear-gradient(135deg, #f0fff4 0%, #d4edda 100%);
+}
+
+/* Mobile responsive thoughts */
+@media (max-width: 768px) {
+    .thought-container {
+        margin: 8px 0;
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+    
+    .thought-label {
+        font-size: 11px;
+    }
+    
+    .thought-text {
+        font-size: 13px;
+    }
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+    .thought-container {
+        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        border-left-color: #63b3ed;
+    }
+    
+    .thought-text {
+        color: #e2e8f0;
+    }
+    
+    .thought-label {
+        color: #63b3ed;
+    }
+    
+    .reasoning-indicator {
+        background: rgba(99, 179, 237, 0.1);
+        color: #a0aec0;
+    }
+}

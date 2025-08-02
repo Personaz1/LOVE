@@ -306,6 +306,13 @@ async function handleStreamData(data) {
             console.log('Status:', data.message);
             break;
             
+        case 'thought':
+            // Handle reasoning thoughts
+            if (data.content) {
+                addThoughtMessage(data.content);
+            }
+            break;
+            
         case 'chunk':
             if (!currentStreamingMessage) {
                 currentStreamingMessage = addStreamingMessage();
@@ -373,7 +380,8 @@ function addStreamingMessage() {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message ai-message streaming';
     messageDiv.innerHTML = `
-        <div class="message-content">
+        <div class="message-content answer-message">
+            <div class="reasoning-indicator">🧠 Reasoning in progress...</div>
             <div class="message-text"></div>
             <div class="message-time">${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
         </div>
@@ -381,16 +389,6 @@ function addStreamingMessage() {
     
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.appendChild(messageDiv);
-    
-    // Remove typing indicator - it's just decorative
-    // const typingIndicator = document.createElement('div');
-    // typingIndicator.className = 'typing-indicator';
-    // typingIndicator.innerHTML = `
-    //     <div class="typing-dot"></div>
-    //     <div class="typing-dot"></div>
-    //     <div class="typing-dot"></div>
-    // `;
-    // messagesContainer.appendChild(typingIndicator);
     
     scrollToBottom();
     
@@ -405,10 +403,16 @@ function finalizeStreamingMessage(messageElement) {
         typingIndicator.remove();
     }
     
-    // Remove streaming class
+    // Remove streaming class and reasoning indicator
     const messageDiv = messageElement.closest('.message');
     if (messageDiv) {
         messageDiv.classList.remove('streaming');
+        
+        // Remove reasoning indicator
+        const reasoningIndicator = messageDiv.querySelector('.reasoning-indicator');
+        if (reasoningIndicator) {
+            reasoningIndicator.remove();
+        }
     }
     
     // Add any final formatting or processing here
@@ -718,6 +722,70 @@ function scrollToBottom() {
         requestAnimationFrame(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         });
+    }
+}
+
+// Add thought message with reasoning visualization
+function addThoughtMessage(thoughtText) {
+    const messagesContainer = document.getElementById('messagesContainer');
+    
+    const thoughtDiv = document.createElement('div');
+    thoughtDiv.className = 'message ai-message thought-message';
+    thoughtDiv.innerHTML = `
+        <div class="message-content thought-container">
+            <div class="thought-label">🤖 Думает:</div>
+            <div class="thought-text">${formatMessage(thoughtText)}</div>
+        </div>
+    `;
+    
+    messagesContainer.appendChild(thoughtDiv);
+    scrollToBottom();
+    
+    // Add animation delay for smooth appearance
+    setTimeout(() => {
+        thoughtDiv.style.opacity = '1';
+    }, 100);
+}
+
+// Demo reasoning visualization
+function demoReasoning() {
+    const thoughts = [
+        "Анализирую запрос пользователя...",
+        "Определяю необходимые инструменты...",
+        "Планирую последовательность действий...",
+        "Выполняю инструментальные вызовы...",
+        "Формирую финальный ответ..."
+    ];
+    
+    let index = 0;
+    const interval = setInterval(() => {
+        if (index < thoughts.length) {
+            addThoughtMessage(thoughts[index]);
+            index++;
+        } else {
+            clearInterval(interval);
+            // Add final response
+            setTimeout(() => {
+                addMessage("Демо reasoning завершено! Система работает корректно.", 'ai');
+            }, 1000);
+        }
+    }, 2000);
+}
+
+// Add reasoning indicator to AI messages
+function addReasoningIndicator(messageElement) {
+    const indicator = document.createElement('div');
+    indicator.className = 'reasoning-indicator';
+    indicator.textContent = 'Reasoning in progress...';
+    
+    messageElement.insertBefore(indicator, messageElement.firstChild);
+}
+
+// Remove reasoning indicator when message is complete
+function removeReasoningIndicator(messageElement) {
+    const indicator = messageElement.querySelector('.reasoning-indicator');
+    if (indicator) {
+        indicator.remove();
     }
 }
 

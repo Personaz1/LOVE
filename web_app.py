@@ -101,6 +101,7 @@ SESSION_SECRET = secrets.token_urlsafe(32)
 
 # Initialize components
 ai_client = AIClient()
+gemini_client = ai_client.gemini_client  # Прямой доступ к Gemini клиенту
 # conversation_history = ConversationHistory() # This line is removed
 
 def get_recent_file_changes() -> str:
@@ -397,7 +398,7 @@ IMPORTANT: Check the scheduled actions and execute them if applicable:
 
 Be creative and avoid generic phrases. If there are scheduled actions, make them feel natural and contextual."""
             
-            greeting = ai_client.chat(
+            greeting = gemini_client.chat(
                 message=greeting_message,
                 user_profile=user_profile_dict,
                 conversation_context=context,
@@ -490,18 +491,30 @@ async def chat_stream_endpoint(
                     full_context += f"- User: {msg.get('message', '')}\n"
                     full_context += f"- AI: {msg.get('ai_response', '')}\n"
             
-            # Track the complete response
+            # Track the complete response with thoughts
             full_response = ""
+            thoughts = []
             
-            async for chunk in ai_client.generate_streaming_response(
+            async for chunk_data in gemini_client.generate_streaming_response_with_thoughts(
                 system_prompt=guardian_profile.get_system_prompt(),
                 user_message=message,
                 context=full_context,
                 user_profile=user_profile_dict
             ):
-                if chunk:
-                    full_response += chunk
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                if chunk_data:
+                    chunk_text = chunk_data.get('text', '')
+                    is_thought = chunk_data.get('thought', False)
+                    chunk_type = chunk_data.get('type', 'answer')
+                    
+                    if chunk_text:
+                        if is_thought:
+                            thoughts.append(chunk_text)
+                            # Отправляем thought отдельно
+                            yield f"data: {json.dumps({'type': 'thought', 'content': chunk_text})}\n\n"
+                        else:
+                            full_response += chunk_text
+                            # Отправляем обычный chunk
+                            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk_text})}\n\n"
             
             # ОБРАБОТКА TOOL CALLS В STREAMING
             logger.info(f"🔧 STREAMING CHAT: Processing response for tool calls...")
@@ -588,18 +601,30 @@ async def chat_endpoint(
                 full_context += f"- User: {msg.get('message', '')}\n"
                 full_context += f"- AI: {msg.get('ai_response', '')}\n"
         
-        # Generate AI response
-        ai_response = ai_client.chat(
-            message=message,
-            user_profile=user_profile_dict,
-            conversation_context=full_context
+        # Generate AI response with reasoning
+        response_with_thoughts = gemini_client._parse_gemini_response_with_thoughts(
+            gemini_client.chat(
+                message=message,
+                user_profile=user_profile_dict,
+                conversation_context=full_context
+            )
         )
+        logger.info(f"🔧 WEB_APP: Response with thoughts: {response_with_thoughts}")
         
         # ОБРАБОТКА TOOL CALLS
         logger.info(f"🔧 CHAT: Processing response for tool calls...")
         
-        # Извлекаем tool calls из ответа
-        tool_calls = ai_client._extract_tool_calls(ai_response)
+        # Используем tool_calls из response_with_thoughts (уже извлечены в _parse_gemini_response_with_thoughts)
+        tool_calls = response_with_thoughts.get('tool_calls', [])
+        logger.info(f"🔧 WEB_APP: Got {len(tool_calls)} tool calls from response_with_thoughts")
+        logger.info(f"🔧 WEB_APP: Tool calls content: {tool_calls}")
+        logger.info(f"🔧 WEB_APP: response_with_thoughts keys: {list(response_with_thoughts.keys())}")
+        
+        # Проверяем что tool_calls не пустые
+        if not tool_calls:
+            logger.warning(f"⚠️ WEB_APP: No tool_calls found in response_with_thoughts")
+            logger.warning(f"⚠️ WEB_APP: response_with_thoughts type: {type(response_with_thoughts)}")
+            logger.warning(f"⚠️ WEB_APP: response_with_thoughts content: {response_with_thoughts}")
         
         if tool_calls:
             logger.info(f"🔧 CHAT: Found {len(tool_calls)} tool calls: {tool_calls}")
@@ -607,28 +632,38 @@ async def chat_endpoint(
             # Выполняем каждый tool call
             for tool_call in tool_calls:
                 try:
-                    logger.info(f"🔧 CHAT: Executing tool call: {tool_call}")
-                    tool_result = ai_client._execute_tool_call(tool_call)
+                    # Извлекаем tool_code из JSON формата {"tool_code": "..."}
+                    if isinstance(tool_call, dict) and 'tool_code' in tool_call:
+                        tool_code = tool_call['tool_code']
+                        logger.info(f"🔧 CHAT: Extracted tool_code: {tool_code}")
+                    else:
+                        tool_code = str(tool_call)
+                        logger.info(f"🔧 CHAT: Using tool_call as string: {tool_code}")
+                    
+                    logger.info(f"🔧 CHAT: Executing tool call: {tool_code}")
+                    tool_result = ai_client._execute_tool_call(tool_code)
                     logger.info(f"✅ CHAT: Tool result: {tool_result[:200]}..." if len(tool_result) > 200 else tool_result)
                     
                     # Заменяем tool call на результат в ответе
-                    ai_response = ai_response.replace(tool_call, tool_result)
+                    response_with_thoughts['final_answer'] = response_with_thoughts['final_answer'].replace(str(tool_call), tool_result)
                     
                 except Exception as e:
                     logger.error(f"❌ CHAT: Error executing tool call {tool_call}: {e}")
                     error_msg = f"❌ Error executing {tool_call}: {str(e)}"
-                    ai_response = ai_response.replace(tool_call, error_msg)
+                    response_with_thoughts['final_answer'] = response_with_thoughts['final_answer'].replace(str(tool_call), error_msg)
         else:
             logger.info(f"🔧 CHAT: No tool calls found in response")
         
         # Save to conversation history ASYNC
         await asyncio.get_event_loop().run_in_executor(
-            None, conversation_history.add_message, username, message, ai_response
+            None, conversation_history.add_message, username, message, response_with_thoughts['final_answer']
         )
         
         return JSONResponse({
             "success": True,
-            "response": ai_response,
+            "response": response_with_thoughts['final_answer'],
+            "thoughts": response_with_thoughts['thoughts'],
+            "parts": response_with_thoughts['parts'],
             "timestamp": datetime.now().isoformat()
         })
         
@@ -1414,8 +1449,8 @@ Provide your response in this JSON format:
         except Exception as e:
             logger.error(f"🔧 SYSTEM ANALYSIS: Error in debug logging: {e}")
 
-        # Generate analysis
-        analysis_response = ai_client.chat(
+        # Generate analysis - используем прямой доступ к Gemini для лучшего fallback
+        analysis_response = gemini_client.chat(
             message=analysis_message,
             user_profile=profile_data if username else {},
             conversation_context=context,
@@ -1429,12 +1464,31 @@ Provide your response in this JSON format:
         # Try to parse JSON response - УЛУЧШЕННАЯ ОБРАБОТКА
         try:
             import re
-            # Extract JSON from response
-            json_match = re.search(r'\{.*\}', analysis_response, re.DOTALL)
-            if json_match:
-                analysis_data = json.loads(json_match.group())
-                logger.info("✅ SYSTEM ANALYSIS: JSON parsed successfully")
-                
+            # Extract JSON from response - improved regex
+            # Look for JSON objects that might be embedded in text
+            json_patterns = [
+                r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}',  # Nested JSON
+                r'\{[^}]*\}',  # Simple JSON
+                r'\{.*?\}',  # Lazy match
+            ]
+            
+            analysis_data = None
+            for pattern in json_patterns:
+                json_matches = re.findall(pattern, analysis_response, re.DOTALL)
+                for match in json_matches:
+                    try:
+                        parsed = json.loads(match)
+                        # Check if it looks like system analysis data
+                        if isinstance(parsed, dict) and any(key in parsed for key in ['system_status', 'status', 'analysis', 'capabilities']):
+                            analysis_data = parsed
+                            logger.info(f"✅ SYSTEM ANALYSIS: JSON parsed successfully with pattern {pattern}")
+                            break
+                    except json.JSONDecodeError:
+                        continue
+                if analysis_data:
+                    break
+            
+            if analysis_data:
                 # Генерируем динамические советы на основе анализа
                 try:
                     # Получаем профиль как словарь
@@ -1457,8 +1511,8 @@ Provide your response in this JSON format:
                     except:
                         analysis_data["tips"] = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
             else:
-                # Fallback if no JSON found
-                logger.warning("⚠️ SYSTEM ANALYSIS: No JSON found in response")
+                # Fallback if no valid JSON found
+                logger.warning("⚠️ SYSTEM ANALYSIS: No valid JSON found in response")
                 # Генерируем динамические советы
                 try:
                     # Получаем профиль как словарь

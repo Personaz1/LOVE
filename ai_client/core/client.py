@@ -120,7 +120,10 @@ class AIClient:
     
     def _execute_tool_call(self, tool_call: str) -> str:
         """Выполнение вызова инструмента"""
-        return self.system_tools._execute_tool_call(tool_call)
+        logger.info(f"🔧 AICLIENT: Executing tool call: {tool_call}")
+        result = self.system_tools._execute_tool_call(tool_call)
+        logger.info(f"✅ AICLIENT: Tool call result: {result[:200]}..." if len(result) > 200 else result)
+        return result
     
     def _get_multi_user_context(self) -> str:
         """Получение контекста для нескольких пользователей"""
