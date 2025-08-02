@@ -1361,28 +1361,75 @@ Provide your response in this JSON format:
             if json_match:
                 analysis_data = json.loads(json_match.group())
                 logger.info("✅ SYSTEM ANALYSIS: JSON parsed successfully")
+                
+                # Генерируем динамические советы на основе анализа
+                try:
+                    # Получаем профиль как словарь
+                    user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                    tips = ai_client.tips.generate_tips(
+                        context=f"System analysis: {analysis_data.get('system_status', '')[:200]}",
+                        user_profile=user_profile_dict
+                    )
+                    analysis_data["tips"] = tips
+                    logger.info("✅ SYSTEM ANALYSIS: Dynamic tips generated")
+                except Exception as e:
+                    logger.error(f"❌ SYSTEM ANALYSIS: Tips generation failed: {e}")
+                    analysis_data["tips"] = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
             else:
                 # Fallback if no JSON found
                 logger.warning("⚠️ SYSTEM ANALYSIS: No JSON found in response")
+                # Генерируем динамические советы
+                try:
+                    # Получаем профиль как словарь
+                    user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                    tips = ai_client.tips.generate_tips(
+                        context=f"System analysis response: {analysis_response[:200]}",
+                        user_profile=user_profile_dict
+                    )
+                except:
+                    tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+                
                 analysis_data = {
                     "system_status": analysis_response,
-                    "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                    "tips": tips,
                     "capabilities": "System is operational"
                 }
         except json.JSONDecodeError as e:
-            # Fallback if JSON parsing fails
+            # Fallback if JSON parsing failed
             logger.error(f"❌ SYSTEM ANALYSIS: JSON parsing failed: {e}")
+            # Генерируем динамические советы
+            try:
+                # Получаем профиль как словарь
+                user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                tips = ai_client.tips.generate_tips(
+                    context=f"System analysis failed: {analysis_response[:200]}",
+                    user_profile=user_profile_dict
+                )
+            except:
+                tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+            
             analysis_data = {
                 "system_status": analysis_response,
-                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                "tips": tips,
                 "capabilities": "System is operational"
             }
         except Exception as e:
             # General fallback
             logger.error(f"❌ SYSTEM ANALYSIS: General parsing error: {e}")
+            # Генерируем динамические советы
+            try:
+                # Получаем профиль как словарь
+                user_profile_dict = profile_data.get_profile() if username and profile_data else None
+                tips = ai_client.tips.generate_tips(
+                    context=f"System analysis error: {str(e)}",
+                    user_profile=user_profile_dict
+                )
+            except:
+                tips = ["Focus on open communication", "Practice active listening", "Take time for self-care"]
+            
             analysis_data = {
                 "system_status": "System analysis completed",
-                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                "tips": tips,
                 "capabilities": "System is operational"
             }
         

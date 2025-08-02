@@ -17,6 +17,7 @@ from ..models.gemini_client import GeminiClient
 from ..tools.file_tools import FileTools
 from ..tools.memory_tools import MemoryTools
 from ..tools.system_tools import SystemTools
+from ..tools.tips_generator import TipsGenerator
 from ..utils.config import Config
 from ..utils.logger import Logger
 from ..utils.error_handler import ErrorHandler
@@ -41,6 +42,7 @@ class AIClient:
         self.file_tools = FileTools()
         self.memory_tools = MemoryTools()
         self.system_tools = SystemTools()
+        self.tips_generator = TipsGenerator()
         
         self.logger.info("🚀 AIClient initialized with simplified architecture")
     
@@ -97,6 +99,11 @@ class AIClient:
     def system(self):
         """Доступ к системным инструментам"""
         return self.system_tools
+    
+    @property
+    def tips(self):
+        """Доступ к генератору советов"""
+        return self.tips_generator
     
     # Утилитарные методы
     def _extract_tool_calls(self, text: str) -> List[str]:
