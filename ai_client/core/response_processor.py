@@ -148,8 +148,9 @@ class ToolExecutor:
         try:
             logger.info(f"🔧 TOOL EXECUTOR: Executing {tool_call.function_name}")
             
-            # Получаем функцию из ai_client
-            tool_function = getattr(self.ai_client, tool_call.function_name, None)
+            # Получаем функцию из system_tools
+            system_tools = self.ai_client.system_tools
+            tool_function = getattr(system_tools, tool_call.function_name, None)
             if not tool_function:
                 raise Exception(f"Tool function {tool_call.function_name} not found")
             
@@ -250,4 +251,5 @@ class ResponseProcessor:
         # Если есть результаты tool calls, заменяем весь текст
         if processed.tool_results:
             # Возвращаем только форматированный текст (без дублирования)
-            yield processed.formatted_text 
+            yield processed.formatted_text
+        # Если нет tool calls, не возвращаем ничего дополнительно 
