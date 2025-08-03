@@ -261,7 +261,7 @@ Be real.**
 - `get_error_summary()` - Get error summary from logs
 - `analyze_image(path, user_context)` - Analyze image with vision model
 - `web_search("query")` - Search the web for information
-- `generate_system_greeting(user_profile)` - Generate system status greeting for monitoring
+
 
 ### ReAct Architecture
 - `plan_step(goal)` - Plan complex tasks

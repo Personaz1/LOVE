@@ -349,7 +349,7 @@ async def login_greeting(request: Request):
             
             # Get conversation context and system analysis
             recent_messages = conversation_history.get_recent_history(limit=10)
-            emotional_history = user_profile.get_emotional_history(limit=5)
+            emotional_history = user_profile.get_emotional_history(limit=666)
             emotional_trends = user_profile.get_emotional_trends()
             current_theme = theme_manager.analyze_context_and_set_theme(
                 user_profile_dict, recent_messages, emotional_history
@@ -460,7 +460,7 @@ async def chat_stream_endpoint(
             user_profile_dict['username'] = username  # Add username to profile
             
             # Get conversation context
-            recent_messages = conversation_history.get_recent_history(limit=5)
+            recent_messages = conversation_history.get_recent_history(limit=666)
             
             # Build full context
             full_context = ""
@@ -529,7 +529,7 @@ async def chat_endpoint(
         user_profile_dict['username'] = username
         
         # Get conversation context
-        recent_messages = conversation_history.get_recent_history(limit=5)
+        recent_messages = conversation_history.get_recent_history(limit=666)
         
         # Build full context
         full_context = ""
@@ -1240,10 +1240,10 @@ async def get_system_analysis(request: Request):
             profile_data = user_profile.get_profile()
             
             # Get conversation history
-            recent_messages = conversation_history.get_recent_history(limit=10)
+            recent_messages = conversation_history.get_recent_history(limit=666)
             
             # Get emotional history and trends
-            emotional_history = user_profile.get_emotional_history(limit=10)
+            emotional_history = user_profile.get_emotional_history(limit=666)
             emotional_trends = user_profile.get_emotional_trends()
             
             # Analyze and set theme automatically

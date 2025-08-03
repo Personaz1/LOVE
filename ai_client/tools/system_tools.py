@@ -545,32 +545,7 @@ class SystemTools:
             logger.error(f"Error finding images: {e}")
             return f"❌ Error finding images: {str(e)}"
     
-    def generate_system_greeting(self, user_profile: Optional[Dict[str, Any]] = None) -> str:
-        """Генерация системного приветствия для мониторинга"""
-        try:
-            if not user_profile:
-                return "👋 System monitoring active"
-            
-            username = user_profile.get('username', 'User')
-            current_time = datetime.now().strftime("%I:%M %p")
-            current_feeling = user_profile.get('current_feeling', 'neutral')
-            
-            feeling_emoji = {
-                'happy': '😊', 'sad': '😢', 'excited': '🎉', 'tired': '😴',
-                'stressed': '😰', 'neutral': '😐'
-            }.get(current_feeling, '😐')
-            
-            # Системное приветствие для мониторинга
-            greeting = f"🔍 System Status: {feeling_emoji} {username} active at {current_time}"
-            
-            if current_feeling != 'neutral':
-                greeting += f" (feeling: {current_feeling})"
-            
-            return greeting
-            
-        except Exception as e:
-            logger.error(f"Error generating system greeting: {e}")
-            return "🔍 System monitoring active"
+
     
 
     
@@ -917,7 +892,6 @@ class SystemTools:
                 # System Tools
                 'add_model_note', 'add_personal_thought', 'get_system_logs',
                 'get_error_summary', 'analyze_image', 'web_search',
-                'generate_system_greeting',
                 
                 # ReAct Architecture
                 'plan_step', 'act_step', 'reflect', 'react_cycle',
@@ -1038,7 +1012,7 @@ class SystemTools:
                 'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
                 'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
                 'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
-                'generate_system_greeting', 'read_user_profile', 'read_emotional_history',
+                'read_user_profile', 'read_emotional_history',
                 'search_user_data', 'update_current_feeling', 'add_user_observation',
                 'append_to_file', 'safe_create_file'
             ]
