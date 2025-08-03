@@ -108,56 +108,6 @@
                         </div>
                     </section>
 
-                    <!-- Relationship Information -->
-                    <section class="form-section">
-                        <h3><i class="fas fa-heart"></i> Relationship Information</h3>
-                        
-                        <div class="form-group">
-                            <label for="relationship-status">Relationship Status</label>
-                            <select id="relationship-status" name="relationship_status">
-                                <option value="single" {% if profile.relationship_status == 'single' %}selected{% endif %}>Single</option>
-                                <option value="dating" {% if profile.relationship_status == 'dating' %}selected{% endif %}>Dating</option>
-                                <option value="committed" {% if profile.relationship_status == 'committed' %}selected{% endif %}>Committed</option>
-                                <option value="married" {% if profile.relationship_status == 'married' %}selected{% endif %}>Married</option>
-                                <option value="complicated" {% if profile.relationship_status == 'complicated' %}selected{% endif %}>It's Complicated</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="partner-name">Partner's Name</label>
-                            <input type="text" id="partner-name" name="partner_name" value="{{ profile.partner_name or '' }}" placeholder="Partner's name">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="anniversary">Anniversary Date</label>
-                            <input type="date" id="anniversary" name="anniversary" value="{{ profile.anniversary or '' }}">
-                        </div>
-                    </section>
-
-                    <!-- Emotional State -->
-                    <section class="form-section">
-                        <h3><i class="fas fa-smile"></i> Current Emotional State</h3>
-                        
-                        <div class="form-group">
-                            <label for="current-feeling">How are you feeling today?</label>
-                            <select id="current-feeling" name="current_feeling">
-                                <option value="happy" {% if profile.current_feeling == 'happy' %}selected{% endif %}>😊 Happy</option>
-                                <option value="excited" {% if profile.current_feeling == 'excited' %}selected{% endif %}>🤩 Excited</option>
-                                <option value="calm" {% if profile.current_feeling == 'calm' %}selected{% endif %}>😌 Calm</option>
-                                <option value="anxious" {% if profile.current_feeling == 'anxious' %}selected{% endif %}>😰 Anxious</option>
-                                <option value="sad" {% if profile.current_feeling == 'sad' %}selected{% endif %}>😢 Sad</option>
-                                <option value="angry" {% if profile.current_feeling == 'angry' %}selected{% endif %}>😠 Angry</option>
-                                <option value="confused" {% if profile.current_feeling == 'confused' %}selected{% endif %}>😕 Confused</option>
-                                <option value="neutral" {% if profile.current_feeling == 'neutral' %}selected{% endif %}>😐 Neutral</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="emotional-context">Context (optional)</label>
-                            <textarea id="emotional-context" name="emotional_context" rows="3" placeholder="What's on your mind?">{{ profile.emotional_context or '' }}</textarea>
-                        </div>
-                    </section>
-
                     <!-- Submit Button -->
                     <div class="form-actions">
                         <button type="submit" class="save-btn">
