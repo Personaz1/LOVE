@@ -727,7 +727,7 @@ function formatRichText(text) {
     // Italic text: *text* or _text_ (but NOT for file paths)
     text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
     // Only apply italic to single underscores that are NOT part of file paths
-    text = text.replace(/(?<![\w\/])_(?![\w\/])([^_]+?)(?<![\w\/])_(?![\w\/])/g, '<em>$1</em>');
+    text = text.replace(/(?<!\w)_(?!\w)([^_]+?)(?<!\w)_(?!\w)/g, '<em>$1</em>');
     
     // Code blocks: ```code``` or `code`
     text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
