@@ -718,7 +718,8 @@ function formatRichText(text) {
     // Italic text: *text* or _text_ (but preserve tool calls)
     text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
     // Only apply italic formatting if not a tool call pattern
-    text = text.replace(/(?<!tool_code\.|print\s*\(\s*tool_code\.)_([^_]+)_/g, '<em>$1</em>');
+    // Protect underscores in tool calls and variable names
+    text = text.replace(/(?<!tool_code\.|print\s*\(\s*tool_code\.|read_file\(|create_file\(|append_to_file\(|write_file\(|edit_file\(|delete_file\(|list_files\(|search_files\(|safe_create_file\(|read_user_profile\(|read_emotional_history\(|search_user_data\(|update_current_feeling\(|add_user_observation\(|add_model_note\(|add_personal_thought\(|get_system_logs\(|get_error_summary\(|analyze_image\(|web_search\(|generate_system_greeting\(|plan_step\(|act_step\(|reflect\(|react_cycle\(|fetch_url\(|call_api\(|integrate_api\(|call_custom_api\(|get_weather\(|translate_text\(|create_event\(|get_upcoming_events\(|reschedule_event\(|complete_event\(|get_event_statistics\(|create_task_list\(|list_tasks\(|run_terminal_command\(|get_system_info\(|diagnose_network\(|get_project_structure\(|find_images\(|_file_path|_content|_entry)_([^_]+)_/g, '<em>$1</em>');
     
     // Code blocks: ```code``` or `code`
     text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
