@@ -163,8 +163,15 @@ class ToolExecutor:
                 else:
                     resolved_arguments[key] = value
             
-            # Выполняем функцию с разрешенными аргументами
-            result = await tool_function(**resolved_arguments)
+            # Преобразуем именованные аргументы в позиционные
+            positional_args = []
+            for i in range(len(resolved_arguments)):
+                arg_key = f"arg_{i}"
+                if arg_key in resolved_arguments:
+                    positional_args.append(resolved_arguments[arg_key])
+            
+            # Выполняем функцию с позиционными аргументами
+            result = await tool_function(*positional_args)
             
             return {
                 'success': True,
