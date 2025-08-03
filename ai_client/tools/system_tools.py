@@ -25,6 +25,282 @@ class SystemTools:
         self.error_handler = ErrorHandler()
         self.project_root = self.config.get_project_root()
     
+    # ===== FILE OPERATIONS =====
+    
+    def read_file(self, path: str) -> str:
+        """Чтение файла"""
+        try:
+            if not os.path.exists(path):
+                return f"❌ File not found: {path}"
+            
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            return content
+        except Exception as e:
+            return f"❌ Error reading file {path}: {str(e)}"
+    
+    def write_file(self, path: str, content: str) -> str:
+        """Запись в файл"""
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return f"✅ File written: {path}"
+        except Exception as e:
+            return f"❌ Error writing file {path}: {str(e)}"
+    
+    def edit_file(self, path: str, content: str) -> str:
+        """Редактирование файла"""
+        try:
+            if not os.path.exists(path):
+                return f"❌ File not found: {path}"
+            
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return f"✅ File edited: {path}"
+        except Exception as e:
+            return f"❌ Error editing file {path}: {str(e)}"
+    
+    def create_file(self, path: str, content: str) -> str:
+        """Создание файла"""
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return f"✅ File created: {path}"
+        except Exception as e:
+            return f"❌ Error creating file {path}: {str(e)}"
+    
+    def delete_file(self, path: str) -> str:
+        """Удаление файла"""
+        try:
+            if not os.path.exists(path):
+                return f"❌ File not found: {path}"
+            
+            os.remove(path)
+            return f"✅ File deleted: {path}"
+        except Exception as e:
+            return f"❌ Error deleting file {path}: {str(e)}"
+    
+    def list_files(self, directory: str = ".") -> str:
+        """Список файлов в директории"""
+        try:
+            if not os.path.exists(directory):
+                return f"❌ Directory not found: {directory}"
+            
+            files = []
+            for item in os.listdir(directory):
+                item_path = os.path.join(directory, item)
+                if os.path.isfile(item_path):
+                    files.append(f"📄 {item}")
+                else:
+                    files.append(f"📁 {item}/")
+            
+            return f"Files in {directory}:\n" + "\n".join(files)
+        except Exception as e:
+            return f"❌ Error listing files in {directory}: {str(e)}"
+    
+    def search_files(self, query: str) -> str:
+        """Поиск файлов по содержимому"""
+        try:
+            results = []
+            for root, dirs, files in os.walk("."):
+                for file in files:
+                    if file.endswith(('.txt', '.md', '.py', '.json')):
+                        file_path = os.path.join(root, file)
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                content = f.read()
+                                if query.lower() in content.lower():
+                                    results.append(f"📄 {file_path}")
+                        except:
+                            continue
+            
+            if results:
+                return f"Search results for '{query}':\n" + "\n".join(results[:20])
+            else:
+                return f"No files found containing '{query}'"
+        except Exception as e:
+            return f"❌ Error searching files: {str(e)}"
+    
+    def append_to_file(self, path: str, content: str) -> str:
+        """Добавление в файл"""
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'a', encoding='utf-8') as f:
+                f.write(content)
+            return f"✅ Content appended to: {path}"
+        except Exception as e:
+            return f"❌ Error appending to file {path}: {str(e)}"
+    
+    def safe_create_file(self, path: str, content: str) -> str:
+        """Безопасное создание файла с автоматическим разделением"""
+        try:
+            if len(content) > 10000:  # Если контент большой
+                # Разделяем на части
+                parts = [content[i:i+10000] for i in range(0, len(content), 10000)]
+                for i, part in enumerate(parts):
+                    part_path = f"{path}.part{i+1}" if len(parts) > 1 else path
+                    os.makedirs(os.path.dirname(part_path), exist_ok=True)
+                    with open(part_path, 'w', encoding='utf-8') as f:
+                        f.write(part)
+                
+                if len(parts) > 1:
+                    return f"✅ Large file created in {len(parts)} parts: {path}"
+                else:
+                    return f"✅ File created: {path}"
+            else:
+                return self.create_file(path, content)
+        except Exception as e:
+            return f"❌ Error creating file {path}: {str(e)}"
+    
+    # ===== USER PROFILE TOOLS =====
+    
+    def read_user_profile(self, username: str) -> str:
+        """Чтение профиля пользователя"""
+        try:
+            profile_path = f"memory/user_profiles/{username}.json"
+            if not os.path.exists(profile_path):
+                return f"❌ Profile not found for user: {username}"
+            
+            with open(profile_path, 'r', encoding='utf-8') as f:
+                profile = json.load(f)
+            
+            return f"Profile for {username}:\n{json.dumps(profile, indent=2)}"
+        except Exception as e:
+            return f"❌ Error reading profile for {username}: {str(e)}"
+    
+    def read_emotional_history(self, username: str) -> str:
+        """Чтение эмоциональной истории пользователя"""
+        try:
+            history_path = f"memory/user_profiles/{username}_emotional_history.json"
+            if not os.path.exists(history_path):
+                return f"❌ Emotional history not found for user: {username}"
+            
+            with open(history_path, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+            
+            return f"Emotional history for {username}:\n{json.dumps(history, indent=2)}"
+        except Exception as e:
+            return f"❌ Error reading emotional history for {username}: {str(e)}"
+    
+    def search_user_data(self, username: str, query: str) -> str:
+        """Поиск данных пользователя"""
+        try:
+            results = []
+            user_dir = f"memory/user_profiles"
+            
+            if not os.path.exists(user_dir):
+                return f"❌ User data directory not found"
+            
+            for file in os.listdir(user_dir):
+                if file.startswith(username):
+                    file_path = os.path.join(user_dir, file)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            if query.lower() in content.lower():
+                                results.append(f"📄 {file}")
+                    except:
+                        continue
+            
+            if results:
+                return f"Search results for '{username}' with query '{query}':\n" + "\n".join(results)
+            else:
+                return f"No data found for '{username}' containing '{query}'"
+        except Exception as e:
+            return f"❌ Error searching user data: {str(e)}"
+    
+    def update_current_feeling(self, username: str, feeling: str, context: str = "") -> str:
+        """Обновление текущего чувства пользователя"""
+        try:
+            profile_path = f"memory/user_profiles/{username}.json"
+            if not os.path.exists(profile_path):
+                return f"❌ Profile not found for user: {username}"
+            
+            with open(profile_path, 'r', encoding='utf-8') as f:
+                profile = json.load(f)
+            
+            profile['current_feeling'] = feeling
+            if context:
+                profile['feeling_context'] = context
+            profile['last_updated'] = datetime.now().isoformat()
+            
+            with open(profile_path, 'w', encoding='utf-8') as f:
+                json.dump(profile, f, indent=2)
+            
+            return f"✅ Updated feeling for {username}: {feeling}"
+        except Exception as e:
+            return f"❌ Error updating feeling for {username}: {str(e)}"
+    
+    def add_user_observation(self, username: str, observation: str) -> str:
+        """Добавление наблюдения о пользователе"""
+        try:
+            observations_path = f"memory/user_profiles/{username}_observations.json"
+            
+            if os.path.exists(observations_path):
+                with open(observations_path, 'r', encoding='utf-8') as f:
+                    observations = json.load(f)
+            else:
+                observations = []
+            
+            observation_entry = {
+                'observation': observation,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            observations.append(observation_entry)
+            
+            with open(observations_path, 'w', encoding='utf-8') as f:
+                json.dump(observations, f, indent=2)
+            
+            return f"✅ Added observation for {username}"
+        except Exception as e:
+            return f"❌ Error adding observation for {username}: {str(e)}"
+    
+    # ===== SYSTEM TOOLS =====
+    
+    def add_model_note(self, note: str, category: str = "general") -> str:
+        """Добавление заметки модели"""
+        try:
+            notes_path = "memory/model_notes.json"
+            
+            if os.path.exists(notes_path):
+                with open(notes_path, 'r', encoding='utf-8') as f:
+                    notes = json.load(f)
+            else:
+                notes = []
+            
+            note_entry = {
+                'note': note,
+                'category': category,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            notes.append(note_entry)
+            
+            with open(notes_path, 'w', encoding='utf-8') as f:
+                json.dump(notes, f, indent=2)
+            
+            return f"✅ Added model note in category '{category}'"
+        except Exception as e:
+            return f"❌ Error adding model note: {str(e)}"
+    
+    def add_personal_thought(self, thought: str) -> str:
+        """Добавление личной мысли"""
+        try:
+            thoughts_path = "guardian_sandbox/personal_thoughts.md"
+            
+            thought_entry = f"\n## {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{thought}\n"
+            
+            with open(thoughts_path, 'a', encoding='utf-8') as f:
+                f.write(thought_entry)
+            
+            return f"✅ Added personal thought"
+        except Exception as e:
+            return f"❌ Error adding personal thought: {str(e)}"
+    
     def get_system_logs(self, lines: int = 50) -> str:
         """Получение системных логов"""
         try:
