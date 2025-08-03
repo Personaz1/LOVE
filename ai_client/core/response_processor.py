@@ -41,7 +41,7 @@ class ToolExtractor:
         self.print_tool_pattern = r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)\s*\)'
     
     def extract_tool_calls(self, text: str) -> List[ToolCall]:
-        """Извлекает tool calls из текста"""
+        """Извлекает tool calls из текста с поддержкой многострочных строк"""
         tool_calls = []
         
         # Сначала ищем print(tool_code.function()) паттерны
@@ -52,9 +52,9 @@ class ToolExtractor:
                 function_name = match.group(1)
                 args_str = match.group(2)
                 
-                # Проверяем на неполный вызов
-                if not args_str.strip().endswith(')'):
-                    logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete print tool call detected: {match.group(0)}")
+                # Проверяем на неполный вызов (учитываем многострочные строки)
+                if not self._is_complete_tool_call(args_str):
+                    logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete print tool call detected: {match.group(0)[:100]}...")
                     continue
                 
                 # Парсим аргументы
@@ -94,9 +94,9 @@ class ToolExtractor:
                     function_name = match.group(1)
                     args_str = match.group(2)
                     
-                    # Проверяем на неполный вызов
-                    if not args_str.strip().endswith(')'):
-                        logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete direct tool call detected: {match.group(0)}")
+                    # Проверяем на неполный вызов (учитываем многострочные строки)
+                    if not self._is_complete_tool_call(args_str):
+                        logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete direct tool call detected: {match.group(0)[:100]}...")
                         continue
                     
                     # Парсим аргументы
@@ -118,8 +118,28 @@ class ToolExtractor:
         
         return tool_calls
     
+    def _is_complete_tool_call(self, args_str: str) -> bool:
+        """Проверяет, является ли tool call полным (учитывает многострочные строки)"""
+        args_str = args_str.strip()
+        
+        # Если строка заканчивается на ), то это полный вызов
+        if args_str.endswith(')'):
+            return True
+        
+        # Проверяем баланс скобок и кавычек
+        open_parens = args_str.count('(')
+        close_parens = args_str.count(')')
+        open_quotes = args_str.count('"') + args_str.count("'")
+        
+        # Если количество открывающих и закрывающих скобок равно
+        # и количество кавычек четное, то это полный вызов
+        if open_parens == close_parens and open_quotes % 2 == 0:
+            return True
+        
+        return False
+    
     def _parse_arguments(self, args_str: str) -> Dict[str, Any]:
-        """Парсит аргументы tool call с улучшенной обработкой неполных вызовов"""
+        """Парсит аргументы tool call с улучшенной обработкой многострочных строк"""
         arguments = {}
         
         # Очищаем строку аргументов
@@ -148,30 +168,71 @@ class ToolExtractor:
         
         # Если нет именованных аргументов, берем позиционные
         if not arguments:
-            # Разделяем по запятой, но учитываем кавычки и f-строки
-            parts = re.split(r',\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', args_str)
-            for i, part in enumerate(parts):
-                part = part.strip()
-                if part:
-                    # Убираем кавычки снаружи
-                    if part.startswith('"') and part.endswith('"'):
-                        part = part[1:-1]
-                    elif part.startswith("'") and part.endswith("'"):
-                        part = part[1:-1]
-                    
-                    # Обрабатываем f-строки - извлекаем содержимое
-                    if part.startswith('f"') and part.endswith('"'):
-                        part = part[2:-1]  # Убираем f" и "
-                    elif part.startswith("f'") and part.endswith("'"):
-                        part = part[2:-1]  # Убираем f' и '
-                    
-                    # Если это переменная без кавычек, сохраняем как есть
-                    if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', part):
+            # Для многострочных строк используем более сложный парсинг
+            if '\n' in args_str:
+                # Многострочная строка - извлекаем первый и второй аргументы
+                parts = self._parse_multiline_arguments(args_str)
+                for i, part in enumerate(parts):
+                    if part:
                         arguments[f"arg_{i}"] = part
-                    else:
-                        arguments[f"arg_{i}"] = part
+            else:
+                # Обычная однострочная строка
+                parts = re.split(r',\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', args_str)
+                for i, part in enumerate(parts):
+                    part = part.strip()
+                    if part:
+                        # Убираем кавычки снаружи
+                        if part.startswith('"') and part.endswith('"'):
+                            part = part[1:-1]
+                        elif part.startswith("'") and part.endswith("'"):
+                            part = part[1:-1]
+                        
+                        # Обрабатываем f-строки - извлекаем содержимое
+                        if part.startswith('f"') and part.endswith('"'):
+                            part = part[2:-1]  # Убираем f" и "
+                        elif part.startswith("f'") and part.endswith("'"):
+                            part = part[2:-1]  # Убираем f' и '
+                        
+                        # Если это переменная без кавычек, сохраняем как есть
+                        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', part):
+                            arguments[f"arg_{i}"] = part
+                        else:
+                            arguments[f"arg_{i}"] = part
         
         return arguments
+    
+    def _parse_multiline_arguments(self, args_str: str) -> List[str]:
+        """Парсит аргументы из многострочной строки"""
+        parts = []
+        
+        # Убираем внешние скобки
+        if args_str.startswith('(') and args_str.endswith(')'):
+            args_str = args_str[1:-1]
+        
+        # Ищем первый аргумент (путь к файлу)
+        first_quote = args_str.find('"')
+        if first_quote != -1:
+            # Ищем закрывающую кавычку для первого аргумента
+            end_quote = args_str.find('"', first_quote + 1)
+            if end_quote != -1:
+                first_arg = args_str[first_quote + 1:end_quote]
+                parts.append(first_arg)
+                
+                # Ищем второй аргумент (содержимое)
+                remaining = args_str[end_quote + 1:].strip()
+                if remaining.startswith(','):
+                    remaining = remaining[1:].strip()
+                
+                # Извлекаем второй аргумент (многострочное содержимое)
+                if remaining.startswith('"'):
+                    # Ищем последнюю кавычку (учитываем экранирование)
+                    content_start = 1
+                    content_end = remaining.rfind('"')
+                    if content_end > content_start:
+                        second_arg = remaining[content_start:content_end]
+                        parts.append(second_arg)
+        
+        return parts
 
 class ToolExecutor:
     """Выполняет tool calls"""
