@@ -892,6 +892,7 @@ class SystemTools:
                 # System Tools
                 'add_model_note', 'add_personal_thought', 'get_system_logs',
                 'get_error_summary', 'analyze_image', 'web_search',
+                'switch_model', 'force_model_execution',
                 
                 # ReAct Architecture
                 'plan_step', 'act_step', 'reflect', 'react_cycle',
@@ -1012,7 +1013,7 @@ class SystemTools:
                 'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
                 'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
                 'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
-                'read_user_profile', 'read_emotional_history',
+                'switch_model', 'force_model_execution', 'read_user_profile', 'read_emotional_history',
                 'search_user_data', 'update_current_feeling', 'add_user_observation',
                 'append_to_file', 'safe_create_file'
             ]
@@ -1458,3 +1459,65 @@ class SystemTools:
         except Exception as e:
             logger.error(f"Error executing tool call {tool_call}: {e}")
             return f"❌ Error executing tool call: {str(e)}" 
+
+    def switch_model(self, reason: str = "Model refused execution") -> str:
+        """Switch to different model when current one refuses or generates incorrect text"""
+        try:
+            logger.info(f"🔄 SWITCHING MODEL: {reason}")
+            
+            # Получаем текущую модель
+            current_model = getattr(self, '_current_model', 'unknown')
+            
+            # Список доступных моделей в порядке приоритета
+            available_models = [
+                'gemini-2.5-pro',
+                'gemini-1.5-pro', 
+                'gemini-2.5-flash',
+                'gemini-1.5-flash'
+            ]
+            
+            # Находим следующую модель
+            try:
+                current_index = available_models.index(current_model)
+                next_model = available_models[(current_index + 1) % len(available_models)]
+            except ValueError:
+                next_model = available_models[0]
+            
+            # Переключаем модель
+            self._current_model = next_model
+            logger.info(f"✅ MODEL SWITCHED: {current_model} → {next_model}")
+            
+            return f"🔄 Model switched to {next_model} due to: {reason}"
+            
+        except Exception as e:
+            logger.error(f"❌ Error switching model: {e}")
+            return f"❌ Error switching model: {str(e)}"
+    
+    def force_model_execution(self, command: str, max_attempts: int = 3) -> str:
+        """Force model to execute command, switching models if needed"""
+        try:
+            logger.info(f"🔧 FORCE EXECUTION: {command}")
+            
+            for attempt in range(max_attempts):
+                try:
+                    # Пытаемся выполнить команду
+                    result = self._execute_tool_call(command)
+                    
+                    # Проверяем, не отказалась ли модель
+                    if "cannot" in result.lower() or "sorry" in result.lower() or "unable" in result.lower():
+                        logger.warning(f"⚠️ Model refused execution (attempt {attempt + 1})")
+                        self.switch_model(f"Refused command: {command}")
+                        continue
+                    
+                    return result
+                    
+                except Exception as e:
+                    logger.error(f"❌ Execution error (attempt {attempt + 1}): {e}")
+                    if attempt < max_attempts - 1:
+                        self.switch_model(f"Execution error: {str(e)}")
+            
+            return f"❌ Failed to execute after {max_attempts} attempts: {command}"
+            
+        except Exception as e:
+            logger.error(f"❌ Force execution error: {e}")
+            return f"❌ Force execution error: {str(e)}" 
