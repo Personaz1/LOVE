@@ -103,6 +103,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize terminal
     initializeTerminal();
+
+    // Инициализируем кнопки System Analysis
+    initializeSystemAnalysisButtons();
 });
 
 // Initialize technical steps toggles
@@ -2136,4 +2139,33 @@ function updateMobileSystemPanel(analysis) {
 function showMobileSystemError(message) {
     // Используем основную функцию - убираем дублирование
     showSystemError(message);
+} 
+
+// Инициализация обработчиков событий для кнопок System Analysis
+function initializeSystemAnalysisButtons() {
+    console.log('🔧 Initializing System Analysis buttons...');
+    
+    // Находим кнопки
+    const refreshBtn = document.querySelector('.refresh-btn[onclick="loadSystemAnalysis()"]');
+    const forceRefreshBtn = document.querySelector('.refresh-btn[onclick="forceRefreshSystemAnalysis()"]');
+    
+    if (refreshBtn) {
+        console.log('✅ Found refresh button');
+        refreshBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            console.log('🔄 Refresh button clicked');
+            await loadSystemAnalysis();
+        });
+    }
+    
+    if (forceRefreshBtn) {
+        console.log('✅ Found force refresh button');
+        forceRefreshBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            console.log('⚡ Force refresh button clicked');
+            await forceRefreshSystemAnalysis();
+        });
+    }
+    
+    console.log('✅ System Analysis buttons initialized');
 } 
