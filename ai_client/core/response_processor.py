@@ -139,6 +139,16 @@ class ToolExtractor:
         if open_parens == close_parens and open_quotes % 2 == 0:
             return True
         
+        # ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: если есть \n внутри кавычек, это может быть полный вызов
+        if '\n' in args_str:
+            # Ищем последнюю кавычку после \n
+            last_quote_pos = args_str.rfind('"')
+            if last_quote_pos > args_str.find('\n'):
+                # Проверяем, что после последней кавычки есть закрывающая скобка
+                remaining = args_str[last_quote_pos + 1:].strip()
+                if remaining.endswith(')'):
+                    return True
+        
         return False
     
     def _parse_arguments(self, args_str: str) -> Dict[str, Any]:
@@ -228,11 +238,13 @@ class ToolExtractor:
                 
                 # Извлекаем второй аргумент (многострочное содержимое)
                 if remaining.startswith('"'):
-                    # Ищем последнюю кавычку (учитываем экранирование)
+                    # Ищем последнюю кавычку (учитываем экранирование и \n)
                     content_start = 1
                     content_end = remaining.rfind('"')
                     if content_end > content_start:
                         second_arg = remaining[content_start:content_end]
+                        # Заменяем \n на реальные переносы строк
+                        second_arg = second_arg.replace('\\n', '\n')
                         parts.append(second_arg)
         
         return parts
@@ -377,13 +389,15 @@ class ResponseProcessor:
         if processed.tool_results:
             # Заменяем только tool calls, не весь текст
             for result in processed.tool_results:
-                if result['success']:
-                    replacement = f"\n\n**Результат выполнения:**\n{result['result']}\n\n"
+                if result.get('success', False):
+                    replacement = f"\n\n**Результат выполнения:**\n{result.get('result', '')}\n\n"
                 else:
-                    replacement = f"\n\n**Ошибка выполнения:**\n{result['error']}\n\n"
+                    replacement = f"\n\n**Ошибка выполнения:**\n{result.get('error', '')}\n\n"
                 
                 # Заменяем оригинальный tool call на результат
-                full_text = full_text.replace(result['original_text'], replacement)
+                original_text = result.get('original_text', '')
+                if original_text:
+                    full_text = full_text.replace(original_text, replacement)
             
             # Возвращаем обновленный текст
             yield full_text 

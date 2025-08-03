@@ -1354,10 +1354,13 @@ Provide your response in this JSON format:
         # Try to parse JSON response - УЛУЧШЕННАЯ ОБРАБОТКА
         try:
             import re
-            # Extract JSON from response
-            json_match = re.search(r'\{.*\}', analysis_response, re.DOTALL)
+            # Extract JSON from response - более точный поиск
+            json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', analysis_response, re.DOTALL)
             if json_match:
-                analysis_data = json.loads(json_match.group())
+                json_str = json_match.group()
+                # Очищаем JSON от лишних символов
+                json_str = re.sub(r'[^\x20-\x7E]', '', json_str)  # Убираем непечатаемые символы
+                analysis_data = json.loads(json_str)
                 logger.info("✅ SYSTEM ANALYSIS: JSON parsed successfully")
             else:
                 # Fallback if no JSON found
