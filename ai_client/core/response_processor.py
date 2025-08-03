@@ -202,7 +202,7 @@ class ResponseProcessor:
         self.tool_executor = ToolExecutor(ai_client)
         self.response_formatter = ResponseFormatter()
     
-    def process_complete_response(self, text: str) -> ProcessedResponse:
+    async def process_complete_response(self, text: str) -> ProcessedResponse:
         """Обрабатывает полный ответ модели"""
         logger.info(f"🔧 RESPONSE PROCESSOR: Processing response ({len(text)} chars)")
         
@@ -213,7 +213,7 @@ class ResponseProcessor:
         # 2. Выполняем tool calls
         tool_results = []
         for tool_call in tool_calls:
-            result = self.tool_executor.execute_tool_call(tool_call)
+            result = await self.tool_executor.execute_tool_call(tool_call)
             tool_results.append(result)
         
         # 3. Форматируем для чата

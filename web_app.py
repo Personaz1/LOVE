@@ -534,31 +534,16 @@ async def chat_endpoint(
             conversation_context=full_context
         )
         
-        # ОБРАБОТКА TOOL CALLS
-        logger.info(f"🔧 CHAT: Processing response for tool calls...")
+        # ОБРАБОТКА TOOL CALLS ЧЕРЕЗ ResponseProcessor
+        logger.info(f"🔧 CHAT: Processing response through ResponseProcessor...")
         
-        # Извлекаем tool calls из ответа
-        tool_calls = ai_client._extract_tool_calls(ai_response)
+        # Обрабатываем через ResponseProcessor
+        processed_response = await response_processor.process_complete_response(ai_response)
         
-        if tool_calls:
-            logger.info(f"🔧 CHAT: Found {len(tool_calls)} tool calls: {tool_calls}")
-            
-            # Выполняем каждый tool call
-            for tool_call in tool_calls:
-                try:
-                    logger.info(f"🔧 CHAT: Executing tool call: {tool_call}")
-                    tool_result = ai_client._execute_tool_call(tool_call)
-                    logger.info(f"✅ CHAT: Tool result: {tool_result[:200]}..." if len(tool_result) > 200 else tool_result)
-                    
-                    # Заменяем tool call на результат в ответе
-                    ai_response = ai_response.replace(tool_call, tool_result)
-                    
-                except Exception as e:
-                    logger.error(f"❌ CHAT: Error executing tool call {tool_call}: {e}")
-                    error_msg = f"❌ Error executing {tool_call}: {str(e)}"
-                    ai_response = ai_response.replace(tool_call, error_msg)
-        else:
-            logger.info(f"🔧 CHAT: No tool calls found in response")
+        # Используем форматированный ответ
+        ai_response = processed_response.formatted_text
+        
+        logger.info(f"🔧 CHAT: Response processing completed")
         
         # Save to conversation history
         conversation_history.add_message(username, message, ai_response)
