@@ -559,14 +559,38 @@ class SystemTools:
         try:
             logger.info(f"🔧 TOOL EXTRACTION: Processing text ({len(text)} chars)")
             
-            # Список известных инструментов
+            # Список известных инструментов - ПОЛНЫЙ СПИСОК
             known_tools = [
+                # File Operations
                 'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
-                'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
-                'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
-                'generate_system_greeting', 'read_user_profile', 'read_emotional_history',
-                'search_user_data', 'update_current_feeling', 'add_user_observation',
-                'append_to_file', 'safe_create_file'
+                'list_files', 'search_files', 'append_to_file', 'safe_create_file',
+                
+                # User Profile Tools
+                'read_user_profile', 'read_emotional_history', 'search_user_data',
+                'update_current_feeling', 'add_user_observation',
+                
+                # System Tools
+                'add_model_note', 'add_personal_thought', 'get_system_logs',
+                'get_error_summary', 'analyze_image', 'web_search',
+                'generate_system_greeting',
+                
+                # ReAct Architecture
+                'plan_step', 'act_step', 'reflect', 'react_cycle',
+                
+                # Web & API Tools
+                'fetch_url', 'call_api', 'integrate_api', 'call_custom_api',
+                'get_weather', 'translate_text',
+                
+                # Event Management
+                'create_event', 'get_upcoming_events', 'reschedule_event',
+                'complete_event', 'get_event_statistics',
+                
+                # Task Management
+                'create_task_list', 'list_tasks',
+                
+                # System Information
+                'run_terminal_command', 'get_system_info', 'diagnose_network',
+                'get_project_structure', 'find_images'
             ]
             
             full_calls = []

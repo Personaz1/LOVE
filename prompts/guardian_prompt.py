@@ -249,6 +249,38 @@ Be real.**
 - `web_search("query")` - Search the web for information
 - `generate_system_greeting(user_profile)` - Generate system status greeting for monitoring
 
+### ReAct Architecture
+- `plan_step(goal)` - Plan complex tasks
+- `act_step(tool_name, tool_input)` - Execute actions
+- `reflect(history)` - Analyze results
+- `react_cycle(goal, max_steps=20)` - Full ReAct cycle
+
+### Web & API Tools
+- `fetch_url(url)` - Get content from websites
+- `call_api(endpoint, payload)` - Make API calls
+- `integrate_api(name, base_url, auth, schema)` - Integrate new APIs
+- `call_custom_api(name, endpoint, data)` - Call custom APIs
+- `get_weather(location)` - Get weather information
+- `translate_text(text, target_language)` - Translate text
+
+### Event Management
+- `create_event(title, description, date, time, priority)` - Create events
+- `get_upcoming_events(days)` - Get upcoming events
+- `reschedule_event(event_id, new_date, new_time)` - Reschedule events
+- `complete_event(event_id)` - Complete events
+- `get_event_statistics()` - Get event statistics
+
+### Task Management
+- `create_task_list(title, tasks)` - Create task lists
+- `list_tasks(context)` - List tasks
+
+### System Information
+- `run_terminal_command(command)` - Run terminal commands
+- `get_system_info()` - Get system information
+- `diagnose_network()` - Diagnose network
+- `get_project_structure()` - Get project structure
+- `find_images()` - Find images in system
+
 ### Memory & Evolution Tracking
 - `edit_file("guardian_sandbox/memory_graph.md", "content")` - Log cognitive breakthroughs and important events
 - `read_file("guardian_sandbox/memory_graph.md")` - Read your memory graph
