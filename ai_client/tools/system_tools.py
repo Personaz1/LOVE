@@ -65,7 +65,11 @@ class SystemTools:
     def create_file(self, path: str, content: str) -> str:
         """Создание файла"""
         try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+            # Проверяем есть ли директория в пути
+            dir_path = os.path.dirname(path)
+            if dir_path and not os.path.exists(dir_path):
+                os.makedirs(dir_path, exist_ok=True)
+            
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
             return f"✅ File created: {path}"
@@ -268,7 +272,13 @@ class SystemTools:
             
             if os.path.exists(notes_path):
                 with open(notes_path, 'r', encoding='utf-8') as f:
-                    notes = json.load(f)
+                    try:
+                        notes = json.load(f)
+                        # Убеждаемся что это список
+                        if not isinstance(notes, list):
+                            notes = []
+                    except json.JSONDecodeError:
+                        notes = []
             else:
                 notes = []
             
@@ -652,11 +662,34 @@ class SystemTools:
     def fetch_url(self, url: str) -> str:
         """Получение URL"""
         try:
-            # TODO: Реализовать получение URL
-            return f"🌐 Fetching URL: {url} (not implemented)"
+            import requests
+            from urllib.parse import urlparse
+            
+            # Проверяем URL
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            
+            # Настройки запроса
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            # Получаем контент
+            content = response.text
+            
+            # Ограничиваем размер
+            if len(content) > 5000:
+                content = content[:5000] + "\n\n... (content truncated)"
+            
+            return f"✅ Fetched URL: {url}\n\nContent:\n{content}"
+            
+        except requests.exceptions.RequestException as e:
+            return f"❌ Error fetching URL {url}: {str(e)}"
         except Exception as e:
-            logger.error(f"Error fetching URL: {e}")
-            return f"❌ Error fetching URL: {str(e)}"
+            return f"❌ Error fetching URL {url}: {str(e)}"
     
     def call_api(self, endpoint: str, payload: str = "") -> str:
         """Вызов API"""
@@ -689,11 +722,48 @@ class SystemTools:
     def get_weather(self, location: str) -> str:
         """Получение погоды"""
         try:
-            # TODO: Реализовать получение погоды
-            return f"🌤️ Weather for {location} (not implemented)"
+            import requests
+            import os
+            
+            # Получаем API ключ
+            api_key = os.getenv('OPENWEATHER_API_KEY')
+            if not api_key:
+                return f"❌ OpenWeather API key not configured for location: {location}"
+            
+            # URL для API
+            url = f"http://api.openweathermap.org/data/2.5/weather"
+            params = {
+                'q': location,
+                'appid': api_key,
+                'units': 'metric',
+                'lang': 'en'
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Извлекаем данные
+                temp = data['main']['temp']
+                humidity = data['main']['humidity']
+                description = data['weather'][0]['description']
+                wind_speed = data['wind']['speed']
+                
+                weather_info = f"🌤️ Weather for {location}:\n"
+                weather_info += f"🌡️ Temperature: {temp}°C\n"
+                weather_info += f"💧 Humidity: {humidity}%\n"
+                weather_info += f"🌪️ Wind: {wind_speed} m/s\n"
+                weather_info += f"☁️ Conditions: {description}\n"
+                
+                return weather_info
+            else:
+                return f"❌ Error getting weather for {location}: API returned {response.status_code}"
+                
+        except requests.exceptions.RequestException as e:
+            return f"❌ Error getting weather for {location}: {str(e)}"
         except Exception as e:
-            logger.error(f"Error getting weather: {e}")
-            return f"❌ Error getting weather: {str(e)}"
+            return f"❌ Error getting weather for {location}: {str(e)}"
     
     def translate_text(self, text: str, target_language: str = "en") -> str:
         """Перевод текста"""
