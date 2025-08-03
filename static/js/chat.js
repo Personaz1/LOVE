@@ -710,6 +710,12 @@ function formatReasoningSteps(reasoningText) {
 }
 
 function formatRichText(text) {
+    // Remove REASONING STEPS and FINAL RESPONSE headers completely
+    text = text.replace(/^\*\*REASONING STEPS:\*\*\s*/gm, '');
+    text = text.replace(/^\*\*FINAL RESPONSE:\*\*\s*/gm, '');
+    text = text.replace(/^REASONING STEPS:\s*/gm, '');
+    text = text.replace(/^FINAL RESPONSE:\s*/gm, '');
+    
     // Convert URLs to links
     text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color: inherit; text-decoration: underline;">$1</a>');
     
@@ -718,9 +724,10 @@ function formatRichText(text) {
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
     
-    // Italic text: *text* or _text_
+    // Italic text: *text* or _text_ (but NOT for file paths)
     text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    // Only apply italic to single underscores that are NOT part of file paths
+    text = text.replace(/(?<![\w\/])_(?![\w\/])([^_]+?)(?<![\w\/])_(?![\w\/])/g, '<em>$1</em>');
     
     // Code blocks: ```code``` or `code`
     text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
