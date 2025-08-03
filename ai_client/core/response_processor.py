@@ -36,12 +36,44 @@ class ToolExtractor:
             r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)\s*\)',
             r'tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)',
         ]
+        
+        # Паттерн для извлечения tool_code из print
+        self.print_tool_pattern = r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)\s*\)'
     
     def extract_tool_calls(self, text: str) -> List[ToolCall]:
         """Извлекает tool calls из текста"""
         tool_calls = []
         
-        for pattern in self.tool_patterns:
+        # Сначала ищем print(tool_code.function()) паттерны
+        print_matches = re.finditer(self.print_tool_pattern, text, re.MULTILINE | re.DOTALL)
+        
+        for match in print_matches:
+            try:
+                function_name = match.group(1)
+                args_str = match.group(2)
+                
+                # Парсим аргументы
+                arguments = self._parse_arguments(args_str)
+                
+                # Создаем tool_code.function() строку для выполнения
+                tool_code_call = f"tool_code.{function_name}({args_str})"
+                
+                tool_call = ToolCall(
+                    function_name=function_name,
+                    arguments=arguments,
+                    original_text=match.group(0),  # print(tool_code.function())
+                    start_pos=match.start(),
+                    end_pos=match.end()
+                )
+                
+                tool_calls.append(tool_call)
+                logger.info(f"🔧 TOOL EXTRACTOR: Found print tool call: {function_name}({arguments})")
+                
+            except Exception as e:
+                logger.error(f"❌ TOOL EXTRACTOR: Error parsing print tool call: {e}")
+        
+        # Затем ищем обычные tool_code.function() паттерны
+        for pattern in self.tool_patterns[1:]:  # Пропускаем print паттерн
             matches = re.finditer(pattern, text, re.MULTILINE | re.DOTALL)
             
             for match in matches:
@@ -61,10 +93,10 @@ class ToolExtractor:
                     )
                     
                     tool_calls.append(tool_call)
-                    logger.info(f"🔧 TOOL EXTRACTOR: Found tool call: {function_name}({arguments})")
+                    logger.info(f"🔧 TOOL EXTRACTOR: Found direct tool call: {function_name}({arguments})")
                     
                 except Exception as e:
-                    logger.error(f"❌ TOOL EXTRACTOR: Error parsing tool call: {e}")
+                    logger.error(f"❌ TOOL EXTRACTOR: Error parsing direct tool call: {e}")
         
         return tool_calls
     
@@ -104,8 +136,18 @@ class ToolExecutor:
         try:
             logger.info(f"🔧 TOOL EXECUTOR: Executing {tool_call.function_name}")
             
+            # Создаем правильный tool call для выполнения
+            if tool_call.original_text.startswith('print('):
+                # Для print(tool_code.function()) создаем tool_code.function()
+                args_str = ', '.join([f'{k}="{v}"' if isinstance(v, str) else f'{k}={v}' 
+                                    for k, v in tool_call.arguments.items()])
+                execution_text = f"tool_code.{tool_call.function_name}({args_str})"
+            else:
+                # Для обычных tool calls используем оригинальный текст
+                execution_text = tool_call.original_text
+            
             # Вызываем метод через ai_client
-            result = self.ai_client._execute_tool_call(tool_call.original_text)
+            result = self.ai_client._execute_tool_call(execution_text)
             
             return {
                 'success': True,
