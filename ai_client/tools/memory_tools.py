@@ -264,23 +264,38 @@ class MemoryTools:
             with open(notes_path, 'r', encoding='utf-8') as f:
                 notes = json.load(f)
             
-            if not notes.get('notes'):
-                return "No model notes found"
-            
-            # Берем последние заметки
-            recent_notes = notes['notes'][-limit:]
-            
-            result = "📝 Recent Model Notes:\n"
-            for note in recent_notes:
-                if isinstance(note, dict):
-                    timestamp = note.get('timestamp', 'unknown')
-                    text = note.get('text', 'no text')
-                    category = note.get('category', 'general')
-                    result += f"{timestamp}: {text} [{category}]\n"
-                else:
-                    result += f"Invalid note format: {note}\n"
-            
-            return result
+            # Обрабатываем как список или словарь
+            if isinstance(notes, list):
+                # Если это список заметок
+                recent_notes = notes[-limit:] if len(notes) > limit else notes
+                result = "📝 Recent Model Notes:\n"
+                for note in recent_notes:
+                    if isinstance(note, dict):
+                        timestamp = note.get('timestamp', 'unknown')
+                        text = note.get('note', note.get('text', 'no text'))
+                        category = note.get('category', 'general')
+                        result += f"{timestamp}: {text} [{category}]\n"
+                    else:
+                        result += f"Invalid note format: {note}\n"
+                return result
+            elif isinstance(notes, dict):
+                # Если это словарь с ключом 'notes'
+                if not notes.get('notes'):
+                    return "No model notes found"
+                
+                recent_notes = notes['notes'][-limit:]
+                result = "📝 Recent Model Notes:\n"
+                for note in recent_notes:
+                    if isinstance(note, dict):
+                        timestamp = note.get('timestamp', 'unknown')
+                        text = note.get('text', 'no text')
+                        category = note.get('category', 'general')
+                        result += f"{timestamp}: {text} [{category}]\n"
+                    else:
+                        result += f"Invalid note format: {note}\n"
+                return result
+            else:
+                return "Invalid model notes format"
             
         except Exception as e:
             logger.error(f"Error getting model notes: {e}")
