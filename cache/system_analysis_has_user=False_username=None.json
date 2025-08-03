@@ -1,0 +1,14 @@
+{
+  "data": {
+    "system_status": "❌ Error parsing response: Invalid operation: The `response.text` quick accessor requires the response to contain a valid `Part`, but none were returned. The candidate's [finish_reason](https://ai.google.dev/api/generate-content#finishreason) is 12.",
+    "tips": [
+      "Focus on open communication",
+      "Practice active listening",
+      "Take time for self-care"
+    ],
+    "capabilities": "System is operational"
+  },
+  "timestamp": 1754223469.55718,
+  "ttl_seconds": 600,
+  "created_at": "2025-08-03T14:17:49.557209"
+}
