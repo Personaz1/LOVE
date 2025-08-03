@@ -1332,10 +1332,15 @@ Provide your response in this JSON format:
         
         # Детальное логирование для отладки
         try:
-            logger.info(f"🔧 SYSTEM ANALYSIS: emotional_history type: {type(emotional_history)}")
-            logger.info(f"🔧 SYSTEM ANALYSIS: emotional_trends type: {type(emotional_trends)}")
-            logger.info(f"🔧 SYSTEM ANALYSIS: recent_messages type: {type(recent_messages)}")
-            logger.info(f"🔧 SYSTEM ANALYSIS: recent_notes type: {type(recent_notes)}")
+            if username:
+                logger.info(f"🔧 SYSTEM ANALYSIS: emotional_history type: {type(emotional_history)}")
+                logger.info(f"🔧 SYSTEM ANALYSIS: emotional_trends type: {type(emotional_trends)}")
+                logger.info(f"🔧 SYSTEM ANALYSIS: recent_messages type: {type(recent_messages)}")
+                logger.info(f"🔧 SYSTEM ANALYSIS: recent_notes type: {type(recent_notes)}")
+            else:
+                logger.info("🔧 SYSTEM ANALYSIS: No user context available")
+        except NameError:
+            logger.info("🔧 SYSTEM ANALYSIS: Variables not initialized (no user context)")
         except Exception as e:
             logger.error(f"🔧 SYSTEM ANALYSIS: Error in debug logging: {e}")
 
