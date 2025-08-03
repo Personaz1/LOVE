@@ -1174,7 +1174,10 @@ class SystemTools:
                 file_tools = FileTools()
                 result = file_tools.append_to_file(path, content)
                 logger.info(f"✅ append_to_file result: {result}")
-                return f"Content appended to: {path}" if result else f"Failed to append to file: {path}"
+                if result:
+                    return f"✅ Content appended to: {path}"
+                else:
+                    return f"❌ Failed to append to file: {path}"
             
             elif func_name == "safe_create_file":
                 args = self._parse_arguments(args_str, ["path", "content"])
