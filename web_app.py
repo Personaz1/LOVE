@@ -287,15 +287,28 @@ async def login(
     password: str = Form(...)
 ):
     """Handle login and create session"""
-    # Valid credentials
-    valid_credentials = {
-        "meranda": "musser",
-        "stepan": "stepan"  # Add stepan user
-    }
+    # Load credentials from environment variables
+    valid_credentials = {}
+    credentials_str = os.getenv('USER_CREDENTIALS', '')
+    if credentials_str:
+        try:
+            # Format: "user1:pass1,user2:pass2"
+            for pair in credentials_str.split(','):
+                if ':' in pair:
+                    username, password = pair.strip().split(':', 1)
+                    valid_credentials[username] = password
+        except Exception as e:
+            logger.error(f"Error parsing credentials: {e}")
     
-    # Debug logging
-    logger.info(f"Login attempt - Username: '{username}', Password: '{password}'")
-    logger.info(f"Valid credentials: {valid_credentials}")
+    # Fallback to default if no env credentials
+    if not valid_credentials:
+        valid_credentials = {
+            "meranda": "musser",
+            "stepan": "stepan"
+        }
+    
+    # Debug logging (безопасно)
+    logger.info(f"Login attempt - Username: '{username}'")
     logger.info(f"Username in valid_credentials: {username in valid_credentials}")
     if username in valid_credentials:
         logger.info(f"Password matches: {password == valid_credentials[username]}")
