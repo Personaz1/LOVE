@@ -143,7 +143,7 @@ class ToolExecutor:
     def __init__(self, ai_client):
         self.ai_client = ai_client
     
-    async def execute_tool_call(self, tool_call: ToolCall, context: Dict[str, Any] = None) -> Dict[str, Any]:
+    def execute_tool_call(self, tool_call: ToolCall, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Выполняет один tool call"""
         try:
             logger.info(f"🔧 TOOL EXECUTOR: Executing {tool_call.function_name}")
@@ -170,8 +170,8 @@ class ToolExecutor:
                 if arg_key in resolved_arguments:
                     positional_args.append(resolved_arguments[arg_key])
             
-            # Выполняем функцию с позиционными аргументами
-            result = await tool_function(*positional_args)
+            # Выполняем функцию с позиционными аргументами (не async)
+            result = tool_function(*positional_args)
             
             return {
                 'success': True,
@@ -230,7 +230,7 @@ class ResponseProcessor:
         # 2. Выполняем tool calls с контекстом
         tool_results = []
         for tool_call in tool_calls:
-            result = await self.tool_executor.execute_tool_call(tool_call, context)
+            result = self.tool_executor.execute_tool_call(tool_call, context)
             tool_results.append(result)
         
         # 3. Форматируем для чата
