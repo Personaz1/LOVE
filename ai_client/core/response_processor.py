@@ -158,6 +158,14 @@ class ToolExtractor:
         if '\n' in args_str and args_str.count('"') >= 2:
             return True
         
+        # НОВАЯ ПРОВЕРКА: если есть append_to_file с двумя аргументами, считаем полным
+        if 'append_to_file' in args_str and args_str.count('"') >= 4:
+            return True
+        
+        # ЕЩЕ БОЛЕЕ АГРЕССИВНАЯ ПРОВЕРКА: если есть кавычки и скобки, считаем полным
+        if args_str.count('"') >= 2 and args_str.count('(') > 0:
+            return True
+        
         return False
     
     def _parse_arguments(self, args_str: str) -> Dict[str, Any]:
