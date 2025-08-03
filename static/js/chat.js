@@ -2124,37 +2124,16 @@ function isMobileDevice() {
 }
 
 async function loadMobileSystemAnalysis() {
-    try {
-        console.log('Loading mobile system analysis...');
-        const response = await fetch('/api/system-analysis');
-        const data = await response.json();
-        
-        if (data.success) {
-            console.log('Mobile system analysis loaded successfully');
-            updateMobileSystemPanel(data.analysis);
-        } else {
-            console.error('Mobile system analysis failed:', data.error);
-            showMobileSystemError(data.error || 'Failed to load system analysis');
-        }
-    } catch (error) {
-        console.error('Error loading mobile system analysis:', error);
-        showMobileSystemError('Failed to load system analysis');
-    }
+    // Просто вызываем основную функцию - убираем дублирование
+    await loadSystemAnalysis();
 }
 
 function updateMobileSystemPanel(analysis) {
-    const statusElement = document.getElementById('mobileSystemStatus');
-    
-    if (statusElement) {
-        statusElement.innerHTML = formatMessage(analysis.status || 'No status available');
-        console.log('Mobile system status updated');
-    }
+    // Используем основную функцию - убираем дублирование
+    updateSystemPanel(analysis);
 }
 
 function showMobileSystemError(message) {
-    const statusElement = document.getElementById('mobileSystemStatus');
-    if (statusElement) {
-        statusElement.innerHTML = `<div class="error-message">${message}</div>`;
-        console.error('Mobile system error displayed:', message);
-    }
+    // Используем основную функцию - убираем дублирование
+    showSystemError(message);
 } 

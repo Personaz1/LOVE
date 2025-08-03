@@ -1369,72 +1369,7 @@ body.theme-dark .diary-entry {
         display: none !important;
     }
     
-    /* Мобильные стили для System Analysis модального окна */
-    .system-analysis-modal {
-        padding: 10px;
-        z-index: 2000;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        visibility: hidden;
-        transition: all 0.3s ease;
-    }
-    
-    .system-analysis-modal.active {
-        opacity: 1;
-        visibility: visible;
-    }
-    
-    .system-analysis-modal-content {
-        width: 95%;
-        max-width: 95%;
-        max-height: 90vh;
-        margin: 0;
-        border-radius: 15px;
-        background: var(--bg-color);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        transform: scale(0.9);
-        transition: transform 0.3s ease;
-    }
-    
-    .system-analysis-modal.active .system-analysis-modal-content {
-        transform: scale(1);
-    }
-    
-    .system-analysis-modal-header {
-        padding: 15px 20px;
-        border-radius: 15px 15px 0 0;
-        background: linear-gradient(135deg, #ff1493, #c71585);
-        color: white;
-    }
-    
-    .system-analysis-modal-header h3 {
-        font-size: 1.2rem;
-        margin: 0;
-    }
-    
-    .system-analysis-modal-close {
-        width: 30px;
-        height: 30px;
-        font-size: 18px;
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        border-radius: 50%;
-        color: white;
-        cursor: pointer;
-        transition: background 0.3s ease;
-    }
-    
-    .system-analysis-modal-close:hover {
-        background: rgba(255, 255, 255, 0.3);
-    }
+
     
     /* Улучшенные стили для мобильного меню */
     .mobile-menu {
