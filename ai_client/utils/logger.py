@@ -1,5 +1,5 @@
 """
-Система логирования
+Система логирования - УПРОЩЕННАЯ ВЕРСИЯ
 """
 
 import logging
@@ -7,30 +7,13 @@ import sys
 from typing import Optional
 
 class Logger:
-    """Класс для управления логированием"""
+    """Класс для управления логированием - УПРОЩЕННАЯ ВЕРСИЯ"""
     
     def __init__(self):
-        """Инициализация логгера"""
+        """Инициализация логгера - без дублирования handlers"""
         self.logger = logging.getLogger('ai_client')
-        self.logger.setLevel(logging.INFO)
+        # НЕ добавляем handlers - они уже настроены в web_app.py
         
-        # Проверяем, не добавлены ли уже обработчики
-        if not self.logger.handlers:
-            # Создаем форматтер
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            
-            # Добавляем обработчик для консоли
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setFormatter(formatter)
-            self.logger.addHandler(console_handler)
-            
-            # Добавляем обработчик для файла
-            file_handler = logging.FileHandler('app.log')
-            file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
-    
     def info(self, message: str):
         """Логирование информационного сообщения"""
         self.logger.info(message)
