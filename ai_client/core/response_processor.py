@@ -124,11 +124,23 @@ class ToolExtractor:
         
         # Если нет именованных аргументов, берем позиционные
         if not arguments:
-            # Разделяем по запятой, но учитываем кавычки
+            # Разделяем по запятой, но учитываем кавычки и f-строки
             parts = re.split(r',\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', args_str)
             for i, part in enumerate(parts):
-                part = part.strip().strip('"\'')
+                part = part.strip()
                 if part:
+                    # Убираем кавычки снаружи
+                    if part.startswith('"') and part.endswith('"'):
+                        part = part[1:-1]
+                    elif part.startswith("'") and part.endswith("'"):
+                        part = part[1:-1]
+                    
+                    # Обрабатываем f-строки - извлекаем содержимое
+                    if part.startswith('f"') and part.endswith('"'):
+                        part = part[2:-1]  # Убираем f" и "
+                    elif part.startswith("f'") and part.endswith("'"):
+                        part = part[2:-1]  # Убираем f' и '
+                    
                     # Если это переменная без кавычек, сохраняем как есть
                     if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', part):
                         arguments[f"arg_{i}"] = part
@@ -255,8 +267,17 @@ class ResponseProcessor:
         # Обрабатываем tool calls после получения полного текста
         processed = await self.process_complete_response(full_text)
         
-        # Если есть результаты tool calls, заменяем весь текст
+        # Если есть результаты tool calls, заменяем только tool calls на результаты
         if processed.tool_results:
-            # Возвращаем только форматированный текст (без дублирования)
-            yield processed.formatted_text
-        # Если нет tool calls, не возвращаем ничего дополнительно 
+            # Заменяем только tool calls, не весь текст
+            for result in processed.tool_results:
+                if result['success']:
+                    replacement = f"\n\n**Результат выполнения:**\n{result['result']}\n\n"
+                else:
+                    replacement = f"\n\n**Ошибка выполнения:**\n{result['error']}\n\n"
+                
+                # Заменяем оригинальный tool call на результат
+                full_text = full_text.replace(result['original_text'], replacement)
+            
+            # Возвращаем обновленный текст
+            yield full_text 
