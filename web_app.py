@@ -1387,24 +1387,21 @@ Provide your response in this JSON format:
                 # Fallback if no JSON found
                 logger.warning("⚠️ SYSTEM ANALYSIS: No JSON found in response")
                 analysis_data = {
-                    "system_status": analysis_response,
-                    "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                    "status": analysis_response,
                     "capabilities": "System is operational"
                 }
         except json.JSONDecodeError as e:
             # Fallback if JSON parsing fails
             logger.error(f"❌ SYSTEM ANALYSIS: JSON parsing failed: {e}")
             analysis_data = {
-                "system_status": analysis_response,
-                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                "status": analysis_response,
                 "capabilities": "System is operational"
             }
         except Exception as e:
             # General fallback
             logger.error(f"❌ SYSTEM ANALYSIS: General parsing error: {e}")
             analysis_data = {
-                "system_status": "System analysis completed",
-                "tips": ["Focus on open communication", "Practice active listening", "Take time for self-care"],
+                "status": "System analysis completed",
                 "capabilities": "System is operational"
             }
         

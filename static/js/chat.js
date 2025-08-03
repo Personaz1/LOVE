@@ -1368,27 +1368,14 @@ function updateSystemPanel(analysis) {
         statusElement.innerHTML = statusHtml;
     }
     
-    // Update tips
-    const tipsElement = document.getElementById('systemTips');
-    if (tipsElement && analysis.tips) {
-        tipsElement.innerHTML = analysis.tips.map(tip => `
-            <div class="tip-item">
-                 ${tip}
-            </div>
-        `).join('');
-    }
+
 }
 
 function showSystemError(message) {
     const statusElement = document.getElementById('systemStatus');
-    const tipsElement = document.getElementById('systemTips');
     
     if (statusElement) {
         statusElement.innerHTML = `<div class="error-message">${message}</div>`;
-    }
-    
-    if (tipsElement) {
-        tipsElement.innerHTML = `<div class="error-message">Failed to load tips</div>`;
     }
 }
 
@@ -2157,19 +2144,10 @@ async function loadMobileSystemAnalysis() {
 
 function updateMobileSystemPanel(analysis) {
     const statusElement = document.getElementById('mobileSystemStatus');
-    const tipsElement = document.getElementById('mobileSystemTips');
     
     if (statusElement) {
         statusElement.innerHTML = formatMessage(analysis.status || 'No status available');
         console.log('Mobile system status updated');
-    }
-    
-    if (tipsElement && analysis.tips) {
-        const tipsHtml = analysis.tips.map(tip => 
-            `<div class="tip-item">${tip}</div>`
-        ).join('');
-        tipsElement.innerHTML = tipsHtml;
-        console.log('Mobile system tips updated');
     }
 }
 
