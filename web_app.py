@@ -329,6 +329,21 @@ async def login_greeting(request: Request):
     
     async def generate_greeting():
         try:
+            # Check if we should skip greeting (within 10 minutes of last activity)
+            cache_key = f"greeting_{username}"
+            cached_greeting = system_cache.get(cache_key)
+            
+            if cached_greeting:
+                # Check if last greeting was within 10 minutes
+                last_greeting_time = cached_greeting.get('timestamp')
+                if last_greeting_time:
+                    time_diff = datetime.now() - datetime.fromisoformat(last_greeting_time)
+                    if time_diff.total_seconds() < 600:  # 10 minutes
+                        logger.info(f"🔄 GREETING: Skipping greeting for {username} (last greeting was {time_diff.total_seconds():.0f}s ago)")
+                        yield f"data: {json.dumps({'type': 'greeting_skipped', 'message': 'Greeting skipped - recent activity detected'})}\n\n"
+                        yield f"data: {json.dumps({'type': 'greeting_complete', 'timestamp': datetime.now().isoformat()})}\n\n"
+                        return
+            
             # Get user profile
             user_profile = UserProfile(username)
             user_profile_dict = user_profile.get_profile()
@@ -372,6 +387,12 @@ System Status: Guardian is ready to provide personalized greeting
                 conversation_context=context,
                 system_prompt=guardian_profile.get_system_prompt()
             )
+            
+            # Cache the greeting with timestamp
+            system_cache.set(cache_key, {
+                'greeting': greeting,
+                'timestamp': datetime.now().isoformat()
+            }, ttl=600)  # Cache for 10 minutes
             
             # Send greeting
             yield f"data: {json.dumps({'type': 'greeting', 'content': greeting})}\n\n"
@@ -482,6 +503,11 @@ async def chat_stream_endpoint(
             # Add to conversation history
             conversation_history.add_message(username, message, full_response)
             
+            # Clear greeting cache when user sends a message (activity detected)
+            greeting_cache_key = f"greeting_{username}"
+            system_cache.delete(greeting_cache_key)
+            logger.info(f"🔄 GREETING: Cleared greeting cache for {username} (activity detected)")
+            
             # Send final completion signal
             yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.now().isoformat()})}\n\n"
             
@@ -547,6 +573,11 @@ async def chat_endpoint(
         
         # Save to conversation history
         conversation_history.add_message(username, message, ai_response)
+        
+        # Clear greeting cache when user sends a message (activity detected)
+        greeting_cache_key = f"greeting_{username}"
+        system_cache.delete(greeting_cache_key)
+        logger.info(f"🔄 GREETING: Cleared greeting cache for {username} (activity detected)")
         
         return JSONResponse({
             "success": True,
