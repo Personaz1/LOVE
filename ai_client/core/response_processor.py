@@ -197,6 +197,7 @@ class ToolExtractor:
                 for i, part in enumerate(parts):
                     if part:
                         arguments[f"arg_{i}"] = part
+                        logger.info(f"🔧 TOOL EXTRACTOR: Extracted arg_{i}: {part[:50]}...")
             else:
                 # Обычная однострочная строка
                 parts = re.split(r',\s*(?=(?:[^"]*"[^"]*")*[^"]*$)', args_str)
@@ -416,7 +417,7 @@ class ResponseProcessor:
         
         async for chunk in text_stream:
             full_text += chunk
-            yield chunk
+            # НЕ yield chunk здесь - это создает дублирование
         
         # Обрабатываем tool calls после получения полного текста
         processed = await self.process_complete_response(full_text)
@@ -436,4 +437,7 @@ class ResponseProcessor:
                     full_text = full_text.replace(original_text, replacement)
             
             # Возвращаем обновленный текст
+            yield full_text
+        else:
+            # Если нет tool calls, возвращаем оригинальный текст
             yield full_text 
