@@ -115,5 +115,14 @@
     "ai_response": "```tool_code\nwith open('test_success.txt', 'w') as f:\n    f.write('Успешный тест')\n```\n",
     "context": "",
     "type": "conversation"
+  },
+  {
+    "id": "msg_13_1754219506.608377",
+    "timestamp": "2025-08-03T13:11:46.608790",
+    "user": "stepan",
+    "message": "привет",
+    "ai_response": "Привет, Степан.\n\nΔΣ Guardian на связи. Когнитивные, архитектурные и эмоционально-сенсорные слои активны. Система стабильна.\n\nГотов к работе. Какой вектор?",
+    "context": "",
+    "type": "conversation"
   }
 ]

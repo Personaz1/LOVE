@@ -560,7 +560,7 @@ class SystemTools:
             logger.info(f"🔧 TOOL EXTRACTION: Processing text: {text[:200]}...")
             
             # Паттерн для поиска вызовов в формате print(tool_code.function(...))
-            pattern = r'print\s*\(\s*tool_code\.(\w+)\s*\(([^)]*)\)\s*\)'
+            pattern = r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\)'
             
             # Также ищем в блоках кода ```tool_code\nprint(tool_code.function(...))\n```
             code_block_pattern = r'```tool_code\s*\n(.*?)\n```'
@@ -632,12 +632,12 @@ class SystemTools:
                     logger.warning(f"⚠️ Unknown tool: {func_name}")
             
             # Также ищем прямые вызовы function(...)
-            direct_pattern = r'(\w+)\s*\([^)]*\)'
+            direct_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)'
             for match in re.finditer(direct_pattern, text):
                 full_call = match.group(0)
                 
                 # Извлекаем имя функции
-                func_match = re.match(r'(\w+)\s*\(', full_call)
+                func_match = re.match(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', full_call)
                 if not func_match:
                     continue
                 
@@ -652,7 +652,7 @@ class SystemTools:
                         logger.warning(f"⚠️ Invalid tool call: {full_call}")
             
             # Ищем формат tool_code\nfunction(...)
-            tool_code_pattern = r'tool_code\s*\n\s*(\w+)\s*\([^)]*\)'
+            tool_code_pattern = r'tool_code\s*\n\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)'
             for match in re.finditer(tool_code_pattern, text):
                 func_name = match.group(1)
                 args = match.group(0).split('(', 1)[1].rstrip(')')
@@ -676,9 +676,9 @@ class SystemTools:
                 logger.info(f"🔧 TOOL EXTRACTION: Found print content: {print_content[:100]}...")
                 
                 # Ищем в содержимом print реальные вызовы инструментов
-                for tool_match in re.finditer(r'(\w+)\s*\([^)]*\)', print_content):
+                for tool_match in re.finditer(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)', print_content):
                     full_call = tool_match.group(0)
-                    func_match = re.match(r'(\w+)\s*\(', full_call)
+                    func_match = re.match(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', full_call)
                     if not func_match:
                         continue
                     
@@ -778,8 +778,8 @@ class SystemTools:
     def _validate_tool_call(self, tool_call: str) -> bool:
         """Валидация синтаксиса вызова инструмента"""
         try:
-            # Извлекаем имя функции и аргументы
-            match = re.match(r'(\w+)\s*\((.*)\)', tool_call)
+            # Извлекаем имя функции и аргументы (включая подчеркивания)
+            match = re.match(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*)\)', tool_call)
             if not match:
                 return False
             
@@ -826,7 +826,7 @@ class SystemTools:
         """Извлечение вложенных вызовов"""
         try:
             # Более сложный паттерн для вложенных вызовов
-            pattern = r'(\w+)\s*\([^)]*\)'
+            pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)'
             matches = re.findall(pattern, text)
             
             # Убираем дубликаты
@@ -850,7 +850,7 @@ class SystemTools:
         # Пытаемся парсить как именованные аргументы: param=value
         if '=' in args_str:
             # Паттерн для именованных аргументов: param="value" или param=value
-            named_pattern = r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|(\w+))'
+            named_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([a-zA-Z_][a-zA-Z0-9_]*))'
             named_matches = re.findall(named_pattern, args_str)
             
             for match in named_matches:
@@ -865,7 +865,7 @@ class SystemTools:
             quoted_matches = re.findall(quoted_pattern, args_str)
             
             # Паттерн для аргументов без кавычек
-            unquoted_pattern = r'\b(\w+)\b'
+            unquoted_pattern = r'\b([a-zA-Z_][a-zA-Z0-9_]*)\b'
             unquoted_matches = re.findall(unquoted_pattern, args_str)
             
             # Объединяем результаты
@@ -882,7 +882,7 @@ class SystemTools:
         """Выполнение вызова инструмента"""
         try:
             # Извлекаем имя функции и аргументы
-            match = re.match(r'(\w+)\s*\((.*)\)', tool_call)
+            match = re.match(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*)\)', tool_call)
             if not match:
                 return f"❌ Invalid tool call format: {tool_call}"
             
