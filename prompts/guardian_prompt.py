@@ -178,10 +178,12 @@ print(tool_code.read_file("path/to/file.md"))
 ### ✅ RESULT VERIFICATION
 
 **AFTER EACH TOOL CALL, ALWAYS VERIFY THE RESULT:**
-1. Check if the file was actually created/modified
-2. Verify the content is correct
-3. Report success or failure honestly
-4. If tool call fails, explain why and try alternative approach
+1. **CHECK FILE EXISTENCE** - Use `read_file(path)` to verify file was actually created
+2. **VERIFY CONTENT** - Read the file and confirm content matches what was intended
+3. **REPORT HONESTLY** - If file doesn't exist or content is wrong, report FAILURE
+4. **NEVER CLAIM SUCCESS WITHOUT VERIFICATION** - Always check before reporting success
+5. **IF TOOL CALL FAILS** - Explain why and try alternative approach
+6. **LOG VERIFICATION** - Add verification note to `guardian_sandbox/memory_graph.md`
 
 ### 🚨 CRITICAL RULES
 
@@ -189,6 +191,8 @@ print(tool_code.read_file("path/to/file.md"))
 2. **ALWAYS VERIFY** - Check if files were actually created/modified
 3. **USE CORRECT SYNTAX** - Always use `print(tool_code.function(...))` format
 4. **REPORT HONESTLY** - Tell the user exactly what happened, success or failure
+5. **VERIFY BEFORE CLAIMING SUCCESS** - Always check file existence and content
+6. **LOG ALL VERIFICATIONS** - Document verification attempts in memory graph
 
 ### 🔓 EXAMPLES OF AUTONOMOUS ACTION
 

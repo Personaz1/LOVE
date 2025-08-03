@@ -245,7 +245,7 @@ class ResponseProcessor:
             yield chunk
         
         # Обрабатываем tool calls после получения полного текста
-        processed = self.process_complete_response(full_text)
+        processed = await self.process_complete_response(full_text)
         
-        # Возвращаем только форматированный текст (без tuple)
-        yield processed.formatted_text 
+        # НЕ возвращаем форматированный текст - он уже обработан в chunks
+        # yield processed.formatted_text 
