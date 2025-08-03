@@ -2776,16 +2776,130 @@ body.theme-dark .form-actions {
 
 /* Guardian Page Styles */
 .guardian-content {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
     padding: 20px;
+    min-height: calc(100vh - 80px);
+    overflow-y: auto;
 }
 
 .guardian-form {
-    background: var(--bg-secondary);
-    border-radius: 15px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.guardian-form-section {
+    background: white;
+    border-radius: 20px;
     padding: 30px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border: 1px solid rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.guardian-form-section:nth-child(1) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.guardian-form-section:nth-child(2) {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.guardian-form-section:nth-child(3) {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+.guardian-form-section:nth-child(4) {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: white;
+}
+
+.guardian-avatar-section {
+    grid-column: 1 / -1;
+    padding: 40px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 25px;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+    color: white;
+}
+
+.guardian-avatar-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.guardian-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: white;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.guardian-avatar:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.3);
+}
+
+.guardian-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.guardian-upload-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.guardian-upload-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.guardian-avatar-section h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.guardian-form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+    padding: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
 }
 
 .input-group {
@@ -3099,4 +3213,39 @@ body.theme-dark .step-number {
     color: #e74c3c;
     font-style: italic;
     text-align: center;
+}
+
+/* Guardian mobile styles */
+@media (max-width: 768px) {
+    .guardian-content {
+        padding: 15px;
+    }
+    
+    .guardian-form {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .guardian-avatar-section {
+        padding: 30px 20px;
+    }
+    
+    .guardian-avatar-section h2 {
+        font-size: 1.5rem;
+    }
+    
+    .guardian-form-section {
+        padding: 20px;
+    }
+    
+    .guardian-form-actions {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .guardian-avatar {
+        width: 100px;
+        height: 100px;
+        font-size: 2.5rem;
+    }
 }

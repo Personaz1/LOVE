@@ -37,18 +37,19 @@
         <main class="chat-main">
             <div class="guardian-content">
                 <!-- Guardian Avatar Section -->
-                <section class="avatar-section">
-                    <div class="avatar-container">
-                        <div class="avatar" id="guardianAvatar">
+                <section class="guardian-avatar-section">
+                    <div class="guardian-avatar-container">
+                        <div class="guardian-avatar" id="guardianAvatar">
                             {% if guardian.avatar_url %}
-                                <img src="{{ guardian.avatar_url }}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                                <img src="{{ guardian.avatar_url }}" alt="Guardian Avatar">
                             {% else %}
-                                <i class="fas fa-user"></i>
+                                👼
                             {% endif %}
                         </div>
+                        <h2>ΔΣ Guardian</h2>
                         <div class="avatar-upload">
                             <input type="file" id="guardianAvatarInput" accept="image/*" style="display: none;">
-                            <button type="button" class="upload-btn" onclick="document.getElementById('guardianAvatarInput').click()">
+                            <button type="button" class="guardian-upload-btn" onclick="document.getElementById('guardianAvatarInput').click()">
                                 📷 Change Avatar
                             </button>
                         </div>
@@ -56,10 +57,9 @@
                 </section>
 
                 <!-- Guardian Profile Form -->
-                <section class="profile-section">
-                    <form id="guardianForm" class="guardian-form">
+                                    <form id="guardianForm" class="guardian-form">
                         <!-- Basic Information -->
-                        <div class="form-group">
+                        <div class="guardian-form-section">
                             <h3>Basic Information</h3>
                             <div class="input-group">
                                 <label for="guardianName">Name:</label>
@@ -72,7 +72,7 @@
                         </div>
 
                         <!-- Personality Settings -->
-                        <div class="form-group">
+                        <div class="guardian-form-section">
                             <h3>Personality Settings</h3>
                             <div class="input-group">
                                 <label for="communicationStyle">Communication Style:</label>
@@ -104,7 +104,7 @@
                         </div>
 
                         <!-- System Prompt -->
-                        <div class="form-group">
+                        <div class="guardian-form-section">
                             <h3>System Prompt</h3>
                             <div class="input-group">
                                 <label for="systemPrompt">Custom System Prompt:</label>
@@ -114,7 +114,7 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="form-actions">
+                        <div class="guardian-form-actions">
                             <button type="submit" class="save-btn">
                                 <i class="fas fa-save"></i> Save Changes
                             </button>
