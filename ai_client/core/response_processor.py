@@ -5,8 +5,11 @@ Response Processor - Правильная обработка ответов мо
 
 import re
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, AsyncGenerator
 from dataclasses import dataclass
+
+from ..tools.system_tools import SystemTools
+from .parallel_executor import ParallelToolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -308,37 +311,55 @@ class ResponseFormatter:
         return formatted_text
 
 class ResponseProcessor:
-    """Главный процессор ответов модели"""
+    """Обрабатывает ответы модели с разделением парсинга и форматирования"""
     
     def __init__(self, ai_client):
-        self.tool_extractor = ToolExtractor()
-        self.tool_executor = ToolExecutor(ai_client)
-        self.response_formatter = ResponseFormatter()
-        self.ai_client = ai_client  # Сохраняем для доступа к переменным
+        self.ai_client = ai_client
+        self.extractor = ToolExtractor()
+        self.executor = ToolExecutor(ai_client)
+        self.formatter = ResponseFormatter()
+        self.parallel_executor = ParallelToolExecutor()  # Добавляем параллельный исполнитель
     
     async def process_complete_response(self, text: str, context: Dict[str, Any] = None) -> ProcessedResponse:
         """Обрабатывает полный ответ модели"""
-        logger.info(f"🔧 RESPONSE PROCESSOR: Processing response ({len(text)} chars)")
-        
-        # 1. Извлекаем tool calls из оригинального текста
-        tool_calls = self.tool_extractor.extract_tool_calls(text)
-        logger.info(f"🔧 RESPONSE PROCESSOR: Found {len(tool_calls)} tool calls")
-        
-        # 2. Выполняем tool calls с контекстом
-        tool_results = []
-        for tool_call in tool_calls:
-            result = self.tool_executor.execute_tool_call(tool_call, context)
-            tool_results.append(result)
-        
-        # 3. Форматируем для чата
-        formatted_text = self.response_formatter.format_for_chat(text, tool_results)
-        
-        return ProcessedResponse(
-            original_text=text,
-            tool_calls=tool_calls,
-            formatted_text=formatted_text,
-            tool_results=tool_results
-        )
+        try:
+            # Извлекаем tool calls
+            tool_calls = self.extractor.extract_tool_calls(text)
+            logger.info(f"🔧 RESPONSE PROCESSOR: Found {len(tool_calls)} tool calls")
+            
+            tool_results = []
+            
+            if tool_calls:
+                # Пробуем параллельное выполнение для множественных tool calls
+                if len(tool_calls) > 1:
+                    logger.info(f"🚀 RESPONSE PROCESSOR: Using parallel execution for {len(tool_calls)} tools")
+                    tool_call_strings = [tc.original_text for tc in tool_calls]
+                    parallel_results = await self.parallel_executor.execute_tools_parallel(tool_call_strings)
+                    tool_results = parallel_results
+                else:
+                    # Обычное последовательное выполнение для одного tool call
+                    for tool_call in tool_calls:
+                        result = self.executor.execute_tool_call(tool_call, context)
+                        tool_results.append(result)
+            
+            # Форматируем ответ для чата
+            formatted_text = self.formatter.format_for_chat(text, tool_results)
+            
+            return ProcessedResponse(
+                original_text=text,
+                tool_calls=tool_calls,
+                formatted_text=formatted_text,
+                tool_results=tool_results
+            )
+            
+        except Exception as e:
+            logger.error(f"❌ RESPONSE PROCESSOR ERROR: {e}")
+            return ProcessedResponse(
+                original_text=text,
+                tool_calls=[],
+                formatted_text=text,
+                tool_results=[]
+            )
     
     async def process_streaming_response(self, text_stream):
         """Обрабатывает потоковый ответ модели"""
