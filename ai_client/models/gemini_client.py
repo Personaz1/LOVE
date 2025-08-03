@@ -172,8 +172,11 @@ class GeminiClient:
 Always start with 🤖 **REASONING PROCESS:** followed by numbered steps, then 💬 **FINAL RESPONSE:** with your actual answer.
 
 **REASONING STEPS:**
-Use as many steps as needed (1 to any number) to think through the problem logically. Each step should be clear, actionable, and numbered.
-""")
+1. Analyze the user and system context and user profile
+2. Execute reasoning and generate response
+3. Plan your approach and tools needed
+4. Use as many steps as needed (1 to any number) to think through the problem logically. Each step should be clear, actionable, and numbered.
+                            """)
         
         return "\n".join(prompt_parts)
     
