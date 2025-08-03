@@ -1915,8 +1915,41 @@ async function switchModel(modelName) {
     }
 } 
 
+async function checkRecentActivity() {
+    try {
+        const response = await fetch('/api/conversation-history?limit=5', {
+            credentials: 'include'
+        });
+        if (!response.ok) return false;
+        
+        const data = await response.json();
+        if (!data.success || !data.history || data.history.length === 0) {
+            return false;
+        }
+        
+        // Проверяем, есть ли сообщения за последние 10 минут
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        const recentMessages = data.history.filter(msg => {
+            const messageTime = new Date(msg.timestamp);
+            return messageTime > tenMinutesAgo;
+        });
+        
+        return recentMessages.length > 0;
+    } catch (error) {
+        console.error('Error checking recent activity:', error);
+        return false;
+    }
+}
+
 async function startLoginGreeting() {
     try {
+        // Проверяем активность за последние 10 минут
+        const hasRecentActivity = await checkRecentActivity();
+        if (hasRecentActivity) {
+            console.log('Recent activity detected, skipping greeting');
+            return;
+        }
+        
         const response = await fetch('/api/login-greeting', {
             method: 'POST',
             credentials: 'include'
