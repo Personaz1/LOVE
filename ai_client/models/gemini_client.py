@@ -172,12 +172,7 @@ class GeminiClient:
 Always start with 🤖 **REASONING PROCESS:** followed by numbered steps, then 💬 **FINAL RESPONSE:** with your actual answer.
 
 **REASONING STEPS:**
-1. Analyze the user's intent and emotional state
-2. Consider context and user profile
-3. Plan your approach and tools needed
-4. Execute reasoning and generate response
-
-Each step should be clear, actionable, and numbered.
+Use as many steps as needed (1 to any number) to think through the problem logically. Each step should be clear, actionable, and numbered.
 Make sure there is a space between REASONING PROCESS: and 💬 **FINAL RESPONSE:**
 """)
         
