@@ -468,13 +468,24 @@ async def chat_stream_endpoint(
                 user_profile=user_profile_dict
             )
             
-            # Обрабатываем поток через ResponseProcessor
-            async for chunk in response_processor.process_streaming_response(model_stream):
+            # Собираем полный ответ от модели
+            full_response = ""
+            async for chunk in model_stream:
                 if chunk:
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             
-            # Обработка завершена в ResponseProcessor
+            # Обрабатываем tool calls после получения полного ответа
+            logger.info(f"🔧 STREAMING CHAT: Processing tool calls...")
+            context = {'user_profile': user_profile_dict}
+            processed_response = await response_processor.process_complete_response(full_response, context)
+            
+            # Заменяем tool calls на результаты в полном ответе
+            if processed_response.tool_results:
+                final_response = processed_response.formatted_text
+                # Отправляем обновленный ответ
+                yield f"data: {json.dumps({'type': 'chunk', 'content': final_response})}\n\n"
+            
             logger.info(f"🔧 STREAMING CHAT: Response processing completed")
             
             # Send final completion signal
