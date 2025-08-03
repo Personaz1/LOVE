@@ -34,14 +34,14 @@ class ToolExtractor:
     """Извлекает tool calls из оригинального текста (БЕЗ форматирования)"""
     
     def __init__(self):
-        # Паттерны для поиска tool calls
+        # Паттерны для поиска tool calls - ИСПРАВЛЕННЫЕ ДЛЯ МНОГОСТРОЧНЫХ СТРОК
         self.tool_patterns = [
-            r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)\s*\)',
-            r'tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)',
+            r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)\s*\)',
+            r'tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)',
         ]
         
         # Паттерн для извлечения tool_code из print
-        self.print_tool_pattern = r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*([^)]+)\s*\)\s*\)'
+        self.print_tool_pattern = r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)\s*\)'
     
     def extract_tool_calls(self, text: str) -> List[ToolCall]:
         """Извлекает tool calls из текста с поддержкой многострочных строк"""
@@ -152,6 +152,10 @@ class ToolExtractor:
         # АГРЕССИВНАЯ ПРОВЕРКА: если есть многострочное содержимое, считаем полным
         if args_str.count('"') >= 2 and args_str.count(')') > 0:
             # Если есть хотя бы две кавычки и закрывающая скобка, считаем полным
+            return True
+        
+        # СУПЕР АГРЕССИВНАЯ ПРОВЕРКА: если есть \n и кавычки, считаем полным
+        if '\n' in args_str and args_str.count('"') >= 2:
             return True
         
         return False
