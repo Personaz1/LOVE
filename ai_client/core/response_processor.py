@@ -45,12 +45,17 @@ class ToolExtractor:
         tool_calls = []
         
         # Сначала ищем print(tool_code.function()) паттерны
-        print_matches = re.finditer(self.print_tool_pattern, text, re.MULTILINE | re.DOTALL)
+        print_matches = re.finditer(self.tool_patterns[0], text, re.MULTILINE | re.DOTALL)
         
         for match in print_matches:
             try:
                 function_name = match.group(1)
                 args_str = match.group(2)
+                
+                # Проверяем на неполный вызов
+                if not args_str.strip().endswith(')'):
+                    logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete print tool call detected: {match.group(0)}")
+                    continue
                 
                 # Парсим аргументы
                 arguments = self._parse_arguments(args_str)
@@ -89,6 +94,11 @@ class ToolExtractor:
                     function_name = match.group(1)
                     args_str = match.group(2)
                     
+                    # Проверяем на неполный вызов
+                    if not args_str.strip().endswith(')'):
+                        logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete direct tool call detected: {match.group(0)}")
+                        continue
+                    
                     # Парсим аргументы
                     arguments = self._parse_arguments(args_str)
                     
@@ -109,11 +119,25 @@ class ToolExtractor:
         return tool_calls
     
     def _parse_arguments(self, args_str: str) -> Dict[str, Any]:
-        """Парсит аргументы tool call"""
+        """Парсит аргументы tool call с улучшенной обработкой неполных вызовов"""
         arguments = {}
         
         # Очищаем строку аргументов
         args_str = args_str.strip()
+        
+        # Проверяем на неполный вызов (без закрывающей скобки)
+        if not args_str.endswith(')'):
+            logger.warning(f"⚠️ TOOL EXTRACTOR: Incomplete tool call detected: {args_str}")
+            # Пытаемся извлечь хотя бы первый аргумент
+            if args_str.startswith('"') or args_str.startswith("'"):
+                # Ищем закрывающую кавычку
+                quote_char = args_str[0]
+                end_quote = args_str.find(quote_char, 1)
+                if end_quote != -1:
+                    first_arg = args_str[1:end_quote]
+                    arguments["arg_0"] = first_arg
+                    logger.info(f"🔧 TOOL EXTRACTOR: Extracted first argument: {first_arg}")
+                    return arguments
         
         # Ищем именованные аргументы: name=value
         named_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*["\']([^"\']*)["\']'
