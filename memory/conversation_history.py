@@ -105,8 +105,13 @@ class ConversationHistory:
                 
                 with open(self.archive_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    logger.info(f"📖 Loaded {len(data)} archives")
-                    return data
+                    # Проверяем, что data это список
+                    if isinstance(data, list):
+                        logger.info(f"📖 Loaded {len(data)} archives")
+                        return data
+                    else:
+                        logger.warning("⚠️ Archive file contains non-list data - resetting to empty list")
+                        return []
             else:
                 logger.info("📭 Archive file not found - creating empty archive")
                 return []
@@ -174,7 +179,11 @@ class ConversationHistory:
         }
         
         # Add to archive
-        self.archive.append(archive_entry)
+        if isinstance(self.archive, list):
+            self.archive.append(archive_entry)
+        else:
+            logger.error(f"❌ Archive is not a list: {type(self.archive)} - resetting to empty list")
+            self.archive = [archive_entry]
         
         # Remove archived entries from history
         self.history = self.history[entries_to_archive:]

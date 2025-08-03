@@ -149,6 +149,11 @@ class ToolExtractor:
                 if remaining.endswith(')'):
                     return True
         
+        # АГРЕССИВНАЯ ПРОВЕРКА: если есть многострочное содержимое, считаем полным
+        if args_str.count('"') >= 2 and args_str.count(')') > 0:
+            # Если есть хотя бы две кавычки и закрывающая скобка, считаем полным
+            return True
+        
         return False
     
     def _parse_arguments(self, args_str: str) -> Dict[str, Any]:
