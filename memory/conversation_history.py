@@ -67,29 +67,52 @@ class ConversationHistory:
         os.makedirs(os.path.dirname(history_file), exist_ok=True)
         os.makedirs(os.path.dirname(archive_file), exist_ok=True)
         
-        # Load existing data
+        # Load existing data - optimized for empty history
         self.history = self._load_history()
         self.archive = self._load_archive()
+        
+        # Log initialization status
+        logger.info(f"📚 ConversationHistory initialized: {len(self.history)} messages, {len(self.archive)} archives")
     
     def _load_history(self) -> List[Dict[str, Any]]:
-        """Load conversation history from file"""
+        """Load conversation history from file - optimized for empty files"""
         try:
             if os.path.exists(self.history_file):
+                file_size = os.path.getsize(self.history_file)
+                if file_size == 0:
+                    logger.info("📭 Empty history file detected - fast return")
+                    return []
+                
                 with open(self.history_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    logger.info(f"📖 Loaded {len(data)} messages from history")
+                    return data
+            else:
+                logger.info("📭 History file not found - creating empty history")
+                return []
         except Exception as e:
             logger.error(f"Error loading conversation history: {e}")
-        return []
+            return []
     
     def _load_archive(self) -> List[Dict[str, Any]]:
-        """Load conversation archive from file"""
+        """Load conversation archive from file - optimized for empty files"""
         try:
             if os.path.exists(self.archive_file):
+                file_size = os.path.getsize(self.archive_file)
+                if file_size == 0:
+                    logger.info("📭 Empty archive file detected - fast return")
+                    return []
+                
                 with open(self.archive_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    logger.info(f"📖 Loaded {len(data)} archives")
+                    return data
+            else:
+                logger.info("📭 Archive file not found - creating empty archive")
+                return []
         except Exception as e:
             logger.error(f"Error loading conversation archive: {e}")
-        return []
+            return []
     
     def _save_history(self):
         """Save conversation history to file"""
@@ -277,7 +300,9 @@ Focus on relationship dynamics, emotional patterns, and meaningful insights rath
         return user_counts
     
     def get_recent_history(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get recent conversation history"""
+        """Get recent conversation history - optimized for empty history"""
+        if not self.history:
+            return []
         return self.history[-limit:] if self.history else []
     
     def get_user_history(self, username: str, limit: int = 10) -> List[Dict[str, Any]]:

@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const messagesContainer = document.getElementById('messagesContainer');
     const loadingBanner = document.getElementById('loadingBanner');
 
-    // Show loading banner immediately
-    showLoadingBanner();
+    // Don't show loading banner immediately - only show if actually loading
+    // showLoadingBanner(); // REMOVED - was causing slow loading perception
     
     // Load everything in parallel for speed
     Promise.all([
@@ -810,6 +810,9 @@ function exportChat() {
 // Load conversation history
 async function loadConversationHistory() {
     try {
+        // Show loading banner only if we're actually loading something
+        showLoadingBanner();
+        
         const response = await fetch('/api/conversation-history?limit=20', {
             credentials: 'include'
         });
@@ -834,6 +837,9 @@ async function loadConversationHistory() {
     } catch (error) {
         console.error('Error loading conversation history:', error);
         showWelcomeMessage();
+    } finally {
+        // Always hide loading banner when done
+        hideLoadingBanner();
     }
 }
 

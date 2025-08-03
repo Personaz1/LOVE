@@ -780,8 +780,8 @@ async def get_conversation_history(
         session_id = create_session(username)
         response = JSONResponse({
             "success": True,
-            "history": conversation_history.get_recent_history(limit=min(limit, 50)),
-            "count": len(conversation_history.get_recent_history(limit=min(limit, 50)))
+            "history": [],
+            "count": 0
         })
         response.set_cookie(
             key="session_id",
@@ -804,6 +804,18 @@ async def get_conversation_history(
                 "history": cached_history,
                 "count": len(cached_history),
                 "cached": True
+            })
+        
+        # FAST PATH: Если история пустая, возвращаем сразу
+        if not conversation_history.history:
+            logger.info(f"⚡ CONVERSATION HISTORY: Empty history - fast return for {username}")
+            # Кэшируем пустой результат на 5 минут
+            system_cache.set(cache_key, [], ttl_seconds=300)
+            return JSONResponse({
+                "success": True,
+                "history": [],
+                "count": 0,
+                "cached": False
             })
         
         # Optimize limit for faster loading
