@@ -247,5 +247,5 @@ class ResponseProcessor:
         # Обрабатываем tool calls после получения полного текста
         processed = await self.process_complete_response(full_text)
         
-        # НЕ возвращаем форматированный текст - он уже обработан в chunks
-        # yield processed.formatted_text 
+        # Возвращаем форматированный текст для замены
+        yield processed.formatted_text 
