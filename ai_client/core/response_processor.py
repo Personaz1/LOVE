@@ -125,6 +125,10 @@ class ToolExtractor:
         """Проверяет, является ли tool call полным (учитывает многострочные строки)"""
         args_str = args_str.strip()
         
+        # Если строка пустая или содержит только скобки, это неполный вызов
+        if not args_str or args_str == "()":
+            return False
+        
         # Если строка заканчивается на ), то это полный вызов
         if args_str.endswith(')'):
             return True
