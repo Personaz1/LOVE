@@ -149,17 +149,38 @@ class GeminiClient:
         return self._get_current_model()
     
     def _build_prompt(self, system_prompt: str, user_message: str, context: Optional[str] = None, user_profile: Optional[Dict[str, Any]] = None) -> str:
-        """Построение промпта"""
-        prompt_parts = [system_prompt]
+        """Строим промпт с reasoning и chain of thoughts"""
+        prompt_parts = []
         
-        if user_profile:
-            prompt_parts.append(f"\nUser Profile: {json.dumps(user_profile, ensure_ascii=False)}")
+        # System prompt
+        prompt_parts.append(system_prompt)
         
+        # Context if provided
         if context:
-            prompt_parts.append(f"\nContext: {context}")
+            prompt_parts.append(f"\n**CONTEXT:**\n{context}")
         
-        prompt_parts.append(f"\nUser: {user_message}")
-        prompt_parts.append("\nAssistant:")
+        # User profile if provided
+        if user_profile:
+            prompt_parts.append(f"\n**USER PROFILE:**\n{json.dumps(user_profile, indent=2)}")
+        
+        # User message
+        prompt_parts.append(f"\n**USER MESSAGE:**\n{user_message}")
+        
+        # REASONING INSTRUCTIONS
+        prompt_parts.append("""
+**RESPONSE FORMAT:**
+Always start with 🤖 **REASONING PROCESS:** followed by numbered steps, then 💬 **FINAL RESPONSE:** with your actual answer.
+
+**REASONING STEPS:**
+1. Analyze the user's intent and emotional state
+2. Consider context and user profile
+3. Plan your approach and tools needed
+4. Execute reasoning and generate response
+5. Format final answer appropriately
+
+Each step should be clear, actionable, and numbered.
+Make sure there is a space between REASONING PROCESS: and 💬 **FINAL RESPONSE:**
+""")
         
         return "\n".join(prompt_parts)
     

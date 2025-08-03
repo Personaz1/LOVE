@@ -620,27 +620,87 @@ function updateGuardianAvatars() {
     });
 }
 
-// Format message text (convert URLs to links, etc.)
+// Format message with reasoning support
 function formatMessage(text) {
-    // Check if message contains technical steps (🔧, ✅, 🎯)
+    // Check for reasoning format
+    if (text.includes('🤖 **REASONING PROCESS:**') && text.includes('💬 **FINAL RESPONSE:**')) {
+        return formatReasoningMessage(text);
+    }
+    
+    // Check for technical steps
     const hasTechnicalSteps = text.includes('🔧 **Executing:') || text.includes('✅ **Result:') || text.includes('🎯 **Ready for final response');
     
     if (hasTechnicalSteps) {
-        // Split into technical steps and final response
-        const parts = text.split(/(🎯 \*\*Ready for final response|\💬 \*\*Generating final response)/);
-        
-        if (parts.length > 1) {
-            // Show ONLY the final response, hide technical steps completely
-            const finalResponse = parts.slice(1).join('');
-            return formatFinalResponse(finalResponse);
-        } else {
-            // If no final response marker, show empty message (technical steps only)
-            return '<em>Processing...</em>';
-        }
+        // Show technical steps with proper formatting
+        return formatTechnicalSteps(text);
     }
     
     // Enhanced formatting with rich text support
     return formatRichText(text);
+}
+
+// Format reasoning message with chain of thoughts
+function formatReasoningMessage(text) {
+    // Split reasoning into parts
+    const reasoningMatch = text.match(/(🤖 \*\*REASONING PROCESS:\*\*|REASONING PROCESS:)([\s\S]*?)(💬 \*\*FINAL RESPONSE:\*\*|FINAL RESPONSE:)([\s\S]*)/);
+    
+    if (reasoningMatch) {
+        const reasoningProcess = reasoningMatch[2].trim();
+        const finalResponse = reasoningMatch[4].trim();
+        
+        // Format reasoning steps
+        const reasoningSteps = formatReasoningSteps(reasoningProcess);
+        
+        // Format final response
+        const formattedResponse = formatRichText(finalResponse);
+        
+        return `
+            <div class="reasoning-container">
+                <div class="reasoning-header">
+                    <span class="reasoning-icon">🧠</span>
+                    <span class="reasoning-title">Chain of Thoughts</span>
+                </div>
+                <div class="reasoning-steps">
+                    ${reasoningSteps}
+                </div>
+                <div class="final-response">
+                    <div class="final-response-header">
+                        <span class="response-icon">💬</span>
+                        <span class="response-title">Final Response</span>
+                    </div>
+                    <div class="response-content">
+                        ${formattedResponse}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Fallback to regular formatting
+    return formatRichText(text);
+}
+
+// Format reasoning steps
+function formatReasoningSteps(reasoningText) {
+    // Split by numbered steps
+    const steps = reasoningText.split(/(\d+\.)/).filter(step => step.trim());
+    let formattedSteps = '';
+    
+    for (let i = 0; i < steps.length; i += 2) {
+        if (steps[i] && steps[i + 1]) {
+            const stepNumber = steps[i];
+            const stepContent = steps[i + 1].trim();
+            
+            formattedSteps += `
+                <div class="reasoning-step">
+                    <div class="step-number">${stepNumber}</div>
+                    <div class="step-content">${formatRichText(stepContent)}</div>
+                </div>
+            `;
+        }
+    }
+    
+    return formattedSteps || `<div class="reasoning-text">${formatRichText(reasoningText)}</div>`;
 }
 
 function formatRichText(text) {
