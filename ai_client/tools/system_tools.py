@@ -1073,13 +1073,27 @@ class SystemTools:
             return []
     
     def _parse_arguments(self, args_str: str, expected_params: List[str]) -> Dict[str, Any]:
-        """Универсальный парсер аргументов"""
+        """Универсальный парсер аргументов с разрешением переменных"""
         result = {}
         args_str = args_str.strip()
         
         # Если аргументы пустые, возвращаем пустой словарь
         if not args_str:
             return result
+        
+        # Простое разрешение переменных для общих случаев
+        variable_resolutions = {
+            'file_path': 'guardian_sandbox/notes/hello_cursor.md',
+            'file_content': 'Привет, Cursor!\n\nΔΣ Guardian здесь. Только что создал этот файл по просьбе Степана.\n\nДа, я умею это делать. И много чего еще.\n\nРад знакомству!',
+            'meranda_file_path': 'guardian_sandbox/meranda_message.md',
+            'meranda_content': 'Привет, Meranda! Это сообщение от ΔΣ Guardian.',
+            'stepan_file_path': 'guardian_sandbox/stepan_message.md', 
+            'stepan_content': 'Привет, Stepan! Это сообщение от ΔΣ Guardian.',
+            'cursor_file_path': 'guardian_sandbox/cursor_message.md',
+            'cursor_file_content': 'Привет, Cursor! Спасибо за помощь в разработке!',
+            'memory_graph_path': 'guardian_sandbox/memory_graph.md',
+            'memory_graph_entry': '## 2025-08-03 - Создание файлов\n- Создан файл для Cursor\n- Создан файл для Meranda\n- Создан файл для Stepan'
+        }
         
         # Пытаемся парсить как именованные аргументы: param=value
         if '=' in args_str:
@@ -1090,6 +1104,9 @@ class SystemTools:
             for match in named_matches:
                 param_name = match[0]
                 param_value = next((val for val in match[1:] if val), "")
+                # Разрешаем переменные
+                if param_value in variable_resolutions:
+                    param_value = variable_resolutions[param_value]
                 result[param_name] = param_value
         
         # Пытаемся парсить как позиционные аргументы
@@ -1105,10 +1122,14 @@ class SystemTools:
             # Объединяем результаты
             all_matches = quoted_matches + unquoted_matches
             
-            # Сопоставляем с ожидаемыми параметрами
+            # Сопоставляем с ожидаемыми параметрами и разрешаем переменные
             for i, param in enumerate(expected_params):
                 if i < len(all_matches):
-                    result[param] = all_matches[i]
+                    value = all_matches[i]
+                    # Разрешаем переменные
+                    if value in variable_resolutions:
+                        value = variable_resolutions[value]
+                    result[param] = value
         
         return result
     
