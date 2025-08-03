@@ -67,6 +67,8 @@ class GeminiClient:
                     return "❌ Ответ заблокирован из-за рецитации"
                 elif finish_reason == 3:  # OTHER
                     return "❌ Ответ заблокирован по другим причинам"
+                elif finish_reason == 12:  # SAFETY_BLOCK
+                    return "❌ Ответ заблокирован системой безопасности (SAFETY_BLOCK)"
             
             # Способ 1: прямой доступ к text
             if hasattr(response, 'text') and response.text:
