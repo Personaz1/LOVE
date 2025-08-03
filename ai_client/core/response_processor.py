@@ -55,9 +55,6 @@ class ToolExtractor:
                 # Парсим аргументы
                 arguments = self._parse_arguments(args_str)
                 
-                # Создаем tool_code.function() строку для выполнения
-                tool_code_call = f"tool_code.{function_name}({args_str})"
-                
                 tool_call = ToolCall(
                     function_name=function_name,
                     arguments=arguments,
@@ -72,11 +69,22 @@ class ToolExtractor:
             except Exception as e:
                 logger.error(f"❌ TOOL EXTRACTOR: Error parsing print tool call: {e}")
         
-        # Затем ищем обычные tool_code.function() паттерны
+        # Затем ищем обычные tool_code.function() паттерны (НО ИСКЛЮЧАЕМ УЖЕ НАЙДЕННЫЕ)
         for pattern in self.tool_patterns[1:]:  # Пропускаем print паттерн
             matches = re.finditer(pattern, text, re.MULTILINE | re.DOTALL)
             
             for match in matches:
+                # Проверяем, не найден ли уже этот tool call в print паттернах
+                already_found = False
+                for existing_call in tool_calls:
+                    if (match.start() >= existing_call.start_pos and 
+                        match.end() <= existing_call.end_pos):
+                        already_found = True
+                        break
+                
+                if already_found:
+                    continue
+                
                 try:
                     function_name = match.group(1)
                     args_str = match.group(2)
@@ -230,5 +238,5 @@ class ResponseProcessor:
         # Обрабатываем tool calls после получения полного текста
         processed = self.process_complete_response(full_text)
         
-        # Возвращаем форматированный текст и результаты
-        yield processed.formatted_text, processed.tool_results 
+        # Возвращаем только форматированный текст (без tuple)
+        yield processed.formatted_text 
