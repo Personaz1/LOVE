@@ -173,7 +173,6 @@ Always start with 🤖 **REASONING PROCESS:** followed by numbered steps, then �
 
 **REASONING STEPS:**
 Use as many steps as needed (1 to any number) to think through the problem logically. Each step should be clear, actionable, and numbered.
-Make sure there is a space between REASONING PROCESS: and 💬 **FINAL RESPONSE:**
 """)
         
         return "\n".join(prompt_parts)
