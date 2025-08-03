@@ -555,7 +555,7 @@ class SystemTools:
     
     # Инструменты для выполнения
     def _extract_tool_calls(self, text: str) -> List[str]:
-        """Извлечение вызовов инструментов из текста - УПРОЩЕННАЯ ВЕРСИЯ"""
+        """Извлечение вызовов инструментов из текста - УЛУЧШЕННАЯ ВЕРСИЯ"""
         try:
             logger.info(f"🔧 TOOL EXTRACTION: Processing text ({len(text)} chars)")
             
@@ -602,6 +602,45 @@ class SystemTools:
                         logger.info(f"✅ Found direct call: {full_call}")
                     else:
                         logger.warning(f"⚠️ Invalid direct call: {full_call}")
+            
+            # 3. Ищем в блоках кода ```tool_code\n...```
+            code_block_pattern = r'```tool_code\s*\n(.*?)\n```'
+            for match in re.finditer(code_block_pattern, text, re.DOTALL):
+                code_content = match.group(1)
+                logger.info(f"🔧 Found code block: {code_content[:100]}...")
+                
+                # Ищем в блоке кода
+                for tool_match in re.finditer(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)', code_content):
+                    full_call = tool_match.group(0)
+                    func_match = re.match(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', full_call)
+                    if not func_match:
+                        continue
+                    
+                    func_name = func_match.group(1)
+                    if func_name in known_tools:
+                        if self._validate_tool_call(full_call):
+                            full_calls.append(full_call)
+                            logger.info(f"✅ Found in code block: {full_call}")
+                        else:
+                            logger.warning(f"⚠️ Invalid code block call: {full_call}")
+                    else:
+                        logger.warning(f"⚠️ Unknown tool in code block: {func_name}")
+            
+            # 4. Ищем в тексте без print - просто function(...)
+            simple_pattern = r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)'
+            for match in re.finditer(simple_pattern, text):
+                full_call = match.group(0)
+                func_match = re.match(r'([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', full_call)
+                if not func_match:
+                    continue
+                
+                func_name = func_match.group(1)
+                if func_name in known_tools:
+                    if self._validate_tool_call(full_call):
+                        full_calls.append(full_call)
+                        logger.info(f"✅ Found simple call: {full_call}")
+                    else:
+                        logger.warning(f"⚠️ Invalid simple call: {full_call}")
             
             # Убираем дубликаты
             unique_calls = list(dict.fromkeys(full_calls))
