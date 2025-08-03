@@ -377,7 +377,6 @@ class SystemTools:
             critical_files = [
                 "memory/model_notes.json",
                 "memory/conversation_history.json", 
-                "memory/guardian_profile.json",
                 "memory/user_profiles/meranda.json",
                 "memory/user_profiles/stepan.json",
             ]
