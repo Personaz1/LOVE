@@ -247,5 +247,7 @@ class ResponseProcessor:
         # Обрабатываем tool calls после получения полного текста
         processed = await self.process_complete_response(full_text)
         
-        # Возвращаем форматированный текст для замены
-        yield processed.formatted_text 
+        # Если есть результаты tool calls, заменяем весь текст
+        if processed.tool_results:
+            # Возвращаем только форматированный текст (без дублирования)
+            yield processed.formatted_text 
