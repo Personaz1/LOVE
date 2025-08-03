@@ -42,15 +42,15 @@ class GeminiClient:
         except Exception as e:
             logger.warning(f"⚠️ Google Cloud Vision API not available: {e}")
         
-        # Определяем доступные модели
+        # Определяем доступные модели - ПОРЯДОК ОТ ДЕШЕВЫХ К ДОРОГИМ
         self.models = [
-            {'name': 'gemini-2.5-pro', 'quota': 100},
-            {'name': 'gemini-1.5-pro', 'quota': 150},
-            {'name': 'gemini-2.5-flash', 'quota': 250},
-            {'name': 'gemini-1.5-flash', 'quota': 500},
-            {'name': 'gemini-2.0-flash', 'quota': 200},
-            {'name': 'gemini-2.0-flash-lite', 'quota': 1000},
-            {'name': 'gemini-2.5-flash-lite', 'quota': 1000}
+            {'name': 'gemini-2.5-flash-lite', 'quota': 1000},  # Самый дешевый, большой лимит
+            {'name': 'gemini-2.0-flash-lite', 'quota': 1000},   # Дешевый, большой лимит
+            {'name': 'gemini-1.5-flash', 'quota': 500},         # Дешевый, средний лимит
+            {'name': 'gemini-2.5-flash', 'quota': 250},         # Средний, средний лимит
+            {'name': 'gemini-2.0-flash', 'quota': 200},         # Средний, средний лимит
+            {'name': 'gemini-1.5-pro', 'quota': 150},           # Дорогой, маленький лимит
+            {'name': 'gemini-2.5-pro', 'quota': 100}            # Самый дорогой, самый маленький лимит
         ]
         
         self.current_model_index = 0

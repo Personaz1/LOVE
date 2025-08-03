@@ -173,9 +173,13 @@ class ParallelToolExecutor:
             AgentType.SYSTEM: SystemAgent(self.system_tools)
         }
         self.available_models = [
-            'gemini-2.5-flash',
-            'gemini-1.5-flash',
-            'gemini-2.0-flash-lite'
+            'gemini-2.5-flash-lite',  # Самый дешевый, большой лимит
+            'gemini-2.0-flash-lite',  # Дешевый, большой лимит
+            'gemini-1.5-flash',       # Дешевый, средний лимит
+            'gemini-2.5-flash',       # Средний, средний лимит
+            'gemini-2.0-flash',       # Средний, средний лимит
+            'gemini-1.5-pro',         # Дорогой, маленький лимит
+            'gemini-2.5-pro'          # Самый дорогой, самый маленький лимит
         ]
         self.model_index = 0
     

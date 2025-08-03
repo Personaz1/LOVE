@@ -224,7 +224,7 @@ class ToolExtractor:
         return arguments
     
     def _parse_multiline_arguments(self, args_str: str) -> List[str]:
-        """Парсит аргументы из многострочной строки"""
+        """Парсит аргументы из многострочной строки с улучшенной обработкой"""
         parts = []
         
         # Убираем внешние скобки
@@ -249,11 +249,38 @@ class ToolExtractor:
                 if remaining.startswith('"'):
                     # Ищем последнюю кавычку (учитываем экранирование и \n)
                     content_start = 1
-                    content_end = remaining.rfind('"')
-                    if content_end > content_start:
+                    
+                    # Ищем последнюю кавычку, пропуская экранированные
+                    pos = content_start
+                    while True:
+                        quote_pos = remaining.find('"', pos)
+                        if quote_pos == -1:
+                            break
+                        
+                        # Проверяем, не экранирована ли кавычка
+                        if quote_pos > 0 and remaining[quote_pos - 1] == '\\':
+                            pos = quote_pos + 1
+                            continue
+                        
+                        # Нашли последнюю кавычку
+                        content_end = quote_pos
                         second_arg = remaining[content_start:content_end]
-                        # Заменяем \n на реальные переносы строк
+                        
+                        # Заменяем экранированные символы
                         second_arg = second_arg.replace('\\n', '\n')
+                        second_arg = second_arg.replace('\\"', '"')
+                        second_arg = second_arg.replace("\\'", "'")
+                        
+                        parts.append(second_arg)
+                        break
+                    
+                    # Если не нашли закрывающую кавычку, берем до конца
+                    if len(parts) == 1:
+                        second_arg = remaining[content_start:]
+                        # Заменяем экранированные символы
+                        second_arg = second_arg.replace('\\n', '\n')
+                        second_arg = second_arg.replace('\\"', '"')
+                        second_arg = second_arg.replace("\\'", "'")
                         parts.append(second_arg)
         
         return parts
