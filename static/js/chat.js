@@ -715,9 +715,10 @@ function formatRichText(text) {
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
     
-    // Italic text: *text* or _text_
+    // Italic text: *text* or _text_ (but preserve tool calls)
     text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    // Only apply italic formatting if not a tool call pattern
+    text = text.replace(/(?<!tool_code\.|print\s*\(\s*tool_code\.)_([^_]+)_/g, '<em>$1</em>');
     
     // Code blocks: ```code``` or `code`
     text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
