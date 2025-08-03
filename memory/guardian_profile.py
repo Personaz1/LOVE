@@ -99,12 +99,21 @@ class GuardianProfile:
             return False
     
     def get_system_prompt(self) -> str:
-        """Get current system prompt"""
-        return self.profile.get("system_prompt", self._get_default_prompt())
+        """Get current system prompt - ALWAYS from Python file"""
+        try:
+            # ВСЕГДА берем из Python файла - это источник истины
+            from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
+            return AI_GUARDIAN_SYSTEM_PROMPT
+        except ImportError as e:
+            print(f"Error importing prompt from file: {e}")
+            # Fallback на JSON только если Python файл недоступен
+            return self.profile.get("system_prompt", self._get_default_prompt())
     
     def update_system_prompt(self, new_prompt: str) -> bool:
-        """Update system prompt (profile is the only source of truth)"""
+        """Update system prompt - DEPRECATED: Use update_prompt_from_file() instead"""
+        print("⚠️ WARNING: update_system_prompt() is deprecated. Use update_prompt_from_file() instead.")
         try:
+            # Обновляем JSON файл как backup
             self.profile["system_prompt"] = new_prompt
             self._save_profile()
             return True
