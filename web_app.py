@@ -537,8 +537,9 @@ async def chat_endpoint(
         # ОБРАБОТКА TOOL CALLS ЧЕРЕЗ ResponseProcessor
         logger.info(f"🔧 CHAT: Processing response through ResponseProcessor...")
         
-        # Обрабатываем через ResponseProcessor
-        processed_response = await response_processor.process_complete_response(ai_response)
+        # Обрабатываем через ResponseProcessor с контекстом
+        context = {'user_profile': user_profile_dict}
+        processed_response = await response_processor.process_complete_response(ai_response, context)
         
         # Используем форматированный ответ
         ai_response = processed_response.formatted_text

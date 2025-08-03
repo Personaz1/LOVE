@@ -112,8 +112,8 @@ class ToolExtractor:
         """Парсит аргументы tool call"""
         arguments = {}
         
-        # Простое парсирование для начала
-        # TODO: Улучшить парсинг аргументов
+        # Очищаем строку аргументов
+        args_str = args_str.strip()
         
         # Ищем именованные аргументы: name=value
         named_pattern = r'([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*["\']([^"\']*)["\']'
@@ -129,7 +129,11 @@ class ToolExtractor:
             for i, part in enumerate(parts):
                 part = part.strip().strip('"\'')
                 if part:
-                    arguments[f"arg_{i}"] = part
+                    # Если это переменная без кавычек, сохраняем как есть
+                    if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', part):
+                        arguments[f"arg_{i}"] = part
+                    else:
+                        arguments[f"arg_{i}"] = part
         
         return arguments
 
@@ -139,23 +143,27 @@ class ToolExecutor:
     def __init__(self, ai_client):
         self.ai_client = ai_client
     
-    def execute_tool_call(self, tool_call: ToolCall) -> Dict[str, Any]:
+    async def execute_tool_call(self, tool_call: ToolCall, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Выполняет один tool call"""
         try:
             logger.info(f"🔧 TOOL EXECUTOR: Executing {tool_call.function_name}")
             
-            # Создаем правильный tool call для выполнения
-            if tool_call.original_text.startswith('print('):
-                # Для print(tool_code.function()) создаем tool_code.function()
-                args_str = ', '.join([f'{k}="{v}"' if isinstance(v, str) else f'{k}={v}' 
-                                    for k, v in tool_call.arguments.items()])
-                execution_text = f"tool_code.{tool_call.function_name}({args_str})"
-            else:
-                # Для обычных tool calls используем оригинальный текст
-                execution_text = tool_call.original_text
+            # Получаем функцию из ai_client
+            tool_function = getattr(self.ai_client, tool_call.function_name, None)
+            if not tool_function:
+                raise Exception(f"Tool function {tool_call.function_name} not found")
             
-            # Вызываем метод через ai_client
-            result = self.ai_client._execute_tool_call(execution_text)
+            # Разрешаем переменные в аргументах
+            resolved_arguments = {}
+            for key, value in tool_call.arguments.items():
+                if isinstance(value, str) and value == 'user_profile' and context:
+                    # Получаем user_profile из контекста
+                    resolved_arguments[key] = context.get('user_profile')
+                else:
+                    resolved_arguments[key] = value
+            
+            # Выполняем функцию с разрешенными аргументами
+            result = await tool_function(**resolved_arguments)
             
             return {
                 'success': True,
@@ -201,8 +209,9 @@ class ResponseProcessor:
         self.tool_extractor = ToolExtractor()
         self.tool_executor = ToolExecutor(ai_client)
         self.response_formatter = ResponseFormatter()
+        self.ai_client = ai_client  # Сохраняем для доступа к переменным
     
-    async def process_complete_response(self, text: str) -> ProcessedResponse:
+    async def process_complete_response(self, text: str, context: Dict[str, Any] = None) -> ProcessedResponse:
         """Обрабатывает полный ответ модели"""
         logger.info(f"🔧 RESPONSE PROCESSOR: Processing response ({len(text)} chars)")
         
@@ -210,10 +219,10 @@ class ResponseProcessor:
         tool_calls = self.tool_extractor.extract_tool_calls(text)
         logger.info(f"🔧 RESPONSE PROCESSOR: Found {len(tool_calls)} tool calls")
         
-        # 2. Выполняем tool calls
+        # 2. Выполняем tool calls с контекстом
         tool_results = []
         for tool_call in tool_calls:
-            result = await self.tool_executor.execute_tool_call(tool_call)
+            result = await self.tool_executor.execute_tool_call(tool_call, context)
             tool_results.append(result)
         
         # 3. Форматируем для чата
