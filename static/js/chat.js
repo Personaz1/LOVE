@@ -659,12 +659,15 @@ function formatReasoningMessage(text) {
         
         return `
             <div class="reasoning-container">
-                <div class="reasoning-header">
+                <div class="reasoning-header" onclick="toggleReasoning(this)">
                     <span class="reasoning-icon">🧠</span>
                     <span class="reasoning-title">Chain of Thoughts</span>
+                    <span class="reasoning-toggle">▼</span>
                 </div>
-                <div class="reasoning-steps">
-                    ${reasoningSteps}
+                <div class="reasoning-content collapsed">
+                    <div class="reasoning-steps">
+                        ${reasoningSteps}
+                    </div>
                 </div>
                 <div class="final-response">
                     <div class="final-response-header">
@@ -2201,4 +2204,17 @@ function initializeSystemAnalysisButtons() {
     }
     
     console.log('✅ System Analysis buttons initialized');
+} 
+
+function toggleReasoning(header) {
+    const content = header.nextElementSibling;
+    const toggle = header.querySelector('.reasoning-toggle');
+    
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        toggle.textContent = '▲';
+    } else {
+        content.classList.add('collapsed');
+        toggle.textContent = '▼';
+    }
 } 
