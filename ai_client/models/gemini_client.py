@@ -176,7 +176,6 @@ Always start with 🤖 **REASONING PROCESS:** followed by numbered steps, then �
 2. Consider context and user profile
 3. Plan your approach and tools needed
 4. Execute reasoning and generate response
-5. Format final answer appropriately
 
 Each step should be clear, actionable, and numbered.
 Make sure there is a space between REASONING PROCESS: and 💬 **FINAL RESPONSE:**
