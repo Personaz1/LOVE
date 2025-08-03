@@ -1169,15 +1169,9 @@ class SystemTools:
                 path = args.get("path", "")
                 content = args.get("content", "")
                 logger.info(f"🔧 append_to_file: path={path}, content_length={len(content)}")
-                # Делегируем в FileTools
-                from ..tools.file_tools import FileTools
-                file_tools = FileTools()
-                result = file_tools.append_to_file(path, content)
+                result = self.append_to_file(path, content)
                 logger.info(f"✅ append_to_file result: {result}")
-                if result:
-                    return f"✅ Content appended to: {path}"
-                else:
-                    return f"❌ Failed to append to file: {path}"
+                return result
             
             elif func_name == "safe_create_file":
                 args = self._parse_arguments(args_str, ["path", "content"])
