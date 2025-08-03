@@ -26,6 +26,7 @@ from ai_client.utils.cache import system_cache
 load_dotenv()
 
 from ai_client.core.client import AIClient
+from ai_client.core.response_processor import ResponseProcessor
 from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
 from memory.user_profiles import UserProfile
 from memory.conversation_history import conversation_history
@@ -85,6 +86,7 @@ SESSION_SECRET = secrets.token_urlsafe(32)
 
 # Initialize components
 ai_client = AIClient()
+response_processor = ResponseProcessor(ai_client)
 # conversation_history = ConversationHistory() # This line is removed
 
 def get_recent_file_changes() -> str:
@@ -458,46 +460,22 @@ async def chat_stream_endpoint(
             # Track the complete response
             full_response = ""
             
-            async for chunk in ai_client.generate_streaming_response(
+            # Получаем поток от модели
+            model_stream = ai_client.generate_streaming_response(
                 system_prompt=guardian_profile.get_system_prompt(),
                 user_message=message,
                 context=full_context,
                 user_profile=user_profile_dict
-            ):
+            )
+            
+            # Обрабатываем поток через ResponseProcessor
+            async for chunk in response_processor.process_streaming_response(model_stream):
                 if chunk:
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             
-            # ОБРАБОТКА TOOL CALLS В STREAMING
-            logger.info(f"🔧 STREAMING CHAT: Processing response for tool calls...")
-            logger.info(f"🔧 STREAMING CHAT: Full response: {full_response[:500]}...")
-            
-            # Извлекаем tool calls из полного ответа
-            tool_calls = ai_client._extract_tool_calls(full_response)
-            
-            if tool_calls:
-                logger.info(f"🔧 STREAMING CHAT: Found {len(tool_calls)} tool calls: {tool_calls}")
-                
-                # Выполняем каждый tool call
-                for tool_call in tool_calls:
-                    try:
-                        logger.info(f"🔧 STREAMING CHAT: Executing tool call: {tool_call}")
-                        tool_result = ai_client._execute_tool_call(tool_call)
-                        logger.info(f"✅ STREAMING CHAT: Tool result: {tool_result[:200]}..." if len(tool_result) > 200 else tool_result)
-                        
-                        # Отправляем результат tool call в чат
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': f'\n\n**Результат выполнения:**\n{tool_result}\n\n'})}\n\n"
-                        
-                        # Заменяем tool call на результат в полном ответе
-                        full_response = full_response.replace(tool_call, tool_result)
-                        
-                    except Exception as e:
-                        logger.error(f"❌ STREAMING CHAT: Error executing tool call {tool_call}: {e}")
-                        error_msg = f"❌ Error executing {tool_call}: {str(e)}"
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': f'\n\n**Ошибка:**\n{error_msg}\n\n'})}\n\n"
-                        full_response = full_response.replace(tool_call, error_msg)
-            else:
-                logger.info(f"🔧 STREAMING CHAT: No tool calls found in response")
+            # Обработка завершена в ResponseProcessor
+            logger.info(f"🔧 STREAMING CHAT: Response processing completed")
             
             # Send final completion signal
             yield f"data: {json.dumps({'type': 'message_complete'})}\n\n"
