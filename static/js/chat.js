@@ -2225,13 +2225,19 @@ function toggleReasoning(header) {
 
 // Функция для скрытия технических шагов во всех сообщениях
 function hideAllTechnicalSteps() {
+    console.log('🔧 hideAllTechnicalSteps called');
     const reasoningContainers = document.querySelectorAll('.reasoning-container');
-    reasoningContainers.forEach(container => {
+    console.log(`🔧 Found ${reasoningContainers.length} reasoning containers`);
+    
+    reasoningContainers.forEach((container, index) => {
         const content = container.querySelector('.reasoning-content');
         const toggle = container.querySelector('.reasoning-toggle');
+        console.log(`🔧 Container ${index}: content=${!!content}, toggle=${!!toggle}`);
+        
         if (content && toggle) {
             content.classList.add('collapsed');
             toggle.textContent = '▼';
+            console.log(`🔧 Hidden container ${index}`);
         }
     });
     
@@ -2241,13 +2247,19 @@ function hideAllTechnicalSteps() {
 
 // Функция для показа технических шагов во всех сообщениях
 function showAllTechnicalSteps() {
+    console.log('🔧 showAllTechnicalSteps called');
     const reasoningContainers = document.querySelectorAll('.reasoning-container');
-    reasoningContainers.forEach(container => {
+    console.log(`🔧 Found ${reasoningContainers.length} reasoning containers`);
+    
+    reasoningContainers.forEach((container, index) => {
         const content = container.querySelector('.reasoning-content');
         const toggle = container.querySelector('.reasoning-toggle');
+        console.log(`🔧 Container ${index}: content=${!!content}, toggle=${!!toggle}`);
+        
         if (content && toggle) {
             content.classList.remove('collapsed');
             toggle.textContent = '▲';
+            console.log(`🔧 Shown container ${index}`);
         }
     });
     
