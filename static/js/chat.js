@@ -625,8 +625,8 @@ function updateGuardianAvatars() {
 
 // Format message with reasoning support
 function formatMessage(text) {
-    // Check for reasoning format
-    if (text.includes('🤖 **REASONING PROCESS:**') && text.includes('💬 **FINAL RESPONSE:**')) {
+    // Check for reasoning format - both REASONING STEPS and REASONING PROCESS
+    if ((text.includes('REASONING STEPS:') || text.includes('🤖 **REASONING PROCESS:**')) && text.includes('FINAL RESPONSE:')) {
         return formatReasoningMessage(text);
     }
     
