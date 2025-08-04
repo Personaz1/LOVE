@@ -236,11 +236,18 @@ def verify_password(credentials: HTTPBasicCredentials = Depends(security)):
     username = credentials.username
     password = credentials.password
     
-    # Valid credentials
-    valid_credentials = {
-        "meranda": "musser",
-        "stepan": "stepan"
-    }
+    # Load credentials from environment variables
+    valid_credentials = {}
+    credentials_str = os.getenv('USER_CREDENTIALS', '')
+    if credentials_str:
+        try:
+            # Format: "user1:pass1,user2:pass2"
+            for pair in credentials_str.split(','):
+                if ':' in pair:
+                    user, pwd = pair.strip().split(':', 1)
+                    valid_credentials[user] = pwd
+        except Exception as e:
+            logger.error(f"Error parsing credentials: {e}")
     
     # Simple authentication - in production, use proper password hashing
     if username in valid_credentials and password == valid_credentials[username]:
@@ -781,6 +788,29 @@ async def get_conversation_history(
                 "count": len(cached_history),
                 "cached": True
             })
+        
+        # Для гостя используем отдельную историю
+        if username == "guest":
+            try:
+                with open("memory/guest_conversation_history.json", "r", encoding="utf-8") as f:
+                    guest_history = json.load(f)
+                logger.info(f"👤 GUEST HISTORY: Loaded {len(guest_history)} messages for guest")
+                system_cache.set(cache_key, guest_history, ttl_seconds=120)
+                return JSONResponse({
+                    "success": True,
+                    "history": guest_history,
+                    "count": len(guest_history),
+                    "cached": False
+                })
+            except FileNotFoundError:
+                logger.info("👤 GUEST HISTORY: No guest history file found, returning empty")
+                system_cache.set(cache_key, [], ttl_seconds=300)
+                return JSONResponse({
+                    "success": True,
+                    "history": [],
+                    "count": 0,
+                    "cached": False
+                })
         
         # FAST PATH: Если история пустая, возвращаем сразу
         if not conversation_history.history:

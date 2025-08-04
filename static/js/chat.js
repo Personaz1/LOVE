@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize technical steps toggles
         initializeTechnicalSteps();
         
+        // Load private chats
+        loadPrivateChats();
+        
         // Start login greeting
         startLoginGreeting();
     }).catch((error) => {
@@ -66,6 +69,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear attached files
         attachedFiles = [];
         updateAttachedFilesDisplay();
+
+        // If in private chat, don't send to server
+        if (currentPrivateChatId) {
+            addMessage('This is a private conversation. AI responses are not available in private mode.', 'ai');
+            return;
+        }
 
         // Immediately start streaming - no loading screen
         try {
@@ -417,6 +426,19 @@ function finalizeStreamingMessage(messageElement) {
     // Add any final formatting or processing here
     const messageText = messageElement.textContent;
     messageElement.innerHTML = formatMessage(messageText);
+    
+    // Save AI response to private chat if in private mode
+    if (currentPrivateChatId) {
+        const chat = privateChats.find(c => c.id === currentPrivateChatId);
+        if (chat) {
+            chat.messages.push({
+                sender: 'ai',
+                content: messageText,
+                timestamp: new Date().toISOString()
+            });
+            savePrivateChats();
+        }
+    }
 }
 
 // Show status message
@@ -578,6 +600,19 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
         sender: sender,
         timestamp: new Date().toISOString()
         });
+    }
+    
+    // Save to private chat if in private mode
+    if (currentPrivateChatId && !timestamp) {
+        const chat = privateChats.find(c => c.id === currentPrivateChatId);
+        if (chat) {
+            chat.messages.push({
+                sender: sender,
+                content: text,
+                timestamp: new Date().toISOString()
+            });
+            savePrivateChats();
+        }
     }
 }
 
@@ -2265,4 +2300,164 @@ function showAllTechnicalSteps() {
     
     // Показываем уведомление
     showStatusMessage('Technical steps shown in all messages', 'success');
+}
+
+// Private Chat Functions
+let currentPrivateChatId = null;
+let privateChats = [];
+
+// Start new private conversation
+function startNewPrivateChat() {
+    const chatId = 'private_' + Date.now();
+    const chatTitle = 'New Conversation ' + new Date().toLocaleDateString();
+    
+    const newChat = {
+        id: chatId,
+        title: chatTitle,
+        created: new Date().toISOString(),
+        messages: []
+    };
+    
+    privateChats.unshift(newChat);
+    currentPrivateChatId = chatId;
+    
+    // Clear current messages
+    document.getElementById('messagesContainer').innerHTML = '';
+    
+    // Update chat list
+    updatePrivateChatList();
+    
+    // Show return button
+    const returnBtn = document.querySelector('.return-main-btn');
+    if (returnBtn) {
+        returnBtn.style.display = 'block';
+    }
+    
+    // Save to localStorage
+    savePrivateChats();
+    
+    showStatusMessage('New private conversation started', 'success');
+}
+
+// Load private chat
+function loadPrivateChat(chatId) {
+    const chat = privateChats.find(c => c.id === chatId);
+    if (!chat) return;
+    
+    currentPrivateChatId = chatId;
+    
+    // Clear current messages
+    const container = document.getElementById('messagesContainer');
+    container.innerHTML = '';
+    
+    // Load messages
+    chat.messages.forEach(msg => {
+        addMessage(msg.content, msg.sender, msg.timestamp);
+    });
+    
+    // Update chat list
+    updatePrivateChatList();
+    
+    // Show return button
+    const returnBtn = document.querySelector('.return-main-btn');
+    if (returnBtn) {
+        returnBtn.style.display = 'block';
+    }
+    
+    showStatusMessage(`Loaded: ${chat.title}`, 'success');
+}
+
+// Update private chat list
+function updatePrivateChatList() {
+    const chatList = document.getElementById('privateChatList');
+    if (!chatList) return;
+    
+    chatList.innerHTML = '';
+    
+    privateChats.forEach(chat => {
+        const chatItem = document.createElement('div');
+        chatItem.className = `chat-item ${chat.id === currentPrivateChatId ? 'active' : ''}`;
+        chatItem.onclick = () => loadPrivateChat(chat.id);
+        
+        const title = document.createElement('div');
+        title.className = 'chat-item-title';
+        title.textContent = chat.title;
+        
+        const date = document.createElement('div');
+        date.className = 'chat-item-date';
+        date.textContent = new Date(chat.created).toLocaleDateString();
+        
+        chatItem.appendChild(title);
+        chatItem.appendChild(date);
+        chatList.appendChild(chatItem);
+    });
+}
+
+// Save private chats to localStorage
+function savePrivateChats() {
+    localStorage.setItem('privateChats', JSON.stringify(privateChats));
+}
+
+// Load private chats from localStorage
+function loadPrivateChats() {
+    const saved = localStorage.getItem('privateChats');
+    if (saved) {
+        privateChats = JSON.parse(saved);
+    }
+    updatePrivateChatList();
+}
+
+// Return to main chat
+function returnToMainChat() {
+    currentPrivateChatId = null;
+    
+    // Clear current messages
+    document.getElementById('messagesContainer').innerHTML = '';
+    
+    // Load main conversation history
+    loadConversationHistory();
+    
+    // Update chat list
+    updatePrivateChatList();
+    
+    // Hide return button
+    const returnBtn = document.querySelector('.return-main-btn');
+    if (returnBtn) {
+        returnBtn.style.display = 'none';
+    }
+    
+    showStatusMessage('Returned to main conversation', 'success');
+}
+
+// Modified sendMessage function to handle private chats
+function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    // Clear input
+    messageInput.value = '';
+    
+    // Add user message
+    addMessage(message, 'user');
+    
+    // If in private chat, save to private chat
+    if (currentPrivateChatId) {
+        const chat = privateChats.find(c => c.id === currentPrivateChatId);
+        if (chat) {
+            chat.messages.push({
+                sender: 'user',
+                content: message,
+                timestamp: new Date().toISOString()
+            });
+            savePrivateChats();
+        }
+    }
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Send to server
+    sendMessageToServer(message);
 } 
