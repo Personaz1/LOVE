@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ΔΣ Guardian - Profile</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Profile Container -->
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="{{ url_for('static', path='/images/logo_small.png') }}" alt="ΔΣ Guardian" class="guardian-icon">
+                    <h1>ΔΣ Guardian</h1>
+                </div>
+                <div class="user-info">
+                    <span class="welcome-text">Welcome, {{ username.title() }}!</span>
+                    <a href="/chat" class="profile-btn">💬 Chat</a>
+                    <a href="/guardian" class="guardian-btn">👼 Guardian</a>
+                    <a href="/roadmap" class="roadmap-btn">🚀 Roadmap</a>
+                    <button class="diary-btn" onclick="loadConversationArchive()">📚 Archive</button>
+                    <button class="model-status-btn" onclick="window.location.href='/models'">🤖 Models</button>
+                    <form method="POST" action="/logout" style="display: inline;">
+                        <button type="submit" class="logout-btn">🚪 Logout</button>
+                    </form>
+                </div>
+                <!-- Мобильное меню -->
+                <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="chat-main">
+            <div class="profile-content">
+                <!-- Avatar Section -->
+                <section class="avatar-section">
+                    <div class="avatar-container">
+                        <div class="avatar" id="avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <button class="avatar-upload-btn" onclick="document.getElementById('avatar-input').click()">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                        <input type="file" id="avatar-input" accept="image/*" style="display: none;">
+                    </div>
+                    <h2>{{ username }}</h2>
+                </section>
+
+                <!-- Profile Form -->
+                <form class="profile-form" id="profile-form">
+                    <!-- Account Settings -->
+                    <section class="form-section">
+                        <h3><i class="fas fa-user-cog"></i> Account Settings</h3>
+                        
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" value="{{ username }}" readonly>
+                            <small>Username cannot be changed</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" value="{{ profile.email or '' }}" placeholder="Enter email">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="current-password">Current Password</label>
+                            <input type="password" id="current-password" name="current_password" placeholder="Enter current password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <input type="password" id="new-password" name="new_password" placeholder="Enter new password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password</label>
+                            <input type="password" id="confirm-password" name="confirm_password" placeholder="Confirm new password">
+                        </div>
+                    </section>
+
+                    <!-- Personal Information -->
+                    <section class="form-section">
+                        <h3><i class="fas fa-user"></i> Personal Information</h3>
+                        
+                        <div class="form-group">
+                            <label for="full-name">Full Name</label>
+                            <input type="text" id="full-name" name="full_name" value="{{ profile.full_name or '' }}" placeholder="Enter full name">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="age">Age</label>
+                            <input type="number" id="age" name="age" value="{{ profile.age or '' }}" min="1" max="120" placeholder="Enter age">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <input type="text" id="location" name="location" value="{{ profile.location or '' }}" placeholder="City, country">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bio">Bio</label>
+                            <textarea id="bio" name="bio" rows="4" placeholder="Tell us about yourself...">{{ profile.bio or '' }}</textarea>
+                        </div>
+                    </section>
+
+                    <!-- Submit Button -->
+                    <div class="form-actions">
+                        <button type="submit" class="save-btn">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <button type="button" class="delete-btn" onclick="deleteAccount()">
+                            <i class="fas fa-trash"></i> Delete Account
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Мобильное меню -->
+    <div class="mobile-menu" id="mobileMenu">
+        <div class="mobile-menu-content">
+            <div class="mobile-menu-header">
+                <h3>ΔΣ Guardian</h3>
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+            </div>
+            <div class="mobile-menu-items">
+                <a href="/chat" class="mobile-menu-item">💬 Chat</a>
+                <a href="/profile" class="mobile-menu-item">👤 Profile</a>
+                <a href="/guardian" class="mobile-menu-item">👼 Guardian</a>
+                <a href="/roadmap" class="mobile-menu-item">🚀 Roadmap</a>
+                <button class="mobile-menu-item" onclick="loadConversationArchive()">📚 Archive</button>
+                <a href="/models" class="mobile-menu-item">🤖 Models</a>
+                <button class="mobile-menu-item system-analysis" onclick="showSystemAnalysisModal()">🔧 System Analysis</button>
+                <form method="POST" action="/logout" style="display: inline;">
+                    <button type="submit" class="mobile-menu-item">🚪 Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Analysis Modal -->
+    <div class="system-analysis-modal" id="systemAnalysisModal">
+        <div class="system-analysis-modal-content">
+            <div class="system-analysis-modal-header">
+                <h3>System Analysis</h3>
+                <button class="system-analysis-modal-close" onclick="closeSystemAnalysisModal()">×</button>
+            </div>
+            <div class="system-analysis-modal-body">
+                <div id="mobileSystemStatus">Loading...</div>
+                <div id="mobileSystemTips"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно Model Status -->
+    <div class="modal" id="modelStatusModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🤖 AI Model Status</h2>
+                <span class="close" onclick="closeModal('modelStatusModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="modelStatusContent">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', path='/js/profile.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/chat.js') }}?v=1.4"></script>
+</body>
+</html> 

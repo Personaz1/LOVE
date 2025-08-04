@@ -1,0 +1,22 @@
+{
+  "username": "guest",
+  "created_at": "2025-08-01T14:05:00.000000",
+  "last_updated": "2025-08-01T14:05:00.000000",
+  "emotional_history": [
+    {
+      "feeling": "Curious",
+      "previous_feeling": "Not specified",
+      "context": "First visit to ΔΣ Guardian system",
+      "timestamp": "2025-08-01T14:05:00.000000",
+      "date": "2025-08-01",
+      "time": "14:05"
+    }
+  ],
+  "current_emotional_state": {
+    "primary_emotion": "Curious",
+    "secondary_emotion": "Interested",
+    "energy_level": "medium",
+    "engagement_level": "high"
+  },
+  "guest_specific_notes": "Гость системы - эмоциональное состояние обычно заинтересованное и любопытное"
+} 

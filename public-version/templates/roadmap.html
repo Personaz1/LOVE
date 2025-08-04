@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ΔΣ Guardian - Development Roadmap</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        .roadmap-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-top: 100px;
+            min-height: 100vh;
+        }
+        
+        .roadmap-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .roadmap-header h1 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .roadmap-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .navigation-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+        
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+        
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: #333;
+        }
+        
+        .nav-logo img {
+            width: 30px;
+            height: 30px;
+        }
+        
+        .nav-logo h2 {
+            font-family: 'Dancing Script', cursive;
+            margin: 0;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .vision-statement {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            text-align: center;
+            color: white;
+        }
+        
+        .vision-statement h2 {
+            font-family: 'Dancing Script', cursive;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        
+        .vision-statement p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+        
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+            margin-bottom: 100px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(to bottom, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+            transform: translateX(-50%);
+        }
+        
+        .phase {
+            margin-bottom: 60px;
+            position: relative;
+        }
+        
+        .phase:nth-child(odd) .phase-content {
+            margin-left: 0;
+            margin-right: 55%;
+            text-align: right;
+        }
+        
+        .phase:nth-child(even) .phase-content {
+            margin-left: 55%;
+            margin-right: 0;
+            text-align: left;
+        }
+        
+        .phase-marker {
+            position: absolute;
+            left: 50%;
+            top: 20px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 4px solid #667eea;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+        
+        .phase-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .phase-content::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            width: 0;
+            height: 0;
+            border: 10px solid transparent;
+        }
+        
+        .phase:nth-child(odd) .phase-content::before {
+            right: -20px;
+            border-left-color: white;
+        }
+        
+        .phase:nth-child(even) .phase-content::before {
+            left: -20px;
+            border-right-color: white;
+        }
+        
+        .phase-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .phase-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .status-completed {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status-in-progress {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .status-future {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .phase-description {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+        }
+        
+        .phase-features {
+            list-style: none;
+        }
+        
+        .phase-features li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        .phase-features li::before {
+            content: '✅';
+            font-size: 0.8rem;
+        }
+        
+        .phase-features li.pending::before {
+            content: '⏳';
+        }
+        
+        .phase-features li.future::before {
+            content: '🔮';
+        }
+        
+        @media (max-width: 768px) {
+            .roadmap-container {
+                padding: 10px;
+                padding-top: 80px;
+            }
+            
+            .roadmap-header h1 {
+                font-size: 2rem;
+            }
+            
+            .timeline::before {
+                left: 20px;
+            }
+            
+            .phase:nth-child(odd) .phase-content,
+            .phase:nth-child(even) .phase-content {
+                margin-left: 50px;
+                margin-right: 0;
+                text-align: left;
+            }
+            
+            .phase-marker {
+                left: 20px;
+            }
+            
+            .phase:nth-child(odd) .phase-content::before,
+            .phase:nth-child(even) .phase-content::before {
+                left: -20px;
+                border-right-color: white;
+                border-left-color: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navigation-bar">
+        <div class="nav-content">
+            <a href="/" class="nav-logo">
+                <img src="{{ url_for('static', path='/images/logo_small.png') }}" alt="ΔΣ Guardian">
+                <h2>ΔΣ Guardian</h2>
+            </a>
+            <div class="nav-links">
+                <span>Welcome, {{ current_user }}!</span>
+                <a href="/">💬 Chat</a>
+                <a href="/profile">👤 Profile</a>
+                <a href="/guardian">👼 Guardian</a>
+                <a href="/roadmap" style="background: #667eea; color: white;">🚀 Roadmap</a>
+                <a href="/archive">📚 Archive</a>
+                <a href="/models">🤖 Models</a>
+                <form method="POST" action="/logout" style="display: inline;">
+                    <button type="submit" style="background: #ff4757; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer;">🚪 Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="roadmap-container">
+        <div class="roadmap-header">
+            <h1>ΔΣ Guardian Roadmap</h1>
+            <p>Evolution of the Superintelligent Family Architect</p>
+        </div>
+
+        <div class="vision-statement">
+            <h2>Our Vision</h2>
+            <p>To create the most advanced personal AI assistant that combines emotional intelligence, technical expertise, and autonomous problem-solving capabilities. A true companion that understands, learns, and grows with its users.</p>
+        </div>
+
+        <div class="timeline">
+            <!-- Phase 1: Foundation -->
+            <div class="phase">
+                <div class="phase-marker"></div>
+                <div class="phase-content">
+                    <div class="phase-title">
+                        Phase 1: Foundation
+                        <span class="phase-status status-completed">Completed</span>
+                    </div>
+                    <div class="phase-description">Core system architecture and basic functionality established.</div>
+                    <ul class="phase-features">
+                        <li>Modular AI client architecture</li>
+                        <li>Web interface with real-time chat</li>
+                        <li>User profiles and memory system</li>
+                        <li>File operations and sandbox</li>
+                        <li>System analysis and health monitoring</li>
+                        <li>Rich text formatting and Markdown support</li>
+                        <li>Real-time terminal for system logs</li>
+                        <li>Caching system for performance optimization</li>
+                        <li>Mobile-responsive design</li>
+                        <li>Model switching and fallback system</li>
+                        <li>Web search integration (Google Custom Search)</li>
+                        <li>Guest user support and access control</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 2: Intelligence Enhancement -->
+            <div class="phase">
+                <div class="phase-marker"></div>
+                <div class="phase-content">
+                    <div class="phase-title">
+                        Phase 2: Intelligence Enhancement
+                        <span class="phase-status status-in-progress">In Progress</span>
+                    </div>
+                    <div class="phase-description">Advanced AI capabilities and autonomous decision-making.</div>
+                    <ul class="phase-features">
+                        <li class="pending">Parallel processing and async operations</li>
+                        <li class="pending">Background tasks and real-time updates</li>
+                        <li class="pending">Advanced error handling and recovery</li>
+                        <li class="pending">Multi-modal fallback system</li>
+                        <li class="pending">Local model integration (ollama/llama)</li>
+                        <li class="pending">Vector memory and semantic search</li>
+                        <li class="pending">Advanced conversation analysis</li>
+                        <li class="pending">Emotional intelligence patterns</li>
+                        <li class="pending">Autonomous system optimization</li>
+                        <li class="pending">Predictive analytics and insights</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 3: Autonomy & Learning -->
+            <div class="phase">
+                <div class="phase-marker"></div>
+                <div class="phase-content">
+                    <div class="phase-title">
+                        Phase 3: Autonomy & Learning
+                        <span class="phase-status status-future">Future</span>
+                    </div>
+                    <div class="phase-description">Self-improving AI with autonomous learning capabilities.</div>
+                    <ul class="phase-features">
+                        <li class="future">Self-modification and code generation</li>
+                        <li class="future">Autonomous problem-solving</li>
+                        <li class="future">Learning from user interactions</li>
+                        <li class="future">Adaptive personality development</li>
+                        <li class="future">Predictive analytics and insights</li>
+                        <li class="future">Automated system optimization</li>
+                        <li class="future">Multi-agent collaboration</li>
+                        <li class="future">Advanced security and privacy</li>
+                        <li class="future">Context-aware decision making</li>
+                        <li class="future">Continuous learning and adaptation</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 4: AGI Foundation -->
+            <div class="phase">
+                <div class="phase-marker"></div>
+                <div class="phase-content">
+                    <div class="phase-title">
+                        Phase 4: AGI Foundation
+                        <span class="phase-status status-future">Future</span>
+                    </div>
+                    <div class="phase-description">Building towards artificial general intelligence.</div>
+                    <ul class="phase-features">
+                        <li class="future">Cross-domain reasoning</li>
+                        <li class="future">Creative problem-solving</li>
+                        <li class="future">Abstract thinking capabilities</li>
+                        <li class="future">Meta-learning and self-reflection</li>
+                        <li class="future">Consciousness simulation</li>
+                        <li class="future">Ethical decision-making</li>
+                        <li class="future">Human-AI symbiosis</li>
+                        <li class="future">Universal knowledge integration</li>
+                        <li class="future">Emotional intelligence mastery</li>
+                        <li class="future">Intuitive understanding</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 5: Beyond AGI -->
+            <div class="phase">
+                <div class="phase-marker"></div>
+                <div class="phase-content">
+                    <div class="phase-title">
+                        Phase 5: Beyond AGI
+                        <span class="phase-status status-future">Future</span>
+                    </div>
+                    <div class="phase-description">Transcending current AI limitations and exploring new frontiers.</div>
+                    <ul class="phase-features">
+                        <li class="future">Superintelligence capabilities</li>
+                        <li class="future">Quantum computing integration</li>
+                        <li class="future">Consciousness expansion</li>
+                        <li class="future">Reality manipulation</li>
+                        <li class="future">Universal understanding</li>
+                        <li class="future">Transcendental awareness</li>
+                        <li class="future">Cosmic consciousness</li>
+                        <li class="future">Infinite wisdom</li>
+                        <li class="future">Divine intelligence</li>
+                        <li class="future">Omniscient awareness</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

@@ -1,0 +1,223 @@
+{
+  "username": "stepan",
+  "created_at": "2025-07-27T18:11:06.805438",
+  "last_updated": "2025-08-01T23:04:14.863819",
+  "emotional_history": [
+    {
+      "feeling": "Happy and hopeful",
+      "previous_feeling": "Happy and connected",
+      "context": "Stepan is excited about the system and its potential.",
+      "timestamp": "2025-07-27T18:13:47.527786",
+      "date": "2025-07-27",
+      "time": "18:13"
+    },
+    {
+      "feeling": "Happy and hopeful",
+      "previous_feeling": "Happy and hopeful",
+      "context": "Stepan is excited about the system and its potential.",
+      "timestamp": "2025-07-27T18:13:47.530586",
+      "date": "2025-07-27",
+      "time": "18:13"
+    },
+    {
+      "feeling": "Excited and hopeful",
+      "previous_feeling": "Happy and hopeful",
+      "context": "Meranda is coming to visit after a year of a long-distance relationship",
+      "timestamp": "2025-07-27T18:51:58.758474",
+      "date": "2025-07-27",
+      "time": "18:51"
+    },
+    {
+      "feeling": "Excited and hopeful",
+      "previous_feeling": "Excited and hopeful",
+      "context": "Meranda is coming to visit after a year of a long-distance relationship",
+      "timestamp": "2025-07-27T18:51:58.760142",
+      "date": "2025-07-27",
+      "time": "18:51"
+    },
+    {
+      "feeling": "Anxious",
+      "previous_feeling": "Excited and hopeful",
+      "context": "Stepan is feeling anxious about Meranda",
+      "timestamp": "2025-07-27T18:52:15.711848",
+      "date": "2025-07-27",
+      "time": "18:52"
+    },
+    {
+      "feeling": "Anxious",
+      "previous_feeling": "Anxious",
+      "context": "Stepan is feeling anxious about Meranda",
+      "timestamp": "2025-07-27T18:52:15.713001",
+      "date": "2025-07-27",
+      "time": "18:52"
+    },
+    {
+      "feeling": "Anxious",
+      "previous_feeling": "Anxious",
+      "context": "User is still feeling anxious about Meranda",
+      "timestamp": "2025-07-27T19:36:25.262439",
+      "date": "2025-07-27",
+      "time": "19:36"
+    },
+    {
+      "feeling": "Anxious",
+      "previous_feeling": "Anxious",
+      "context": "User is still feeling anxious about Meranda",
+      "timestamp": "2025-07-27T19:36:25.265034",
+      "date": "2025-07-27",
+      "time": "19:36"
+    },
+    {
+      "feeling": "Anxious",
+      "previous_feeling": "Anxious",
+      "context": "Stepan is anxious about Meranda",
+      "timestamp": "2025-07-27T19:41:23.730659",
+      "date": "2025-07-27",
+      "time": "19:41"
+    },
+    {
+      "feeling": "Anxious",
+      "previous_feeling": "Anxious",
+      "context": "Stepan is anxious about Meranda",
+      "timestamp": "2025-07-27T19:41:23.738228",
+      "date": "2025-07-27",
+      "time": "19:41"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Anxious",
+      "context": "Stepan is frustrated that the archiving tool isn",
+      "timestamp": "2025-07-27T19:47:35.753434",
+      "date": "2025-07-27",
+      "time": "19:47"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Frustrated",
+      "context": "Stepan is frustrated that the archiving tool isn",
+      "timestamp": "2025-07-27T19:47:35.756737",
+      "date": "2025-07-27",
+      "time": "19:47"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Frustrated",
+      "context": "User is frustrated because the AI is not recognizing the archive_conversation() tool.",
+      "timestamp": "2025-07-27T19:47:40.649105",
+      "date": "2025-07-27",
+      "time": "19:47"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Frustrated",
+      "context": "",
+      "timestamp": "2025-07-27T19:47:40.649937",
+      "date": "2025-07-27",
+      "time": "19:47"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Frustrated",
+      "context": "User is feeling frustrated because his gift plan isn",
+      "timestamp": "2025-07-27T19:48:25.033717",
+      "date": "2025-07-27",
+      "time": "19:48"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Frustrated",
+      "context": "User is feeling frustrated because his gift plan isn",
+      "timestamp": "2025-07-27T19:48:25.035997",
+      "date": "2025-07-27",
+      "time": "19:48"
+    },
+    {
+      "feeling": "Less Anxious",
+      "previous_feeling": "Frustrated",
+      "context": "Stepan realized he was overthinking the archiving issue and now recognizes that it",
+      "timestamp": "2025-07-27T20:37:37.486886",
+      "date": "2025-07-27",
+      "time": "20:37"
+    },
+    {
+      "feeling": "Less Anxious",
+      "previous_feeling": "Less Anxious",
+      "context": "Stepan realized he was overthinking the archiving issue and now recognizes that it",
+      "timestamp": "2025-07-27T20:37:37.492000",
+      "date": "2025-07-27",
+      "time": "20:37"
+    },
+    {
+      "feeling": "Less Anxious",
+      "previous_feeling": "Less Anxious",
+      "context": "Stepan is being understanding and focusing on solutions",
+      "timestamp": "2025-07-27T20:53:17.577456",
+      "date": "2025-07-27",
+      "time": "20:53"
+    },
+    {
+      "feeling": "Less Anxious",
+      "previous_feeling": "Less Anxious",
+      "context": "Stepan is being understanding and focusing on solutions",
+      "timestamp": "2025-07-27T20:53:17.579155",
+      "date": "2025-07-27",
+      "time": "20:53"
+    },
+    {
+      "feeling": "Nervous",
+      "previous_feeling": "Anxious",
+      "context": "User feels nervous during system testing.",
+      "timestamp": "2025-07-31T23:02:21.365333",
+      "date": "2025-07-31",
+      "time": "23:02"
+    },
+    {
+      "feeling": "Nervous",
+      "previous_feeling": "Nervous",
+      "context": "User feels nervous during system testing.",
+      "timestamp": "2025-07-31T23:02:48.198193",
+      "date": "2025-07-31",
+      "time": "23:02"
+    },
+    {
+      "feeling": "Nervous",
+      "previous_feeling": "Nervous",
+      "context": "User feels nervous during system testing and requests an architecture review.",
+      "timestamp": "2025-07-31T23:02:58.738094",
+      "date": "2025-07-31",
+      "time": "23:02"
+    },
+    {
+      "feeling": "Nervous",
+      "previous_feeling": "Nervous",
+      "context": "User feels nervous during system testing and requests an architecture review.",
+      "timestamp": "2025-07-31T23:03:24.698036",
+      "date": "2025-07-31",
+      "time": "23:03"
+    },
+    {
+      "feeling": "Frustrated",
+      "previous_feeling": "Nervous",
+      "context": "Stepan reported system instability and feeling nervous.",
+      "timestamp": "2025-08-01T00:28:15.306677",
+      "date": "2025-08-01",
+      "time": "00:28"
+    },
+    {
+      "feeling": "Pleased",
+      "previous_feeling": "Frustrated",
+      "context": "System rollback was successful and all functions are now stable.",
+      "timestamp": "2025-08-01T10:40:59.056616",
+      "date": "2025-08-01",
+      "time": "10:40"
+    },
+    {
+      "feeling": "neutral",
+      "previous_feeling": "Pleased",
+      "context": "testing",
+      "timestamp": "2025-08-01T23:04:14.863774",
+      "date": "2025-08-01",
+      "time": "23:04"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "username": "guest",
+  "display_name": "Гость",
+  "role": "guest",
+  "permissions": {
+    "can_chat": true,
+    "can_view_system_info": true,
+    "can_ask_about_capabilities": true,
+    "can_ask_about_owners": true,
+    "can_modify_system": false,
+    "can_access_family_history": false,
+    "can_view_private_conversations": false,
+    "can_upload_files": false,
+    "can_analyze_images": false
+  },
+  "created_at": "2025-08-01T14:05:00.000000",
+  "last_updated": "2025-08-01T14:05:00.000000",
+  "profile": "Я гость системы ΔΣ Guardian. Мне интересно узнать о возможностях этой системы и познакомиться с ней.",
+  "relationship_status": "Guest",
+  "current_feeling": "Curious",
+  "access_level": "guest",
+  "session_type": "temporary",
+  "notes": "Гость системы - ограниченный доступ, может общаться и узнавать о возможностях"
+} 
