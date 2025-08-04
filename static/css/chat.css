@@ -3249,3 +3249,26 @@ body.theme-dark .step-number {
         font-size: 2.5rem;
     }
 }
+
+/* Стили для кнопок управления техническими шагами */
+.action-btn-small[onclick*="hideAllTechnicalSteps"],
+.action-btn-small[onclick*="showAllTechnicalSteps"] {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 500;
+}
+
+.action-btn-small[onclick*="hideAllTechnicalSteps"]:hover,
+.action-btn-small[onclick*="showAllTechnicalSteps"]:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Анимация для кнопок */
+.action-btn-small[onclick*="hideAllTechnicalSteps"]:active,
+.action-btn-small[onclick*="showAllTechnicalSteps"]:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}

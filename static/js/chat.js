@@ -2221,4 +2221,36 @@ function toggleReasoning(header) {
         content.classList.add('collapsed');
         toggle.textContent = '▼';
     }
+}
+
+// Функция для скрытия технических шагов во всех сообщениях
+function hideAllTechnicalSteps() {
+    const reasoningContainers = document.querySelectorAll('.reasoning-container');
+    reasoningContainers.forEach(container => {
+        const content = container.querySelector('.reasoning-content');
+        const toggle = container.querySelector('.reasoning-toggle');
+        if (content && toggle) {
+            content.classList.add('collapsed');
+            toggle.textContent = '▼';
+        }
+    });
+    
+    // Показываем уведомление
+    showStatusMessage('Technical steps hidden in all messages', 'success');
+}
+
+// Функция для показа технических шагов во всех сообщениях
+function showAllTechnicalSteps() {
+    const reasoningContainers = document.querySelectorAll('.reasoning-container');
+    reasoningContainers.forEach(container => {
+        const content = container.querySelector('.reasoning-content');
+        const toggle = container.querySelector('.reasoning-toggle');
+        if (content && toggle) {
+            content.classList.remove('collapsed');
+            toggle.textContent = '▲';
+        }
+    });
+    
+    // Показываем уведомление
+    showStatusMessage('Technical steps shown in all messages', 'success');
 } 
