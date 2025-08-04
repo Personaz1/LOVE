@@ -644,12 +644,12 @@ function formatMessage(text) {
 
 // Format reasoning message with chain of thoughts
 function formatReasoningMessage(text) {
-    // Split reasoning into parts
-    const reasoningMatch = text.match(/(🤖 \*\*REASONING PROCESS:\*\*|REASONING PROCESS:)([\s\S]*?)(💬 \*\*FINAL RESPONSE:\*\*|FINAL RESPONSE:)([\s\S]*)/);
+    // Split reasoning into parts - match both REASONING STEPS and REASONING PROCESS
+    const reasoningMatch = text.match(/(🤖 \*\*REASONING (STEPS|PROCESS):\*\*|REASONING (STEPS|PROCESS):)([\s\S]*?)(💬 \*\*FINAL RESPONSE:\*\*|FINAL RESPONSE:)([\s\S]*)/);
     
     if (reasoningMatch) {
-        const reasoningProcess = reasoningMatch[2].trim();
-        const finalResponse = reasoningMatch[4].trim();
+        const reasoningProcess = reasoningMatch[4].trim();
+        const finalResponse = reasoningMatch[6].trim();
         
         // Format reasoning steps
         const reasoningSteps = formatReasoningSteps(reasoningProcess);
