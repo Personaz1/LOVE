@@ -212,7 +212,7 @@ class ToolExtractor:
                             remaining = remaining[1:].strip()
                         
                         # Если есть начало второго аргумента, извлекаем его
-                        if remaining.startswith('"') or remaining.startswith('"') or remaining.startswith('"'):
+                        if remaining.startswith('"') or remaining.startswith("'") or remaining.startswith('"""'):
                             # Ищем последнюю кавычку (может быть обрезано)
                             content_start = 1
                             
