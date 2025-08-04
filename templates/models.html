@@ -7,10 +7,17 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/chat.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+        
         .models-container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            height: 100vh;
+            overflow-y: auto;
         }
         
         .models-header {
