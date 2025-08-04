@@ -175,19 +175,7 @@ class SystemTools:
         except Exception as e:
             return f"❌ Error reading profile for {username}: {str(e)}"
     
-    def read_emotional_history(self, username: str) -> str:
-        """Чтение эмоциональной истории пользователя"""
-        try:
-            history_path = f"memory/user_profiles/{username}_emotional_history.json"
-            if not os.path.exists(history_path):
-                return f"❌ Emotional history not found for user: {username}"
-            
-            with open(history_path, 'r', encoding='utf-8') as f:
-                history = json.load(f)
-            
-            return f"Emotional history for {username}:\n{json.dumps(history, indent=2)}"
-        except Exception as e:
-            return f"❌ Error reading emotional history for {username}: {str(e)}"
+
     
     def search_user_data(self, username: str, query: str) -> str:
         """Поиск данных пользователя"""
@@ -216,100 +204,13 @@ class SystemTools:
         except Exception as e:
             return f"❌ Error searching user data: {str(e)}"
     
-    def update_current_feeling(self, username: str, feeling: str, context: str = "") -> str:
-        """Обновление текущего чувства пользователя"""
-        try:
-            profile_path = f"memory/user_profiles/{username}.json"
-            if not os.path.exists(profile_path):
-                return f"❌ Profile not found for user: {username}"
-            
-            with open(profile_path, 'r', encoding='utf-8') as f:
-                profile = json.load(f)
-            
-            profile['current_feeling'] = feeling
-            if context:
-                profile['feeling_context'] = context
-            profile['last_updated'] = datetime.now().isoformat()
-            
-            with open(profile_path, 'w', encoding='utf-8') as f:
-                json.dump(profile, f, indent=2)
-            
-            return f"✅ Updated feeling for {username}: {feeling}"
-        except Exception as e:
-            return f"❌ Error updating feeling for {username}: {str(e)}"
+
     
-    def add_user_observation(self, username: str, observation: str) -> str:
-        """Добавление наблюдения о пользователе"""
-        try:
-            observations_path = f"memory/user_profiles/{username}_observations.json"
-            
-            if os.path.exists(observations_path):
-                with open(observations_path, 'r', encoding='utf-8') as f:
-                    observations = json.load(f)
-            else:
-                observations = []
-            
-            observation_entry = {
-                'observation': observation,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            observations.append(observation_entry)
-            
-            with open(observations_path, 'w', encoding='utf-8') as f:
-                json.dump(observations, f, indent=2)
-            
-            return f"✅ Added observation for {username}"
-        except Exception as e:
-            return f"❌ Error adding observation for {username}: {str(e)}"
+
     
     # ===== SYSTEM TOOLS =====
     
-    def add_model_note(self, note: str, category: str = "general") -> str:
-        """Добавление заметки модели"""
-        try:
-            notes_path = "memory/model_notes.json"
-            
-            if os.path.exists(notes_path):
-                with open(notes_path, 'r', encoding='utf-8') as f:
-                    try:
-                        notes = json.load(f)
-                        # Убеждаемся что это список
-                        if not isinstance(notes, list):
-                            notes = []
-                    except json.JSONDecodeError:
-                        notes = []
-            else:
-                notes = []
-            
-            note_entry = {
-                'note': note,
-                'category': category,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            notes.append(note_entry)
-            
-            with open(notes_path, 'w', encoding='utf-8') as f:
-                json.dump(notes, f, indent=2)
-            
-            return f"✅ Added model note in category '{category}'"
-        except Exception as e:
-            return f"❌ Error adding model note: {str(e)}"
-    
-    def add_personal_thought(self, thought: str) -> str:
-        """Добавление личной мысли"""
-        try:
-            thoughts_path = "guardian_sandbox/personal_thoughts.md"
-            
-            thought_entry = f"\n## {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n{thought}\n"
-            
-            with open(thoughts_path, 'a', encoding='utf-8') as f:
-                f.write(thought_entry)
-            
-            return f"✅ Added personal thought"
-        except Exception as e:
-            return f"❌ Error adding personal thought: {str(e)}"
+
     
     def get_system_logs(self, lines: int = 50) -> str:
         """Получение системных логов"""
@@ -465,20 +366,34 @@ class SystemTools:
             if file_ext not in image_extensions:
                 return f"❌ Not a valid image file: {image_path}"
             
-            # Анализируем через Vision API
-            if self.config.is_vision_configured():
-                # Используем Vision API из gemini_client
-                from ..models.gemini_client import GeminiClient
-                gemini_client = GeminiClient()
-                vision_result = gemini_client._analyze_image_with_vision_api(image_path)
-                
-                # Добавляем контекст пользователя
-                if user_context:
-                    return f"🔍 Image Analysis: {vision_result}\n\nUser Context: {user_context}"
-                else:
-                    return f"🔍 Image Analysis: {vision_result}"
-            else:
-                return f"❌ Vision API not configured for image analysis"
+            # Анализируем через Gemini Vision (прямая поддержка изображений)
+            from ..models.gemini_client import GeminiClient
+            gemini_client = GeminiClient()
+            
+            # Создаем промпт для анализа изображения
+            analysis_prompt = f"""Analyze this image in detail. Provide a comprehensive description including:
+
+1. **Objects and People**: What objects, people, or living things do you see?
+2. **Actions and Activities**: What actions or activities are happening?
+3. **Environment and Setting**: Describe the environment, location, or setting
+4. **Emotions and Mood**: What emotions or mood does the image convey?
+5. **Text and Symbols**: Any text, signs, or symbols visible?
+6. **Technical Details**: Image quality, lighting, composition
+7. **Context and Purpose**: What might be the purpose or context of this image?
+
+Be detailed and specific in your analysis."""
+
+            if user_context:
+                analysis_prompt += f"\n\n**User Context**: {user_context}"
+            
+            # Анализируем изображение через Gemini
+            result = gemini_client.chat(
+                message="Please analyze this image",
+                system_prompt=analysis_prompt,
+                image_path=image_path
+            )
+            
+            return f"🔍 Gemini Vision Analysis: {result}"
             
         except Exception as e:
             logger.error(f"Error analyzing image {image_path}: {e}")
@@ -544,6 +459,45 @@ class SystemTools:
         except Exception as e:
             logger.error(f"Error finding images: {e}")
             return f"❌ Error finding images: {str(e)}"
+    
+    def get_recent_file_changes(self) -> str:
+        """Получение недавних изменений файлов"""
+        try:
+            from datetime import datetime, timedelta
+            
+            # Get files modified in last 24 hours
+            yesterday = datetime.now() - timedelta(days=1)
+            
+            changes = []
+            
+            # Walk through all files
+            for root, dirs, files in os.walk(self.project_root):
+                # Skip hidden directories
+                dirs[:] = [d for d in dirs if not d.startswith('.')]
+                
+                for file in files:
+                    if file.startswith('.') or file in ['__pycache__', '.git']:
+                        continue
+                    
+                    file_path = os.path.join(root, file)
+                    try:
+                        mtime = os.path.getmtime(file_path)
+                        if mtime > yesterday.timestamp():
+                            relative_path = os.path.relpath(file_path, self.project_root)
+                            mod_time = datetime.fromtimestamp(mtime)
+                            changes.append(f"📄 {relative_path} - {mod_time.strftime('%Y-%m-%d %H:%M')}")
+                    except (OSError, PermissionError):
+                        continue
+            
+            if changes:
+                changes.sort(key=lambda x: x.split(' - ')[1], reverse=True)
+                return f"🔄 RECENT FILE CHANGES (last 24h):\n" + "\n".join(changes[:20])
+            else:
+                return "📄 No recent file changes detected"
+                
+        except Exception as e:
+            logger.error(f"Error getting recent file changes: {e}")
+            return f"❌ Error getting recent file changes: {str(e)}"
     
 
     
@@ -748,73 +702,7 @@ class SystemTools:
             logger.error(f"Error translating text: {e}")
             return f"❌ Error translating text: {str(e)}"
     
-    # Управление событиями
-    def create_event(self, title: str, description: str, date: str, time: str = "", priority: str = "medium") -> bool:
-        """Создание события"""
-        try:
-            # TODO: Реализовать создание событий
-            logger.info(f"📅 Created event: {title} on {date}")
-            return True
-        except Exception as e:
-            logger.error(f"Error creating event: {e}")
-            return False
-    
-    def get_upcoming_events(self, days: int = 7) -> str:
-        """Получение предстоящих событий"""
-        try:
-            # TODO: Реализовать получение событий
-            return f"📅 Upcoming events for next {days} days (not implemented)"
-        except Exception as e:
-            logger.error(f"Error getting upcoming events: {e}")
-            return f"❌ Error getting upcoming events: {str(e)}"
-    
-    def reschedule_event(self, event_id: int, new_date: str, new_time: str = "") -> bool:
-        """Перенос события"""
-        try:
-            # TODO: Реализовать перенос событий
-            logger.info(f"📅 Rescheduled event {event_id} to {new_date}")
-            return True
-        except Exception as e:
-            logger.error(f"Error rescheduling event: {e}")
-            return False
-    
-    def complete_event(self, event_id: int) -> bool:
-        """Завершение события"""
-        try:
-            # TODO: Реализовать завершение событий
-            logger.info(f"✅ Completed event {event_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Error completing event: {e}")
-            return False
-    
-    def get_event_statistics(self) -> str:
-        """Получение статистики событий"""
-        try:
-            # TODO: Реализовать статистику событий
-            return "📊 Event statistics (not implemented)"
-        except Exception as e:
-            logger.error(f"Error getting event statistics: {e}")
-            return f"❌ Error getting event statistics: {str(e)}"
-    
-    def create_task_list(self, title: str, tasks: str) -> bool:
-        """Создание списка задач"""
-        try:
-            # TODO: Реализовать создание списков задач
-            logger.info(f"📋 Created task list: {title}")
-            return True
-        except Exception as e:
-            logger.error(f"Error creating task list: {e}")
-            return False
-    
-    def list_tasks(self, context: str = "") -> str:
-        """Список задач"""
-        try:
-            # TODO: Реализовать список задач
-            return f"📋 Task list for context: {context} (not implemented)"
-        except Exception as e:
-            logger.error(f"Error listing tasks: {e}")
-            return f"❌ Error listing tasks: {str(e)}"
+
     
     # Терминал и система
     def run_terminal_command(self, command: str) -> str:
@@ -886,11 +774,11 @@ class SystemTools:
                 'list_files', 'search_files', 'append_to_file', 'safe_create_file',
                 
                 # User Profile Tools
-                'read_user_profile', 'read_emotional_history', 'search_user_data',
-                'update_current_feeling', 'add_user_observation',
+                'read_user_profile', 'search_user_data',
+        
                 
                 # System Tools
-                'add_model_note', 'add_personal_thought', 'get_system_logs',
+                'get_system_logs',
                 'get_error_summary', 'analyze_image', 'web_search',
                 'switch_model', 'force_model_execution',
                 
@@ -1011,10 +899,10 @@ class SystemTools:
             # Проверяем что это известный инструмент
             known_tools = [
                 'read_file', 'write_file', 'edit_file', 'create_file', 'delete_file',
-                'list_files', 'search_files', 'add_model_note', 'add_personal_thought',
+                'list_files', 'search_files',
                 'get_system_logs', 'get_error_summary', 'analyze_image', 'web_search',
-                'switch_model', 'force_model_execution', 'read_user_profile', 'read_emotional_history',
-                'search_user_data', 'update_current_feeling', 'add_user_observation',
+                'switch_model', 'force_model_execution', 'read_user_profile',
+                'search_user_data', 'get_recent_file_changes',
                 'append_to_file', 'safe_create_file'
             ]
             
@@ -1220,17 +1108,7 @@ class SystemTools:
                 logger.info(f"✅ delete_file result: {result}")
                 return f"File deleted: {path}" if result else f"Failed to delete file: {path}"
             
-            elif func_name == "add_model_note":
-                args = self._parse_arguments(args_str, ["note_text", "category"])
-                note_text = args.get("note_text", "System note")
-                category = args.get("category", "general")
-                logger.info(f"🔧 add_model_note: note_text={note_text[:50]}..., category={category}")
-                # Делегируем в MemoryTools
-                from ..tools.memory_tools import MemoryTools
-                memory_tools = MemoryTools()
-                result = memory_tools.add_model_note(note_text, category)
-                logger.info(f"✅ add_model_note result: {result}")
-                return f"Added model note: {note_text[:50]}..."
+
             
             elif func_name == "read_user_profile":
                 args = self._parse_arguments(args_str, ["username"])
@@ -1243,16 +1121,7 @@ class SystemTools:
                 logger.info(f"✅ read_user_profile result: {result[:200]}..." if len(result) > 200 else result)
                 return result
             
-            elif func_name == "read_emotional_history":
-                args = self._parse_arguments(args_str, ["username"])
-                username = args.get("username", "stepan")
-                logger.info(f"🔧 read_emotional_history: username={username}")
-                # Делегируем в MemoryTools
-                from ..tools.memory_tools import MemoryTools
-                memory_tools = MemoryTools()
-                result = memory_tools.read_emotional_history(username)
-                logger.info(f"✅ read_emotional_history result: {result[:200]}..." if len(result) > 200 else result)
-                return result
+
             
             elif func_name == "search_user_data":
                 args = self._parse_arguments(args_str, ["username", "query"])
@@ -1266,30 +1135,9 @@ class SystemTools:
                 logger.info(f"✅ search_user_data result: {result[:200]}..." if len(result) > 200 else result)
                 return result
             
-            elif func_name == "update_current_feeling":
-                args = self._parse_arguments(args_str, ["username", "feeling", "context"])
-                username = args.get("username", "stepan")
-                feeling = args.get("feeling", "")
-                context = args.get("context", "")
-                logger.info(f"🔧 update_current_feeling: username={username}, feeling={feeling}")
-                # Делегируем в MemoryTools
-                from ..tools.memory_tools import MemoryTools
-                memory_tools = MemoryTools()
-                result = memory_tools.update_current_feeling(username, feeling, context)
-                logger.info(f"✅ update_current_feeling result: {result}")
-                return result
+
             
-            elif func_name == "add_user_observation":
-                args = self._parse_arguments(args_str, ["username", "observation"])
-                username = args.get("username", "stepan")
-                observation = args.get("observation", "")
-                logger.info(f"🔧 add_user_observation: username={username}, observation={observation[:50]}...")
-                # Делегируем в MemoryTools
-                from ..tools.memory_tools import MemoryTools
-                memory_tools = MemoryTools()
-                result = memory_tools.add_user_observation(username, observation)
-                logger.info(f"✅ add_user_observation result: {result}")
-                return result
+
             
             # System Tools
             elif func_name == "get_system_logs":
@@ -1331,6 +1179,12 @@ class SystemTools:
                 logger.info(f"🔧 find_images")
                 result = self.find_images()
                 logger.info(f"✅ find_images result: {result[:200]}..." if len(result) > 200 else result)
+                return result
+            
+            elif func_name == "get_recent_file_changes":
+                logger.info(f"🔧 get_recent_file_changes")
+                result = self.get_recent_file_changes()
+                logger.info(f"✅ get_recent_file_changes result: {result[:200]}..." if len(result) > 200 else result)
                 return result
             
             elif func_name == "web_search":

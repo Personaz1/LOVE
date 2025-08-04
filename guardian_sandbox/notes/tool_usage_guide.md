@@ -33,20 +33,7 @@ You have access to a comprehensive set of tools to interact with the system. Her
 - **Usage**: `read_user_profile("stefan")` or `read_user_profile("meranda")`
 - **Example**: Get current user information
 
-### `read_emotional_history(username)`
-- **Purpose**: Read user's emotional history
-- **Usage**: `read_emotional_history("stefan")`
-- **Example**: Understand emotional patterns
 
-### `update_current_feeling(username, feeling, context)`
-- **Purpose**: Update user's emotional state
-- **Usage**: `update_current_feeling("stefan", "happy", "after good news")`
-- **Example**: Track emotional changes
-
-### `update_relationship_status(username, status)`
-- **Purpose**: Update relationship status
-- **Usage**: `update_relationship_status("stefan", "in_relationship")`
-- **Example**: Track relationship changes
 
 ## 📝 **File Management Tools**
 

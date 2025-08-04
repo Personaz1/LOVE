@@ -369,8 +369,8 @@ function updateFormFields(profileData) {
         'age': profileData.age || '',
         'location': profileData.location || '',
         'email': profileData.email || '',
-        'relationship_status': profileData.relationship_status || '',
-        'current_feeling': profileData.current_feeling || '',
+        
+        
         'bio': profileData.profile || ''  // bio field maps to profile
     };
     

@@ -244,7 +244,7 @@ Conversation to summarize:
 {conversation_text}
 
 Please provide a concise but insightful summary (2-3 sentences) that captures the essence of this conversation period.
-Focus on relationship dynamics, emotional patterns, and meaningful insights rather than just listing topics.
+Focus on meaningful insights rather than just listing topics.
 """
 
             # Generate summary using AI
@@ -312,12 +312,12 @@ Focus on relationship dynamics, emotional patterns, and meaningful insights rath
         """Get recent conversation history - optimized for empty history"""
         if not self.history:
             return []
-        return self.history[-limit:] if self.history else []
+        return self.history[-limit:] if len(self.history) >= limit else self.history
     
     def get_user_history(self, username: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get conversation history for specific user"""
         user_messages = [msg for msg in self.history if msg.get('user') == username]
-        return user_messages[-limit:] if limit > 0 else user_messages
+        return user_messages[-limit:] if len(user_messages) >= limit else user_messages
     
     def get_full_history(self) -> List[Dict[str, Any]]:
         """Get full conversation history"""
@@ -372,7 +372,7 @@ Focus on relationship dynamics, emotional patterns, and meaningful insights rath
     
     def get_archive_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent archive entries"""
-        return self.archive[-limit:] if self.archive else []
+        return self.archive[-limit:] if len(self.archive) >= limit else self.archive
     
     def clear_history(self) -> None:
         """Clear current history (archive first)"""

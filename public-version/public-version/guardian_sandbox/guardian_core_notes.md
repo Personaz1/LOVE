@@ -1,1 +1,0 @@
-# Guardian Core Notes\n\nInitial core notes file for self-reflection and operational insights.

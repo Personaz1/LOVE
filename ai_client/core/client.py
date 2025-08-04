@@ -42,6 +42,11 @@ class AIClient:
         self.memory_tools = MemoryTools()
         self.system_tools = SystemTools()
         
+        # Загружаем основной промпт
+        # Load the system prompt directly from file
+        with open("prompts/guardian_prompt.py", "r", encoding="utf-8") as f:
+            self.base_prompt = f.read()
+        
         self.logger.info("🚀 AIClient initialized with simplified architecture")
     
     # Основные методы - делегируем в соответствующие модули
@@ -61,14 +66,20 @@ class AIClient:
     # Методы генерации ответов
     async def generate_streaming_response(
         self, 
-        system_prompt: str, 
         user_message: str, 
         context: Optional[str] = None,
-        user_profile: Optional[Dict[str, Any]] = None
+        user_profile: Optional[Dict[str, Any]] = None,
+        additional_prompt: Optional[str] = None,
+        image_path: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
-        """Генерация streaming ответа"""
+        """Генерация streaming ответа с единым промптом и поддержкой изображений"""
+        # Собираем полный промпт
+        full_prompt = self.base_prompt
+        if additional_prompt:
+            full_prompt += f"\n\n{additional_prompt}"
+        
         async for chunk in self.gemini_client.generate_streaming_response(
-            system_prompt, user_message, context, user_profile
+            full_prompt, user_message, context, user_profile, image_path
         ):
             yield chunk
     
@@ -77,10 +88,16 @@ class AIClient:
         message: str, 
         user_profile: Optional[Dict[str, Any]] = None,
         conversation_context: Optional[str] = None,
-        system_prompt: Optional[str] = None
+        additional_prompt: Optional[str] = None,
+        image_path: Optional[str] = None
     ) -> str:
-        """Основной метод чата"""
-        return self.gemini_client.chat(message, user_profile, conversation_context, system_prompt)
+        """Основной метод чата с единым промптом и поддержкой изображений"""
+        # Собираем полный промпт
+        full_prompt = self.base_prompt
+        if additional_prompt:
+            full_prompt += f"\n\n{additional_prompt}"
+        
+        return self.gemini_client.chat(message, user_profile, conversation_context, full_prompt, image_path)
     
     # Прямой доступ к модулям для инструментов
     @property

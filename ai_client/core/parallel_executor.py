@@ -10,6 +10,7 @@ from enum import Enum
 
 from ..models.gemini_client import GeminiClient
 from ..tools.system_tools import SystemTools
+from ..tools.vision_tools import vision_tools
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +62,9 @@ Always respond with: "✅ SUCCESS: [operation result]" or "❌ ERROR: [error det
         if self.agent_type == AgentType.FILE:
             return "- create_file(path, content)\n- append_to_file(path, content)\n- read_file(path)\n- edit_file(path, content)\n- delete_file(path)"
         elif self.agent_type == AgentType.MEMORY:
-            return "- add_model_note(note, category)\n- add_user_observation(username, observation)\n- read_user_profile(username)\n- read_emotional_history(username)"
+            return "- read_user_profile(username)"
         elif self.agent_type == AgentType.SYSTEM:
-            return "- get_system_logs(lines)\n- diagnose_system_health()\n- get_error_summary()\n- get_system_info()"
+            return "- get_system_logs(lines)\n- diagnose_system_health()\n- get_error_summary()\n- get_system_info()\n- VisionTools.capture_image(camera_id)\n- VisionTools.analyze_image(image_path)\n- VisionTools.detect_motion(camera_id, threshold)\n- VisionTools.list_cameras()\n- VisionTools.get_camera_status(camera_id)"
         return ""
     
     async def execute_tool(self, tool_call: str, model: str = None) -> Dict[str, Any]:
@@ -89,14 +90,16 @@ Always respond with: "✅ SUCCESS: [operation result]" or "❌ ERROR: [error det
                     "success": True,
                     "result": response,
                     "agent_type": self.agent_type.value,
-                    "tool_call": tool_call
+                    "tool_call": tool_call,
+                    "original_text": tool_call
                 }
             else:
                 return {
                     "success": False,
                     "error": response,
                     "agent_type": self.agent_type.value,
-                    "tool_call": tool_call
+                    "tool_call": tool_call,
+                    "original_text": tool_call
                 }
                 
         except Exception as e:
@@ -123,20 +126,20 @@ class FileAgent(BaseAgent):
                 args = self._parse_file_args(tool_call)
                 if len(args) >= 2:
                     result = self.system_tools.create_file(args[0], args[1])
-                    return {"success": True, "result": result, "agent_type": "file"}
+                    return {"success": True, "result": result, "agent_type": "file", "original_text": tool_call}
             
             elif "append_to_file" in tool_call:
                 args = self._parse_file_args(tool_call)
                 if len(args) >= 2:
                     result = self.system_tools.append_to_file(args[0], args[1])
-                    return {"success": True, "result": result, "agent_type": "file"}
+                    return {"success": True, "result": result, "agent_type": "file", "original_text": tool_call}
             
             # Для других операций используем базовый метод
             return await super().execute_tool(tool_call, model)
             
         except Exception as e:
             logger.error(f"❌ FILE AGENT ERROR: {e}")
-            return {"success": False, "error": str(e), "agent_type": "file"}
+            return {"success": False, "error": str(e), "agent_type": "file", "original_text": tool_call}
     
     def _parse_file_args(self, tool_call: str) -> List[str]:
         """Парсит аргументы файловых операций"""
@@ -161,6 +164,48 @@ class SystemAgent(BaseAgent):
     
     def __init__(self, system_tools: SystemTools):
         super().__init__(AgentType.SYSTEM, system_tools)
+    
+    async def execute_tool(self, tool_call: str, model: str = None) -> Dict[str, Any]:
+        """Специализированное выполнение системных операций включая VisionTools"""
+        try:
+            # Парсим VisionTools вызовы
+            if "VisionTools.capture_image" in tool_call:
+                # Извлекаем camera_id
+                import re
+                match = re.search(r'VisionTools\.capture_image\("([^"]+)"\)', tool_call)
+                if match:
+                    camera_id = match.group(1)
+                    result = vision_tools.capture_image(camera_id)
+                    return {"success": True, "result": result, "agent_type": "system", "original_text": tool_call}
+            
+            elif "VisionTools.analyze_image" in tool_call:
+                # Извлекаем image_path
+                import re
+                match = re.search(r'VisionTools\.analyze_image\("([^"]+)"\)', tool_call)
+                if match:
+                    image_path = match.group(1)
+                    result = vision_tools.analyze_image(image_path)
+                    return {"success": True, "result": result, "agent_type": "system", "original_text": tool_call}
+            
+            elif "VisionTools.list_cameras" in tool_call:
+                result = vision_tools.list_cameras()
+                return {"success": True, "result": result, "agent_type": "system", "original_text": tool_call}
+            
+            elif "VisionTools.get_camera_status" in tool_call:
+                # Извлекаем camera_id
+                import re
+                match = re.search(r'VisionTools\.get_camera_status\("([^"]+)"\)', tool_call)
+                if match:
+                    camera_id = match.group(1)
+                    result = vision_tools.get_camera_status(camera_id)
+                    return {"success": True, "result": result, "agent_type": "system", "original_text": tool_call}
+            
+            # Для других системных операций используем базовый метод
+            return await super().execute_tool(tool_call, model)
+            
+        except Exception as e:
+            logger.error(f"❌ SYSTEM AGENT ERROR: {e}")
+            return {"success": False, "error": str(e), "agent_type": "system", "original_text": tool_call}
 
 class ParallelToolExecutor:
     """Параллельный исполнитель tool calls"""
@@ -187,8 +232,10 @@ class ParallelToolExecutor:
         """Выбирает подходящего агента для tool call"""
         if any(op in tool_call for op in ['create_file', 'append_to_file', 'read_file', 'edit_file', 'delete_file']):
             return self.agents[AgentType.FILE]
-        elif any(op in tool_call for op in ['add_model_note', 'add_user_observation', 'read_user_profile']):
+        elif any(op in tool_call for op in ['read_user_profile']):
             return self.agents[AgentType.MEMORY]
+        elif any(op in tool_call for op in ['VisionTools.capture_image', 'VisionTools.analyze_image', 'VisionTools.detect_motion', 'VisionTools.list_cameras', 'VisionTools.get_camera_status']):
+            return self.agents[AgentType.SYSTEM]
         else:
             return self.agents[AgentType.SYSTEM]
     

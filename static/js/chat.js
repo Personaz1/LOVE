@@ -1,5 +1,5 @@
 // Chat functionality JavaScript
-// Get username from URL parameters
+// Get username from URL parameters (fallback)
 const urlParams = new URLSearchParams(window.location.search);
 let currentUser = urlParams.get('username');
 // Map old username to new one
@@ -9,9 +9,27 @@ if (currentUser === 'musser') {
 
 // If no username in URL, we'll get it from the server
 let messageHistory = [];
+
+// Get username from server if not in URL
+async function getCurrentUserFromServer() {
+    try {
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+            const profile = await response.json();
+            if (profile && profile.username) {
+                currentUser = profile.username;
+                console.log('Set currentUser from server:', currentUser);
+                return currentUser;
+            }
+        }
+    } catch (error) {
+        console.error('Error getting user from server:', error);
+    }
+    return null;
+}
 let currentStreamingMessage = null;
 let userProfile = null;
-let guardianProfile = null;
+
 let attachedFiles = []; // Track attached files for current message
 
 // Global variables for user avatars
@@ -30,8 +48,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load everything in parallel for speed
     Promise.all([
+        getCurrentUserFromServer(),
         loadUserProfile(),
-        loadGuardianProfile(),
+
         loadConversationHistory(),
         loadSystemAnalysis()
     ]).then(() => {
@@ -49,6 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Start login greeting
         startLoginGreeting();
+        
+        // Update UI with correct username
+        updateUserInterface();
     }).catch((error) => {
         console.error('Error during initialization:', error);
         hideLoadingBanner();
@@ -70,13 +92,27 @@ document.addEventListener('DOMContentLoaded', function() {
         attachedFiles = [];
         updateAttachedFilesDisplay();
 
-        // If in private chat, don't send to server
+        // If in private chat, save to private chat only (no server communication)
         if (currentPrivateChatId) {
+            const chat = privateChats.find(c => c.id === currentPrivateChatId);
+            if (chat) {
+                chat.messages.push({
+                    sender: 'user',
+                    content: message,
+                    timestamp: new Date().toISOString()
+                });
+                savePrivateChats();
+                
+                // Auto-rename chat if needed
+                setTimeout(() => autoRenameChat(currentPrivateChatId), 1000);
+            }
+            
+            // In private chats, don't send to server - just simulate AI response
             addMessage('This is a private conversation. AI responses are not available in private mode.', 'ai');
             return;
         }
 
-        // Immediately start streaming - no loading screen
+        // For main chat, send to server
         try {
             // Send message to streaming API with attached files
             await sendStreamingMessage(message);
@@ -167,23 +203,7 @@ async function loadUserProfile() {
     }
 }
 
-// Load guardian profile for avatar
-async function loadGuardianProfile() {
-    try {
-        const response = await fetch('/api/guardian/profile', {
-            credentials: 'include'
-        });
-        const data = await response.json();
-        
-        if (data.success && data.profile) {
-            guardianProfile = data.profile;
-            // Update existing messages with guardian avatar
-            updateGuardianAvatars();
-        }
-    } catch (error) {
-        console.error('Error loading guardian profile:', error);
-    }
-}
+
 
 // Load avatar for specific user
 async function loadUserAvatar(username) {
@@ -427,18 +447,7 @@ function finalizeStreamingMessage(messageElement) {
     const messageText = messageElement.textContent;
     messageElement.innerHTML = formatMessage(messageText);
     
-    // Save AI response to private chat if in private mode
-    if (currentPrivateChatId) {
-        const chat = privateChats.find(c => c.id === currentPrivateChatId);
-        if (chat) {
-            chat.messages.push({
-                sender: 'ai',
-                content: messageText,
-                timestamp: new Date().toISOString()
-            });
-            savePrivateChats();
-        }
-    }
+    // Note: AI responses are not saved to private chats since they don't communicate with server
 }
 
 // Show status message
@@ -516,6 +525,19 @@ function addMessage(text, sender, timestamp = null, messageId = null, attachedFi
         if (!username && userProfile && userProfile.username) {
             username = userProfile.username;
             currentUser = username; // Update currentUser for future use
+        }
+        // If still no username, try to get from server
+        if (!username) {
+            getCurrentUserFromServer().then(serverUser => {
+                if (serverUser) {
+                    currentUser = serverUser;
+                    // Update the message sender name
+                    const senderSpan = messageDiv.querySelector('.sender');
+                    if (senderSpan) {
+                        senderSpan.textContent = serverUser.charAt(0).toUpperCase() + serverUser.slice(1);
+                    }
+                }
+            });
         }
         senderName = username ? username.charAt(0).toUpperCase() + username.slice(1) : 'User';
     } else {
@@ -646,16 +668,25 @@ function updateUserAvatars() {
     });
 }
 
-// Update guardian avatars in existing messages
-function updateGuardianAvatars() {
-    if (!guardianProfile || !guardianProfile.avatar_url) return;
-    
-    const guardianMessages = document.querySelectorAll('.ai-message .message-avatar');
-    guardianMessages.forEach(avatarDiv => {
-        if (!avatarDiv.querySelector('img')) {
-            avatarDiv.innerHTML = `<img src="${guardianProfile.avatar_url}" alt="Guardian Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+
+
+function updateUserInterface() {
+    // Update UI elements with correct username
+    if (currentUser) {
+        console.log('Updating UI with username:', currentUser);
+        
+        // Update welcome message
+        const welcomeElement = document.querySelector('.welcome-message');
+        if (welcomeElement) {
+            welcomeElement.textContent = `Welcome, ${currentUser.charAt(0).toUpperCase() + currentUser.slice(1)}!`;
         }
-    });
+        
+        // Update user avatars
+        updateUserAvatars();
+        
+        // Update any other UI elements that depend on username
+        updateSpecificUserAvatars();
+    }
 }
 
 // Format message with reasoning support
@@ -991,7 +1022,7 @@ function displayConversationHistory(history) {
         
         // Update avatars after loading history
         updateUserAvatars();
-        updateGuardianAvatars();
+
         
         // Update avatars for specific users
         updateSpecificUserAvatars();
@@ -1253,10 +1284,7 @@ async function loadSystemAnalysis() {
             if (data.success && data.analysis) {
                 updateSystemPanel(data.analysis);
                 
-                // Apply theme automatically if provided
-                if (data.theme) {
-                    applyTheme(data.theme);
-                }
+                
             }
         } else {
             console.log('System analysis not available or failed to load');
@@ -1292,17 +1320,7 @@ async function forceRefreshSystemAnalysis() {
     }
 }
 
-// Apply theme automatically
-function applyTheme(themeName) {
-    // Remove existing theme classes
-    document.body.classList.remove('theme-romantic', 'theme-neutral', 'theme-melancholy');
-    
-    // Add new theme class
-    if (themeName && ['romantic', 'neutral', 'melancholy'].includes(themeName)) {
-    document.body.classList.add(`theme-${themeName}`);
-        console.log(`Applied theme: ${themeName}`);
-        }
-}
+
 
 // Show model status
 async function showModelStatus() {
@@ -2398,6 +2416,46 @@ function savePrivateChats() {
     localStorage.setItem('privateChats', JSON.stringify(privateChats));
 }
 
+// Generate title for private chat
+async function generateChatTitle(messages) {
+    try {
+        const response = await fetch('/api/chat/generate-title', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ messages: messages })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+                return data.title;
+            }
+        }
+    } catch (error) {
+        console.error('Error generating chat title:', error);
+    }
+    return null;
+}
+
+// Auto-rename chat if needed
+async function autoRenameChat(chatId) {
+    const chat = privateChats.find(c => c.id === chatId);
+    if (!chat) return;
+    
+    // Only rename if title is generic and we have enough messages
+    if (chat.title === 'New Conversation' && chat.messages.length >= 3) {
+        const newTitle = await generateChatTitle(chat.messages);
+        if (newTitle && newTitle !== 'New Conversation') {
+            chat.title = newTitle;
+            savePrivateChats();
+            updatePrivateChatList();
+            console.log(`📝 Auto-renamed chat to: ${newTitle}`);
+        }
+    }
+}
+
 // Load private chats from localStorage
 function loadPrivateChats() {
     const saved = localStorage.getItem('privateChats');
@@ -2429,8 +2487,8 @@ function returnToMainChat() {
     showStatusMessage('Returned to main conversation', 'success');
 }
 
-// Modified sendMessage function to handle private chats
-function sendMessage() {
+// Handle message sending from input
+function handleMessageSend() {
     const messageInput = document.getElementById('messageInput');
     const message = messageInput.value.trim();
     
@@ -2452,6 +2510,7 @@ function sendMessage() {
                 timestamp: new Date().toISOString()
             });
             savePrivateChats();
+            setTimeout(() => autoRenameChat(currentPrivateChatId), 1000);
         }
     }
     
@@ -2459,5 +2518,5 @@ function sendMessage() {
     showTypingIndicator();
     
     // Send to server
-    sendMessageToServer(message);
+    sendStreamingMessage(message);
 } 

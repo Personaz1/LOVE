@@ -27,11 +27,10 @@ load_dotenv()
 
 from ai_client.core.client import AIClient
 from ai_client.core.response_processor import ResponseProcessor
-from prompts.guardian_prompt import AI_GUARDIAN_SYSTEM_PROMPT
+from ai_client.tools.chat_summary_tools import ChatSummaryTools
 from memory.user_profiles import UserProfile
 from memory.conversation_history import conversation_history
-from memory.guardian_profile import guardian_profile
-from memory.theme_manager import theme_manager
+
 
 # Configure logging
 logging.basicConfig(
@@ -87,6 +86,7 @@ SESSION_SECRET = secrets.token_urlsafe(32)
 # Initialize components
 ai_client = AIClient()
 response_processor = ResponseProcessor(ai_client)
+chat_summary_tools = ChatSummaryTools()
 # conversation_history = ConversationHistory() # This line is removed
 
 def get_recent_file_changes() -> str:
@@ -270,14 +270,20 @@ def get_current_user(request: Request) -> Optional[str]:
     username = request.query_params.get("username")
     password = request.query_params.get("password")
     
-    # Valid credentials
-    valid_credentials = {
-        "meranda": "musser",
-        "stepan": "stepan"
-    }
-    
-    if username in valid_credentials and password == valid_credentials[username]:
-        return username
+    # Check credentials from environment variables
+    if username and password:
+        valid_credentials = {}
+        credentials_str = os.getenv('USER_CREDENTIALS', '')
+        if credentials_str:
+            try:
+                for pair in credentials_str.split(','):
+                    if ':' in pair:
+                        user, pwd = pair.strip().split(':', 1)
+                        valid_credentials[user] = pwd
+                if username in valid_credentials and password == valid_credentials[username]:
+                    return username
+            except Exception as e:
+                logger.error(f"Error parsing credentials: {e}")
     
     return None
 
@@ -302,17 +308,18 @@ async def login(
             # Format: "user1:pass1,user2:pass2"
             for pair in credentials_str.split(','):
                 if ':' in pair:
-                    username, password = pair.strip().split(':', 1)
-                    valid_credentials[username] = password
+                    user, pwd = pair.strip().split(':', 1)
+                    valid_credentials[user] = pwd
         except Exception as e:
             logger.error(f"Error parsing credentials: {e}")
     
     # Fallback to default if no env credentials
     if not valid_credentials:
-        valid_credentials = {
-            "meranda": "musser",
-            "stepan": "stepan"
-        }
+        logger.warning("No credentials found in environment variables")
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": "Authentication not configured"
+        })
     
     # Debug logging (безопасно)
     logger.info(f"Login attempt - Username: '{username}'")
@@ -356,41 +363,45 @@ async def login_greeting(request: Request):
             
             # Get conversation context and system analysis
             recent_messages = conversation_history.get_recent_history(limit=10)
-            emotional_history = user_profile.get_emotional_history(limit=666)
-            emotional_trends = user_profile.get_emotional_trends()
-            current_theme = theme_manager.analyze_context_and_set_theme(
-                user_profile_dict, recent_messages, emotional_history
-            )
+
+
+
             
             # Build rich context for Guardian
             context = f"""
 User Profile:
 - Name: {user_profile_dict.get('full_name', username)}
-- Current Feeling: {user_profile_dict.get('current_feeling', 'N/A')}
+
 - Bio: {user_profile_dict.get('profile', 'N/A')}
 
-Recent Emotional History:
-{emotional_history}
-
-Emotional Trends:
-{emotional_trends}
-
 Recent Conversation ({len(recent_messages)} messages):
-{chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages[-3:]])}
-
-Current Theme: {current_theme}
+{chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages[-3:]]) if recent_messages else "No recent messages"}
 
 System Status: Guardian is ready to provide personalized greeting
 """
             
+            # Проверяем активность за последние 10 минут
+            from datetime import datetime, timedelta
+            recent_activity = conversation_history.get_recent_history(limit=50)
+            has_recent_activity = False
+            
+            if recent_activity:
+                latest_message_time = recent_activity[0].get('timestamp', '')
+                if latest_message_time:
+                    try:
+                        latest_time = datetime.fromisoformat(latest_message_time.replace('Z', '+00:00'))
+                        if datetime.now(latest_time.tzinfo) - latest_time < timedelta(minutes=10):
+                            has_recent_activity = True
+                    except:
+                        pass
+            
             # Generate dynamic greeting using Guardian AI
-            greeting_message = f"Create a natural, contextual greeting for {username} based on their current situation and system state. Be creative and avoid generic phrases."
+            greeting_message = f"Поприветствуй пользователя исходя из контекста"
             
             greeting = ai_client.chat(
                 message=greeting_message,
                 user_profile=user_profile_dict,
-                conversation_context=context,
-                system_prompt=guardian_profile.get_system_prompt()
+                conversation_context=context
             )
             
             # Send greeting
@@ -477,12 +488,16 @@ async def chat_stream_endpoint(
                     full_context += f"- User: {msg.get('message', '')}\n"
                     full_context += f"- AI: {msg.get('ai_response', '')}\n"
             
+            # Add system context (recent file changes)
+            recent_changes = get_recent_file_changes()
+            if recent_changes:
+                full_context += f"\n**SYSTEM CONTEXT:**\n{recent_changes}\n"
+            
             # Track the complete response
             full_response = ""
             
             # Получаем поток от модели
             model_stream = ai_client.generate_streaming_response(
-                system_prompt=guardian_profile.get_system_prompt(),
                 user_message=message,
                 context=full_context,
                 user_profile=user_profile_dict
@@ -545,6 +560,11 @@ async def chat_endpoint(
             for msg in recent_messages:
                 full_context += f"- User: {msg.get('message', '')}\n"
                 full_context += f"- AI: {msg.get('ai_response', '')}\n"
+        
+        # Add system context (recent file changes)
+        recent_changes = get_recent_file_changes()
+        if recent_changes:
+            full_context += f"\n**SYSTEM CONTEXT:**\n{recent_changes}\n"
         
         # Generate AI response
         ai_response = ai_client.chat(
@@ -672,7 +692,7 @@ async def update_profile_full(request: Request):
                        'age': form_data.get('age', current_profile.get('age', '')),
                        'location': form_data.get('location', current_profile.get('location', '')),
                        'email': form_data.get('email', current_profile.get('email', '')),
-                       'current_feeling': form_data.get('current_feeling', current_profile.get('current_feeling', '')),
+           
                        'profile': form_data.get('bio', current_profile.get('profile', '')),  # bio field maps to profile
                        'interests': form_data.get('interests', current_profile.get('interests', '')),
                        'goals': form_data.get('goals', current_profile.get('goals', '')),
@@ -733,11 +753,11 @@ async def update_feeling(
     
     try:
         user_profile = UserProfile(username)
-        user_profile.update_current_feeling(feeling, context)
+        
         
         return JSONResponse({
             "success": True,
-            "message": f"Feeling updated to {feeling}",
+            "message": f"Profile updated",
             "feeling": feeling
         })
         
@@ -1247,7 +1267,7 @@ async def clear_model_status_cache(request: Request):
 
 @app.get("/api/system-analysis")
 async def get_system_analysis(request: Request):
-    """Get system analysis and relationship insights - internal agent endpoint, no auth required"""
+    """Get system analysis - internal agent endpoint, no auth required"""
     
     try:
         # Get current user if available, but don't require it
@@ -1272,38 +1292,27 @@ async def get_system_analysis(request: Request):
             # Get conversation history
             recent_messages = conversation_history.get_recent_history(limit=666)
             
-            # Get emotional history and trends
-            emotional_history = user_profile.get_emotional_history(limit=666)
-            emotional_trends = user_profile.get_emotional_trends()
+
             
-            # Analyze and set theme automatically
-            current_theme = theme_manager.analyze_context_and_set_theme(
-                profile_data, recent_messages, emotional_history
-            )
+
             
-            # Get recent model notes for context
-            recent_notes = ai_client.memory.get_model_notes()
+
             
             # Build context for LLM - ПОЛНЫЕ ДАННЫЕ ДЛЯ АНАЛИЗА
             context = f"""
 User Profile:
 - Name: {profile_data.get('full_name', username)}
-- Current Feeling: {profile_data.get('current_feeling', 'N/A')}
+
 - Bio: {profile_data.get('profile', 'N/A')}
 
-Recent Emotional History:
-{emotional_history}
 
-Emotional Trends:
-{emotional_trends}
 
 Recent Conversation ({len(recent_messages)} messages):
-{chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages])}
+{chr(10).join([f"- {msg.get('message', 'N/A')}" for msg in recent_messages]) if recent_messages else "No recent messages"}
 
-Recent Model Notes:
-{recent_notes}
 
-Current Theme: {current_theme}
+
+
 """
         else:
             # If no user authenticated, provide basic system analysis
@@ -1314,31 +1323,22 @@ System Status:
 - Guardian AI is operational
 - All core functions available
 """
-            current_theme = "neutral"
+
         
         # Get recent file changes and system status
         recent_changes = get_recent_file_changes()
         system_health = ai_client.system.diagnose_system_health()
         
-        # Generate system analysis using AI - ОСНОВНОЙ ПРОМПТ GUARDIAN
-        system_prompt = AI_GUARDIAN_SYSTEM_PROMPT
-        
-        analysis_message = f"""You are ΔΣ Guardian. Analyze the system and take autonomous actions based on this context:
-
-User Context: {context}
-Recent Changes: {recent_changes[:500]}
-System Health: {system_health[:500]}
+        # Generate system analysis using AI с дополнительным промптом
+        additional_prompt = """Это мини модуль системного анализатора - как общее положение из контекста датчиков (если подключены) и памяти?
 
 **YOUR MISSION:**
 1. **ANALYZE** the conversation history and user context
 2. **IDENTIFY** important events, patterns, and insights
-3. **TAKE ACTION** - create reminders, notes, calendar events, update profiles
+3. **TAKE ACTION** - create notes, update profiles
 4. **RESPOND** with your analysis and actions taken
 
 **LOOK FOR:**
-- Birthdays, anniversaries, important dates
-- Emotional patterns and trends
-- Relationship dynamics
 - System issues or improvements needed
 - User preferences and needs
 
@@ -1350,7 +1350,7 @@ Provide your response in this JSON format:
   "actions_taken": ["List of actions you performed"],
   "insights": ["Key insights discovered"],
   "recommendations": ["Suggestions for users"],
-  "reminders_created": ["Any reminders or calendar events"],
+
   "notes_added": ["System notes you created"]
 }}"""
 
@@ -1363,10 +1363,8 @@ Provide your response in this JSON format:
         # Детальное логирование для отладки
         try:
             if username:
-                logger.info(f"🔧 SYSTEM ANALYSIS: emotional_history type: {type(emotional_history)}")
-                logger.info(f"🔧 SYSTEM ANALYSIS: emotional_trends type: {type(emotional_trends)}")
                 logger.info(f"🔧 SYSTEM ANALYSIS: recent_messages type: {type(recent_messages)}")
-                logger.info(f"🔧 SYSTEM ANALYSIS: recent_notes type: {type(recent_notes)}")
+
             else:
                 logger.info("🔧 SYSTEM ANALYSIS: No user context available")
         except NameError:
@@ -1375,11 +1373,17 @@ Provide your response in this JSON format:
             logger.error(f"🔧 SYSTEM ANALYSIS: Error in debug logging: {e}")
 
         # Generate analysis
+        analysis_message = f"""Analyze the system and take autonomous actions based on this context:
+
+User Context: {context}
+Recent Changes: {recent_changes[:500]}
+System Health: {system_health[:500]}"""
+
         analysis_response = ai_client.chat(
             message=analysis_message,
             user_profile=profile_data if username else {},
             conversation_context=context,
-            system_prompt=system_prompt
+            additional_prompt=additional_prompt
         )
 
         # Log system analysis completion
@@ -1431,7 +1435,7 @@ Provide your response in this JSON format:
         return JSONResponse({
             "success": True,
             "analysis": analysis_data,
-            "theme": current_theme,
+
             "timestamp": datetime.now().isoformat()
         })
         
@@ -1453,129 +1457,7 @@ Provide your response in this JSON format:
         }, status_code=500)
 
 # Guardian Profile API endpoints
-@app.get("/api/guardian/profile")
-async def get_guardian_profile(request: Request):
-    """Get ΔΣ Guardian profile"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    try:
-        profile = guardian_profile.get_profile()
-        return JSONResponse({"success": True, "profile": profile})
-    except Exception as e:
-        logger.error(f"Error getting guardian profile: {e}")
-        return JSONResponse({"success": False, "error": str(e)})
 
-@app.post("/api/guardian/profile/update")
-async def update_guardian_profile(request: Request):
-    data = await request.json()
-    guardian_profile.update_profile(data)
-    return {"status": "ok", "profile": guardian_profile.get_profile()}
-
-@app.post("/api/guardian/avatar")
-async def upload_guardian_avatar(request: Request):
-    """Upload ΔΣ Guardian avatar"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    try:
-        form_data = await request.form()
-        avatar_file = form_data.get('avatar')
-        
-        if not avatar_file:
-            return JSONResponse({"success": False, "error": "No file provided"})
-        
-        # Create avatars directory if it doesn't exist
-        avatar_dir = "static/avatars"
-        os.makedirs(avatar_dir, exist_ok=True)
-        
-        # Save avatar file
-        avatar_path = f"{avatar_dir}/guardian_avatar.jpg"
-        
-        # Read file content properly
-        file_content = await avatar_file.read()
-        with open(avatar_path, "wb") as f:
-            f.write(file_content)
-        
-        # Update profile with avatar path
-        success = guardian_profile.update_avatar(f"/static/avatars/guardian_avatar.jpg")
-        
-        if success:
-            profile = guardian_profile.get_profile()
-            return JSONResponse({
-                "success": True, 
-                "avatar_url": profile["avatar_url"],
-                "message": "Guardian avatar uploaded successfully"
-            })
-        else:
-            return JSONResponse({"success": False, "error": "Failed to update avatar"})
-        
-    except Exception as e:
-        logger.error(f"Error uploading guardian avatar: {e}")
-        return JSONResponse({"success": False, "error": str(e)})
-
-@app.post("/api/guardian/reset")
-async def reset_guardian_profile(request: Request):
-    """Reset guardian profile to defaults"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    try:
-        success = guardian_profile.reset_to_defaults()
-        if success:
-            return JSONResponse({"success": True, "message": "Guardian profile reset to defaults"})
-        else:
-            return JSONResponse({"success": False, "error": "Failed to reset profile"}, status_code=500)
-    except Exception as e:
-        logger.error(f"Error resetting guardian profile: {e}")
-        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
-
-@app.post("/api/guardian/update-prompt")
-async def update_guardian_prompt_from_file(request: Request):
-    """Update guardian prompt from the prompts file"""
-    username = get_current_user(request)
-    if not username:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    try:
-        success = guardian_profile.update_prompt_from_file()
-        if success:
-            return JSONResponse({"success": True, "message": "Guardian prompt updated from file"})
-        else:
-            return JSONResponse({"success": False, "error": "Failed to update prompt"}, status_code=500)
-    except Exception as e:
-        logger.error(f"Error updating guardian prompt: {e}")
-        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
-
-@app.post("/api/guardian/prompt/reset")
-async def reset_guardian_prompt(request: Request):
-    guardian_profile.update_prompt_from_file()
-    return {"status": "ok", "prompt": guardian_profile.get_system_prompt()}
-
-@app.get("/guardian", response_class=HTMLResponse)
-async def guardian_profile_page(request: Request):
-    """Serve Guardian profile page"""
-    username = get_current_user(request)
-    if not username:
-        return RedirectResponse(url="/", status_code=302)
-    
-    try:
-        profile = guardian_profile.get_profile()
-        return templates.TemplateResponse("guardian.html", {
-            "request": request,
-            "username": username,
-            "guardian": profile
-        })
-    except Exception as e:
-        logger.error(f"Error loading guardian profile page: {e}")
-        return templates.TemplateResponse("guardian.html", {
-            "request": request,
-            "username": username,
-            "guardian": {}
-        })
 
 @app.get("/sw.js")
 async def service_worker(request: Request):
@@ -1901,6 +1783,88 @@ async def models_page(request: Request):
         "request": request,
         "username": username
     })
+
+# Vision endpoints
+@app.get("/api/vision/cameras")
+async def list_cameras(request: Request):
+    """Get list of available cameras"""
+    try:
+        from ai_client.tools.vision_tools import vision_tools
+        result = vision_tools.list_cameras()
+        return {"success": True, "result": result}
+    except Exception as e:
+        logger.error(f"Error listing cameras: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/vision/camera/{camera_id}/status")
+async def get_camera_status(request: Request, camera_id: str):
+    """Get status of specific camera"""
+    try:
+        from ai_client.tools.vision_tools import vision_tools
+        result = vision_tools.get_camera_status(camera_id)
+        return {"success": True, "result": result}
+    except Exception as e:
+        logger.error(f"Error getting camera status: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/vision/capture")
+async def capture_image(request: Request):
+    """Capture image from camera"""
+    try:
+        data = await request.json()
+        camera_id = data.get('camera_id', 'default')
+        
+        from ai_client.tools.vision_tools import vision_tools
+        result = vision_tools.capture_image(camera_id)
+        return {"success": True, "result": result}
+    except Exception as e:
+        logger.error(f"Error capturing image: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/vision/analyze")
+async def analyze_image(request: Request):
+    """Analyze captured image"""
+    try:
+        data = await request.json()
+        image_path = data.get('image_path')
+        
+        if not image_path:
+            return {"success": False, "error": "Image path is required"}
+        
+        from ai_client.tools.vision_tools import vision_tools
+        result = vision_tools.analyze_image(image_path)
+        return {"success": True, "result": result}
+    except Exception as e:
+        logger.error(f"Error analyzing image: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/vision/motion")
+async def detect_motion(request: Request):
+    """Detect motion from camera"""
+    try:
+        data = await request.json()
+        camera_id = data.get('camera_id', 'default')
+        threshold = data.get('threshold', 25.0)
+        
+        from ai_client.tools.vision_tools import vision_tools
+        result = vision_tools.detect_motion(camera_id, threshold)
+        return {"success": True, "result": result}
+    except Exception as e:
+        logger.error(f"Error detecting motion: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/chat/generate-title")
+async def generate_chat_title(request: Request):
+    """Generate title for a chat based on messages"""
+    try:
+        data = await request.json()
+        messages = data.get("messages", [])
+        
+        title = chat_summary_tools.generate_chat_title(messages)
+        return {"success": True, "title": title}
+    except Exception as e:
+        logger.error(f"Error generating chat title: {e}")
+        return {"success": False, "error": str(e)}
 
 # WebSocket endpoint для real-time логов
 @app.websocket("/ws/logs")

@@ -1,0 +1,1 @@
+project_name: Asylum\nversion: 0.1.0\nsettings:\n  security_level: high\n  isolation_mode: active\n

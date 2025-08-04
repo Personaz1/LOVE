@@ -22,70 +22,9 @@ class MemoryTools:
         self.error_handler = ErrorHandler()
         self.project_root = self.config.get_project_root()
     
-    def update_current_feeling(self, username: str, feeling: str, context: str = "") -> bool:
-        """Обновление текущего чувства пользователя"""
-        try:
-            profile_path = os.path.join(self.project_root, 'memory', 'user_profiles', f'{username}.json')
-            
-            if os.path.exists(profile_path):
-                with open(profile_path, 'r', encoding='utf-8') as f:
-                    profile = json.load(f)
-            else:
-                profile = {'username': username}
-            
-            # Сохраняем предыдущее чувство
-            previous_feeling = profile.get('current_feeling', 'unknown')
-            
-            # Обновляем чувство
-            profile['current_feeling'] = feeling
-            profile['last_updated'] = datetime.now().isoformat()
-            
-            # Добавляем в историю эмоций
-            if 'emotional_history' not in profile:
-                profile['emotional_history'] = []
-            
-            emotional_entry = {
-                'feeling': feeling,
-                'previous_feeling': previous_feeling,
-                'context': context,
-                'timestamp': datetime.now().isoformat()
-            }
-            profile['emotional_history'].append(emotional_entry)
-            
-            # Сохраняем профиль
-            with open(profile_path, 'w', encoding='utf-8') as f:
-                json.dump(profile, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"💭 Updated feeling for {username}: {feeling}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error updating feeling for {username}: {e}")
-            return False
+
     
-    def update_relationship_status(self, username: str, status: str) -> bool:
-        """Обновление статуса отношений"""
-        try:
-            profile_path = os.path.join(self.project_root, 'memory', 'user_profiles', f'{username}.json')
-            
-            if os.path.exists(profile_path):
-                with open(profile_path, 'r', encoding='utf-8') as f:
-                    profile = json.load(f)
-            else:
-                profile = {'username': username}
-            
-            profile['relationship_status'] = status
-            profile['last_updated'] = datetime.now().isoformat()
-            
-            with open(profile_path, 'w', encoding='utf-8') as f:
-                json.dump(profile, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"💕 Updated relationship status for {username}: {status}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error updating relationship status for {username}: {e}")
-            return False
+
     
     def update_user_profile(self, username: str, new_profile_text: str) -> bool:
         """Обновление профиля пользователя"""
@@ -111,120 +50,9 @@ class MemoryTools:
             logger.error(f"Error updating profile for {username}: {e}")
             return False
     
-    def add_relationship_insight(self, username: str, insight: str) -> bool:
-        """Добавление инсайта о отношениях"""
-        try:
-            profile_path = os.path.join(self.project_root, 'memory', 'user_profiles', f'{username}.json')
-            
-            if os.path.exists(profile_path):
-                with open(profile_path, 'r', encoding='utf-8') as f:
-                    profile = json.load(f)
-            else:
-                profile = {'username': username}
-            
-            if 'relationship_insights' not in profile:
-                profile['relationship_insights'] = []
-            
-            insight_entry = {
-                'insight': insight,
-                'timestamp': datetime.now().isoformat()
-            }
-            profile['relationship_insights'].append(insight_entry)
-            
-            with open(profile_path, 'w', encoding='utf-8') as f:
-                json.dump(profile, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"💡 Added relationship insight for {username}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding relationship insight for {username}: {e}")
-            return False
+
     
-    def add_model_note(self, note_text: str, category: str = "general") -> bool:
-        """Добавление заметки модели"""
-        try:
-            notes_path = os.path.join(self.project_root, 'memory', 'model_notes.json')
-            
-            if os.path.exists(notes_path):
-                with open(notes_path, 'r', encoding='utf-8') as f:
-                    notes = json.load(f)
-            else:
-                notes = {'notes': []}
-            
-            note_entry = {
-                'text': note_text,
-                'category': category,
-                'timestamp': datetime.now().isoformat()
-            }
-            notes['notes'].append(note_entry)
-            
-            with open(notes_path, 'w', encoding='utf-8') as f:
-                json.dump(notes, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"📝 Added model note: {note_text[:50]}...")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding model note: {e}")
-            return False
-    
-    def add_user_observation(self, username: str, observation: str) -> bool:
-        """Добавление наблюдения о пользователе"""
-        try:
-            profile_path = os.path.join(self.project_root, 'memory', 'user_profiles', f'{username}.json')
-            
-            if os.path.exists(profile_path):
-                with open(profile_path, 'r', encoding='utf-8') as f:
-                    profile = json.load(f)
-            else:
-                profile = {'username': username}
-            
-            if 'observations' not in profile:
-                profile['observations'] = []
-            
-            observation_entry = {
-                'observation': observation,
-                'timestamp': datetime.now().isoformat()
-            }
-            profile['observations'].append(observation_entry)
-            
-            with open(profile_path, 'w', encoding='utf-8') as f:
-                json.dump(profile, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"👁️ Added observation for {username}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding observation for {username}: {e}")
-            return False
-    
-    def add_personal_thought(self, thought: str) -> bool:
-        """Добавление личной мысли"""
-        try:
-            thoughts_path = os.path.join(self.project_root, 'memory', 'personal_thoughts.json')
-            
-            if os.path.exists(thoughts_path):
-                with open(thoughts_path, 'r', encoding='utf-8') as f:
-                    thoughts = json.load(f)
-            else:
-                thoughts = {'thoughts': []}
-            
-            thought_entry = {
-                'thought': thought,
-                'timestamp': datetime.now().isoformat()
-            }
-            thoughts['thoughts'].append(thought_entry)
-            
-            with open(thoughts_path, 'w', encoding='utf-8') as f:
-                json.dump(thoughts, f, indent=2, ensure_ascii=False)
-            
-            logger.info(f"💭 Added personal thought")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding personal thought: {e}")
-            return False
+
     
     def add_system_insight(self, insight: str) -> bool:
         """Добавление системного инсайта"""
@@ -253,53 +81,7 @@ class MemoryTools:
             logger.error(f"Error adding system insight: {e}")
             return False
     
-    def get_model_notes(self, limit: int = 20) -> str:
-        """Получение заметок модели"""
-        try:
-            notes_path = os.path.join(self.project_root, 'memory', 'model_notes.json')
-            
-            if not os.path.exists(notes_path):
-                return "No model notes found"
-            
-            with open(notes_path, 'r', encoding='utf-8') as f:
-                notes = json.load(f)
-            
-            # Обрабатываем как список или словарь
-            if isinstance(notes, list):
-                # Если это список заметок
-                recent_notes = notes[-limit:] if len(notes) > limit else notes
-                result = "📝 Recent Model Notes:\n"
-                for note in recent_notes:
-                    if isinstance(note, dict):
-                        timestamp = note.get('timestamp', 'unknown')
-                        text = note.get('note', note.get('text', 'no text'))
-                        category = note.get('category', 'general')
-                        result += f"{timestamp}: {text} [{category}]\n"
-                    else:
-                        result += f"Invalid note format: {note}\n"
-                return result
-            elif isinstance(notes, dict):
-                # Если это словарь с ключом 'notes'
-                if not notes.get('notes'):
-                    return "No model notes found"
-                
-                recent_notes = notes['notes'][-limit:]
-                result = "📝 Recent Model Notes:\n"
-                for note in recent_notes:
-                    if isinstance(note, dict):
-                        timestamp = note.get('timestamp', 'unknown')
-                        text = note.get('text', 'no text')
-                        category = note.get('category', 'general')
-                        result += f"{timestamp}: {text} [{category}]\n"
-                    else:
-                        result += f"Invalid note format: {note}\n"
-                return result
-            else:
-                return "Invalid model notes format"
-            
-        except Exception as e:
-            logger.error(f"Error getting model notes: {e}")
-            return f"❌ Error getting model notes: {str(e)}"
+
     
     def read_user_profile(self, username: str) -> str:
         """Чтение профиля пользователя"""
@@ -318,35 +100,7 @@ class MemoryTools:
             logger.error(f"Error reading profile for {username}: {e}")
             return f"❌ Error reading profile: {str(e)}"
     
-    def read_emotional_history(self, username: str) -> str:
-        """Чтение эмоциональной истории"""
-        try:
-            profile_path = os.path.join(self.project_root, 'memory', 'user_profiles', f'{username}.json')
-            
-            if not os.path.exists(profile_path):
-                return f"❌ Profile not found for {username}"
-            
-            with open(profile_path, 'r', encoding='utf-8') as f:
-                profile = json.load(f)
-            
-            emotional_history = profile.get('emotional_history', [])
-            
-            if not emotional_history:
-                return f"No emotional history found for {username}"
-            
-            result = f"💭 Emotional History for {username}:\n"
-            for entry in emotional_history[-10:]:  # Последние 10 записей
-                timestamp = entry['timestamp']
-                feeling = entry['feeling']
-                previous = entry.get('previous_feeling', 'unknown')
-                context = entry.get('context', '')
-                result += f"{timestamp}: {feeling} (was {previous}) {context}\n"
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"Error reading emotional history for {username}: {e}")
-            return f"❌ Error reading emotional history: {str(e)}"
+
     
     def write_insight_to_file(self, username: str, insight: str) -> bool:
         """Запись инсайта в файл"""
@@ -420,10 +174,10 @@ class MemoryTools:
                     
                     # Извлекаем ключевую информацию
                     name = profile.get('full_name', username)
-                    feeling = profile.get('current_feeling', 'unknown')
+        
                     last_updated = profile.get('last_updated', 'unknown')
                     
-                    context_parts.append(f"👤 {name} ({username}): feeling {feeling}, updated {last_updated}")
+                    context_parts.append(f"👤 {name} ({username}): updated {last_updated}")
             
             if context_parts:
                 return "Multi-user context:\n" + "\n".join(context_parts)

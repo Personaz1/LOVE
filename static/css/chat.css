@@ -192,7 +192,7 @@ body {
     color: #1a1a1a;
 }
 
-/* Modern glass morphism theme */
+
 body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #1a1a1a;
@@ -950,87 +950,7 @@ body.theme-dark .diary-info p {
     gap: 16px;
 }
 
-.diary-entry {
-    border: 2px solid #f0f0f0;
-    border-radius: 12px;
-    padding: 16px;
-    transition: all 0.3s ease;
-    position: relative;
-}
 
-/* Light theme diary entry */
-body.theme-light .diary-entry {
-    background: white;
-}
-
-/* Dark theme diary entry */
-body.theme-dark .diary-entry {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.diary-entry:hover {
-    border-color: #ffb6c1;
-    box-shadow: 0 4px 12px rgba(255, 182, 193, 0.2);
-}
-
-.diary-entry-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.diary-entry-date {
-    font-weight: 600;
-    color: #ff69b4;
-    font-size: 14px;
-}
-
-.diary-entry-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.diary-entry-edit,
-.diary-entry-delete {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: background-color 0.3s ease;
-}
-
-.diary-entry-edit:hover {
-    background-color: #fff5f8;
-}
-
-.diary-entry-delete:hover {
-    background-color: #ffe6e6;
-}
-
-.diary-entry-content {
-    color: #333;
-    line-height: 1.6;
-    font-size: 14px;
-}
-
-.diary-entry.empty {
-    text-align: center;
-    color: #999;
-    font-style: italic;
-    padding: 40px 20px;
-}
-
-.diary-entry.empty::before {
-    content: "📖";
-    font-size: 48px;
-    display: block;
-    margin-bottom: 16px;
-}
 
 /* Profile Modal Styles */
 .profile-details {
@@ -1278,6 +1198,25 @@ body.theme-dark .diary-entry {
     min-height: 100px;
     max-height: 300px;
     overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.status-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.status-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.status-content::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 3px;
+}
+
+.status-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.7);
 }
 
 .status-section {

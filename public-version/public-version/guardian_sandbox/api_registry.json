@@ -1,9 +1,0 @@
-{
-  "test_api": {
-    "name": "test_api",
-    "base_url": "https://api.example.com",
-    "auth": "Bearer token123",
-    "schema": "{schema: v1}",
-    "created": 1754002456.264916
-  }
-}
