@@ -1356,9 +1356,11 @@ async function showModelStatus() {
 }
 
 function updateSystemPanel(analysis) {
-    // Update system status
+    // Update system status for both desktop and mobile
     const statusElement = document.getElementById('systemStatus');
-    if (statusElement && analysis.system_status) {
+    const mobileStatusElement = document.getElementById('mobileSystemStatus');
+    
+    if (analysis.system_status) {
         // Handle system_status as object with multiple fields
         let statusHtml = '';
         if (typeof analysis.system_status === 'object') {
@@ -1376,10 +1378,28 @@ function updateSystemPanel(analysis) {
             // Handle as string
             statusHtml = `<div class="status-text">${analysis.system_status.replace(/\n/g, '<br>')}</div>`;
         }
-        statusElement.innerHTML = statusHtml;
+        
+        // Update desktop panel
+        if (statusElement) {
+            statusElement.innerHTML = statusHtml;
+        }
+        
+        // Update mobile modal
+        if (mobileStatusElement) {
+            mobileStatusElement.innerHTML = statusHtml;
+        }
     }
     
-
+    // Update mobile tips if available
+    const mobileTipsElement = document.getElementById('mobileSystemTips');
+    if (mobileTipsElement && analysis.recommendations) {
+        let tipsHtml = '<h4>Recommendations:</h4><ul>';
+        analysis.recommendations.forEach(tip => {
+            tipsHtml += `<li>${tip}</li>`;
+        });
+        tipsHtml += '</ul>';
+        mobileTipsElement.innerHTML = tipsHtml;
+    }
 }
 
 function showSystemError(message) {
