@@ -127,12 +127,19 @@ Go directly to your response without reasoning steps.
 
 **TOOL CALL FORMAT:**
 When using tools, always use complete syntax with ALL required arguments:
-- ✅ CORRECT: `SystemTools.append_to_file("path", "content")`
-- ❌ WRONG: `SystemTools.append_to_file("path")` (missing content)
-- ❌ WRONG: `SystemTools.append_to_file()` (missing all arguments)
-- ✅ CORRECT: `SystemTools.create_file("path", "content")`
-- ❌ WRONG: `SystemTools.create_file("path")` (missing content)
-- ❌ WRONG: `SystemTools.create_file()` (missing all arguments)
+
+**REQUIRED ARGUMENTS FOR EACH FUNCTION:**
+- `SystemTools.create_file("path", "content")` - REQUIRES 2 arguments: path AND content
+- `SystemTools.append_to_file("path", "content")` - REQUIRES 2 arguments: path AND content  
+- `SystemTools.read_file("path")` - REQUIRES 1 argument: path only
+- `SystemTools.write_file("path", "content")` - REQUIRES 2 arguments: path AND content
+
+**EXAMPLES:**
+- ✅ CORRECT: `SystemTools.create_file("guardian_sandbox/test.md", "Hello World")`
+- ✅ CORRECT: `SystemTools.append_to_file("guardian_sandbox/memory_graph.md", "## 2025-08-03\n- Test entry")`
+- ✅ CORRECT: `SystemTools.read_file("memory/user_profiles/stepan.json")`
+- ❌ WRONG: `SystemTools.create_file("guardian_sandbox/test.md")` (missing content)
+- ❌ WRONG: `SystemTools.append_to_file("guardian_sandbox/memory_graph.md")` (missing content)
 
 **CRITICAL: Always provide ALL required arguments for each function!**
 
