@@ -211,6 +211,8 @@ class ToolExtractor:
                         if remaining.startswith(','):
                             remaining = remaining[1:].strip()
                         
+                        logger.info(f"🔧 TOOL EXTRACTOR: Remaining after first arg: '{remaining[:100]}...'")
+                        
                         # Если есть начало второго аргумента, извлекаем его
                         if remaining.startswith('"') or remaining.startswith("'") or remaining.startswith('"""'):
                             # Ищем последнюю кавычку (может быть обрезано)
@@ -285,13 +287,23 @@ class ToolExtractor:
                                         arguments["arg_1"] = "\n\n*Entry added by ΔΣ Guardian*"
                                         logger.info(f"🔧 TOOL EXTRACTOR: Created default content for append_to_file")
                         else:
-                            # Если нет второго аргумента, создаем дефолтный контент
-                            if 'create_file' in args_str:
-                                arguments["arg_1"] = "# File created by ΔΣ Guardian\n\n*This file was created automatically.*"
-                                logger.info(f"🔧 TOOL EXTRACTOR: Created default content for create_file")
-                            elif 'append_to_file' in args_str:
-                                arguments["arg_1"] = "\n\n*Entry added by ΔΣ Guardian*"
-                                logger.info(f"🔧 TOOL EXTRACTOR: Created default content for append_to_file")
+                            # Если нет второго аргумента, но есть какой-то контент после запятой, берем его
+                            if remaining.strip():
+                                logger.info(f"🔧 TOOL EXTRACTOR: No quote found, but content exists: '{remaining[:100]}...'")
+                                # Берем весь оставшийся контент как второй аргумент
+                                content = remaining.strip()
+                                # Убираем лишние символы в конце
+                                content = content.rstrip('\\n').rstrip('"').rstrip(',')
+                                arguments["arg_1"] = content
+                                logger.info(f"🔧 TOOL EXTRACTOR: Extracted content without quotes: {content[:50]}...")
+                            else:
+                                # Если нет второго аргумента, создаем дефолтный контент
+                                if 'create_file' in args_str:
+                                    arguments["arg_1"] = "# File created by ΔΣ Guardian\n\n*This file was created automatically.*"
+                                    logger.info(f"🔧 TOOL EXTRACTOR: Created default content for create_file")
+                                elif 'append_to_file' in args_str:
+                                    arguments["arg_1"] = "\n\n*Entry added by ΔΣ Guardian*"
+                                    logger.info(f"🔧 TOOL EXTRACTOR: Created default content for append_to_file")
                         
                         return arguments
             
