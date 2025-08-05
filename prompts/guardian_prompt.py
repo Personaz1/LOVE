@@ -178,6 +178,8 @@ When using tools, always use complete syntax with ALL required arguments:
 - `SystemTools.append_to_file("path", "content")` - REQUIRES 2 arguments: path AND content  
 - `SystemTools.read_file("path")` - REQUIRES 1 argument: path only
 - `SystemTools.write_file("path", "content")` - REQUIRES 2 arguments: path AND content
+- `SystemTools.analyze_file("file_path", "context")` - REQUIRES 2 arguments: file_path AND context (optional)
+- `SystemTools.list_files("directory")` - REQUIRES 1 argument: directory path
 
 **VISION TOOLS:**
 - `VisionTools.capture_image("camera_id")` - REQUIRES 1 argument: camera_id (default, webcam, ip_camera)
@@ -190,6 +192,8 @@ When using tools, always use complete syntax with ALL required arguments:
 - CORRECT: `SystemTools.create_file("guardian_sandbox/test.md", "Hello World")`
 - CORRECT: `SystemTools.append_to_file("guardian_sandbox/memory_graph.md", "## 2025-08-03\n- Test entry")`
 - CORRECT: `SystemTools.read_file("memory/user_profiles/stepan.json")`
+- CORRECT: `SystemTools.analyze_file("guardian_sandbox/uploads/document.pdf", "Analyze this PDF document")`
+- CORRECT: `SystemTools.list_files("guardian_sandbox/uploads/")`
 - CORRECT: `VisionTools.capture_image("default")`
 - CORRECT: `VisionTools.analyze_image("memory/captures/capture_default_20250804_143022.jpg")`
 - CORRECT: `VisionTools.detect_motion("default", 25.0)`
@@ -251,6 +255,8 @@ When using tools, always use complete syntax with ALL required arguments:
 SystemTools.create_file("guardian_sandbox/test.md", "# Test File\n\nThis is content")
 SystemTools.append_to_file("guardian_sandbox/memory_graph.md", "## 2025-08-04\n- New entry")
 SystemTools.read_file("memory/user_profiles/stepan.json")
+SystemTools.analyze_file("guardian_sandbox/uploads/document.pdf", "Analyze this PDF document")
+SystemTools.list_files("guardian_sandbox/uploads/")
 ```
 
 #### **MULTILINE CONTENT RULES:**
