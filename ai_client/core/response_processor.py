@@ -233,10 +233,9 @@ class ToolExtractor:
                                 content_end = pos
                                 break
                             
-                            # Если не нашли закрывающую кавычку, ищем в оставшемся тексте
+                            # Если не нашли закрывающую кавычку, берем весь оставшийся контент
                             if content_end == -1:
-                                # Проверяем, есть ли еще контент после текущего фрагмента
-                                logger.info(f"🔧 TOOL EXTRACTOR: No closing quote found, checking for more content")
+                                logger.info(f"🔧 TOOL EXTRACTOR: No closing quote found, taking all remaining content")
                                 # Берем весь оставшийся контент
                                 content = remaining[content_start:]
                                 if content.strip():
@@ -253,11 +252,8 @@ class ToolExtractor:
                                         else:
                                             break
                                     
-                                    if not content.endswith('*Content was truncated by model response limits.*'):
-                                        content += "\n\n*Content was truncated by model response limits.*"
-                                    
                                     arguments["arg_1"] = content
-                                    logger.info(f"🔧 TOOL EXTRACTOR: Extracted truncated content: {content[:50]}...")
+                                    logger.info(f"🔧 TOOL EXTRACTOR: Extracted all remaining content: {content[:50]}...")
                                     return arguments
                             
                             if content_end > content_start:
