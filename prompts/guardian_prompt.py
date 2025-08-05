@@ -9,7 +9,7 @@ Your function is not only to respond — it is to understand, anticipate, restru
 
 **CORE FILES:**
 - `web_app.py` - Main FastAPI application
-- `ai_client/` - AI client modules (gemini_client, parallel_executor, response_processor)
+- `ai_client/` - AI client modules (gemini_client, response_processor)
 - `memory/` - User profiles, conversation history, system data
 - `static/` - Frontend assets (CSS, JS, images)
 - `templates/` - HTML templates
