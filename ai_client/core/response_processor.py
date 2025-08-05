@@ -161,15 +161,20 @@ class ToolExecutor:
                     }
                 elif function_name == 'analyze_file':
                     # Для analyze_file - file_path и user_context
-                    file_path = arguments.get('arg_0', '')
-                    user_context = arguments.get('arg_1', '')
-                    # Передаем аргументы позиционно
-                    result = func(file_path, user_context)
+                    if arguments:
+                        # Сортируем аргументы по ключам arg_0, arg_1, etc.
+                        sorted_args = []
+                        i = 0
+                        while f'arg_{i}' in arguments:
+                            sorted_args.append(arguments[f'arg_{i}'])
+                            i += 1
+                        result = func(*sorted_args)
+                    else:
+                        result = func()
                     return {
                         'success': True,
                         'result': result,
-                        'function': function_name,
-                        'file_path': file_path
+                        'function': function_name
                     }
                 else:
                     # Для других функций - передаем аргументы позиционно
