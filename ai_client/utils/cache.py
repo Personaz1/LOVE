@@ -122,6 +122,22 @@ class SystemCache:
         except Exception as e:
             logger.error(f"❌ Cache invalidate error: {e}")
     
+    def delete(self, cache_key: str):
+        """Удалить кэш по ключу (для совместимости)"""
+        try:
+            # Удаляем из памяти
+            if cache_key in self.memory_cache:
+                del self.memory_cache[cache_key]
+            
+            # Удаляем файл
+            cache_file = os.path.join(self.cache_dir, f"{cache_key}.json")
+            if os.path.exists(cache_file):
+                os.remove(cache_file)
+                logger.info(f"🗑️ Deleted cache: {cache_key}")
+            
+        except Exception as e:
+            logger.error(f"❌ Cache delete error: {e}")
+    
     def clear_all(self):
         """Очистить весь кэш"""
         try:
