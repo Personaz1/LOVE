@@ -159,6 +159,17 @@ class ToolExecutor:
                         'function': function_name,
                         'directory': directory
                     }
+                elif function_name == 'analyze_file':
+                    # Для analyze_file - file_path и user_context
+                    file_path = arguments.get('arg_0', '')
+                    user_context = arguments.get('arg_1', '')
+                    result = func(file_path, user_context)
+                    return {
+                        'success': True,
+                        'result': result,
+                        'function': function_name,
+                        'file_path': file_path
+                    }
                 else:
                     # Для других функций
                     result = func(**arguments)
