@@ -704,6 +704,7 @@ body.theme-dark .chat-messages {
     color: #1a1a1a;
     line-height: 1.6;
     font-size: 0.95rem;
+    font-weight: 500;
 }
 
 /* Message input */

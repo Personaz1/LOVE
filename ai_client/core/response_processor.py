@@ -288,8 +288,6 @@ class ToolExtractor:
                                         logger.info(f"🔧 TOOL EXTRACTOR: Created default content for append_to_file")
                         else:
                             # Если нет второго аргумента, но есть какой-то контент после запятой, берем его
-                            logger.info(f"🔧 TOOL EXTRACTOR: No quotes found, checking remaining content: '{remaining[:100]}...'")
-                            logger.info(f"🔧 TOOL EXTRACTOR: Remaining strip result: '{remaining.strip()[:100]}...'")
                             if remaining.strip():
                                 logger.info(f"🔧 TOOL EXTRACTOR: No quote found, but content exists: '{remaining[:100]}...'")
                                 # Берем весь оставшийся контент как второй аргумент
