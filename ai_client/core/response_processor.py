@@ -39,8 +39,8 @@ class ToolExtractor:
         self.tool_patterns = [
             r'print\s*\(\s*tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)\s*\)',
             r'tool_code\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)',
-            r'SystemTools\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)',
-            r'VisionTools\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*?)\s*\)',
+            r'SystemTools\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*)\s*\)',
+            r'VisionTools\.([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*(.*)\s*\)',
         ]
         
         # Паттерн для извлечения tool_code из print
@@ -180,6 +180,10 @@ class ToolExtractor:
         
         # ЕЩЕ БОЛЕЕ АГРЕССИВНАЯ ПРОВЕРКА: если есть кавычки и скобки, считаем полным
         if args_str.count('"') >= 2 and args_str.count('(') > 0:
+            return True
+        
+        # СУПЕР АГРЕССИВНАЯ ПРОВЕРКА: для файловых операций считаем полным если есть кавычки
+        if ('create_file' in args_str or 'append_to_file' in args_str) and args_str.count('"') >= 2:
             return True
         
         return False
