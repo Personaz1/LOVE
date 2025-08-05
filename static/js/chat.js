@@ -857,7 +857,9 @@ async function loadConversationHistory() {
         // Show loading banner only if we're actually loading something
         showLoadingBanner();
         
-        const response = await fetch('/api/conversation-history?limit=20', {
+        // Добавляем timestamp для принудительного обновления кэша
+        const timestamp = Date.now();
+        const response = await fetch(`/api/conversation-history?limit=20&_t=${timestamp}`, {
             credentials: 'include'
         });
 
@@ -900,45 +902,28 @@ function displayConversationHistory(history) {
     // Clear existing messages
     messagesContainer.innerHTML = '';
     
-    // Collect unique usernames from history
-    const usernames = new Set();
+    // Add each message from history immediately
     history.forEach(entry => {
-        if (entry.user) {
-            usernames.add(entry.user);
+        // Add user message with correct username
+        if (entry.message) {
+            const sender = entry.user || 'user'; // Use actual username from history
+            addMessage(entry.message, sender, entry.timestamp, entry.id);
+        }
+        
+        // Add AI response
+        if (entry.ai_response) {
+            addMessage(entry.ai_response, 'ai', entry.timestamp, entry.id);
         }
     });
     
-    // Load avatars for all users in history
-    const avatarPromises = Array.from(usernames).map(username => loadUserAvatar(username));
+    // Update avatars after loading history (синхронно)
+    updateUserAvatars();
+    updateSpecificUserAvatars();
     
-    // Wait for avatars to load, then display messages
-    Promise.all(avatarPromises).then(() => {
-        // Add each message from history
-        history.forEach(entry => {
-            // Add user message with correct username
-            if (entry.message) {
-                const sender = entry.user || 'user'; // Use actual username from history
-                addMessage(entry.message, sender, entry.timestamp, entry.id);
-            }
-            
-            // Add AI response
-            if (entry.ai_response) {
-                addMessage(entry.ai_response, 'ai', entry.timestamp, entry.id);
-            }
-        });
-        
-        // Update avatars after loading history
-        updateUserAvatars();
-
-        
-        // Update avatars for specific users
-        updateSpecificUserAvatars();
-        
-        // Scroll to bottom AFTER all messages are added
-        setTimeout(() => {
-            scrollToBottom();
-        }, 100);
-    });
+    // Scroll to bottom AFTER all messages are added
+    setTimeout(() => {
+        scrollToBottom();
+    }, 50);
 }
 
 // Update avatars for specific users in history

@@ -722,10 +722,12 @@ async def get_conversation_history(
         return response
     
     try:
-        # Проверяем кэш для истории чата
+        # Проверяем кэш для истории чата (только если нет принудительного обновления)
+        force_refresh = request.query_params.get("_t") is not None
         cache_key = f"conversation_history_{username}_{limit}"
-        cached_history = system_cache.get(cache_key)
-        if cached_history:
+        cached_history = system_cache.get(cache_key) if not force_refresh else None
+        
+        if cached_history and not force_refresh:
             logger.info(f"✅ CONVERSATION HISTORY: Returning cached result for {username}")
             return JSONResponse({
                 "success": True,
@@ -774,8 +776,10 @@ async def get_conversation_history(
         logger.info(f"🔄 CONVERSATION HISTORY: Fetching fresh data for {username}")
         history = conversation_history.get_recent_history(limit=optimized_limit)
         
-        # Кэшируем результат на 2 минуты
-        system_cache.set(cache_key, history, ttl_seconds=120)
+        # Кэшируем результат на 30 секунд для более быстрого обновления
+        system_cache.set(cache_key, history, ttl_seconds=30)
+        
+        logger.info(f"✅ CONVERSATION HISTORY: Loaded {len(history)} messages for {username}")
         
         return JSONResponse({
             "success": True,
