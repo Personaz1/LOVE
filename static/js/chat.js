@@ -728,7 +728,11 @@ function formatRichText(text) {
     text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
     
     // Code blocks: ```code``` or `code`
-    text = text.replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>');
+    text = text.replace(/```([\s\S]*?)```/g, function(match, code) {
+        // Replace \n with <br> in code blocks
+        code = code.replace(/\\n/g, '<br>');
+        return '<pre class="code-block"><code>' + code + '</code></pre>';
+    });
     text = text.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
     
     // Headers: # Header, ## Header, ### Header
