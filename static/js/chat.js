@@ -71,6 +71,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update UI with correct username
         updateUserInterface();
+        
+        // Force update user avatars after profile is loaded
+        setTimeout(() => {
+            updateUserAvatars();
+            updateSpecificUserAvatars();
+        }, 100);
     }).catch((error) => {
         console.error('Error during initialization:', error);
         hideLoadingBanner();
@@ -188,6 +194,12 @@ async function loadUserProfile() {
                     currentUser = userProfile.username;
                     console.log('Set currentUser from server:', currentUser);
                 }
+                
+                // Update UI immediately when profile is loaded
+                updateUserInterface();
+                updateUserAvatars();
+                updateSpecificUserAvatars();
+                
                 return userProfile;
             } else {
                 console.error('Invalid profile data format:', data);
