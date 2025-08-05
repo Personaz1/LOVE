@@ -442,6 +442,13 @@ async def chat_stream_endpoint(
             # Add to conversation history
             conversation_history.add_message(username, message, full_response)
             
+            # Clear conversation history cache to force refresh
+            cache_key = f"conversation_history_{username}_20"
+            system_cache.delete(cache_key)
+            cache_key_5 = f"conversation_history_{username}_5"
+            system_cache.delete(cache_key_5)
+            logger.info(f"🗑️ CONVERSATION CACHE: Cleared cache for {username} after new message")
+            
             # Send final completion signal
             yield f"data: {json.dumps({'type': 'complete', 'timestamp': datetime.now().isoformat()})}\n\n"
             
@@ -512,6 +519,13 @@ async def chat_endpoint(
         
         # Save to conversation history
         conversation_history.add_message(username, message, ai_response)
+        
+        # Clear conversation history cache to force refresh
+        cache_key = f"conversation_history_{username}_20"
+        system_cache.delete(cache_key)
+        cache_key_5 = f"conversation_history_{username}_5"
+        system_cache.delete(cache_key_5)
+        logger.info(f"🗑️ CONVERSATION CACHE: Cleared cache for {username} after new message")
         
         return JSONResponse({
             "success": True,
@@ -776,8 +790,8 @@ async def get_conversation_history(
         logger.info(f"🔄 CONVERSATION HISTORY: Fetching fresh data for {username}")
         history = conversation_history.get_recent_history(limit=optimized_limit)
         
-        # Кэшируем результат на 30 секунд для более быстрого обновления
-        system_cache.set(cache_key, history, ttl_seconds=30)
+        # Кэшируем результат на 10 секунд для мгновенного обновления
+        system_cache.set(cache_key, history, ttl_seconds=10)
         
         logger.info(f"✅ CONVERSATION HISTORY: Loaded {len(history)} messages for {username}")
         
@@ -1189,6 +1203,50 @@ async def clear_model_status_cache(request: Request):
         })
     except Exception as e:
         logger.error(f"❌ Error clearing model status cache: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.post("/api/login-greeting")
+async def login_greeting(request: Request):
+    """Generate personalized greeting for user login"""
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        # Get user profile
+        user_profile = UserProfile(username)
+        user_profile_dict = user_profile.get_profile()
+        user_profile_dict['username'] = username
+        
+        # Get conversation context
+        recent_messages = conversation_history.get_recent_history(limit=5)
+        
+        # Build context for greeting
+        greeting_context = f"""
+        User: {username}
+        Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Recent messages: {len(recent_messages)} messages in history
+        """
+        
+        # Generate greeting
+        greeting_response = ai_client.chat(
+            user_message="Generate a brief, personalized greeting for the user login. Keep it under 100 words.",
+            context=greeting_context,
+            user_profile=user_profile_dict,
+            additional_prompt="You are welcoming the user back to the system. Be warm, brief, and acknowledge their return."
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "greeting": greeting_response,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error generating login greeting: {e}")
         return JSONResponse({
             "success": False,
             "error": str(e)
