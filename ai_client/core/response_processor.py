@@ -170,7 +170,11 @@ class ToolExecutor:
                             i += 1
                         result = func(*sorted_args)
                     else:
-                        result = func()
+                        # Если нет аргументов, возвращаем ошибку
+                        return {
+                            'success': False,
+                            'error': 'analyze_file requires at least one argument (file_path)'
+                        }
                     return {
                         'success': True,
                         'result': result,
