@@ -450,7 +450,7 @@ class ToolExtractor:
                         second_arg = second_arg.replace("\\'", "'")
                         parts.append(second_arg)
                     else:
-                        # Если не нашли закрывающую кавычку, берем до конца
+                    # Если не нашли закрывающую кавычку, берем до конца
                         second_arg = remaining[content_start:]
                         # Заменяем экранированные символы
                         second_arg = second_arg.replace('\\n', '\n')
