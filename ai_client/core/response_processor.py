@@ -149,6 +149,16 @@ class ToolExecutor:
                         'function': function_name,
                         'file_path': file_path
                     }
+                elif function_name == 'list_files':
+                    # Для list_files - только директория
+                    directory = arguments.get('arg_0', '.')
+                    result = func(directory)
+                    return {
+                        'success': True,
+                        'result': result,
+                        'function': function_name,
+                        'directory': directory
+                    }
                 else:
                     # Для других функций
                     result = func(**arguments)
