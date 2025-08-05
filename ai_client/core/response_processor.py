@@ -139,6 +139,16 @@ class ToolExecutor:
                         'function': function_name,
                         'file_path': file_path
                     }
+                elif function_name == 'read_file':
+                    # Для read_file - только путь к файлу
+                    file_path = arguments.get('arg_0', '')
+                    result = func(file_path)
+                    return {
+                        'success': True,
+                        'result': result,
+                        'function': function_name,
+                        'file_path': file_path
+                    }
                 else:
                     # Для других функций
                     result = func(**arguments)

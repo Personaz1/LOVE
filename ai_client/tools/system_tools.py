@@ -386,6 +386,89 @@ Be detailed and specific in your analysis."""
             logger.error(f"Error analyzing image {image_path}: {e}")
             return f"❌ Error analyzing image: {str(e)}"
     
+    def analyze_file(self, file_path: str, user_context: str = "") -> str:
+        """Анализ файла любого типа"""
+        try:
+            # Проверяем существование файла
+            if not os.path.exists(file_path):
+                return f"❌ File not found: {file_path}"
+            
+            file_extension = os.path.splitext(file_path)[1].lower()
+            
+            # Для изображений используем analyze_image
+            if file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                return self.analyze_image(file_path, user_context)
+            
+            # Для PDF файлов
+            elif file_extension == '.pdf':
+                return self._analyze_pdf(file_path, user_context)
+            
+            # Для текстовых файлов
+            elif file_extension in ['.txt', '.md', '.json', '.py', '.js', '.html', '.css', '.xml', '.csv']:
+                return self._analyze_text_file(file_path, user_context)
+            
+            # Для других файлов
+            else:
+                return f"❌ Unsupported file type: {file_extension}\nSupported types: images, PDF, text files"
+                
+        except Exception as e:
+            return f"❌ Error analyzing file {file_path}: {str(e)}"
+    
+    def _analyze_pdf(self, file_path: str, user_context: str = "") -> str:
+        """Анализ PDF файла"""
+        try:
+            # Пытаемся извлечь текст из PDF
+            import PyPDF2
+            
+            with open(file_path, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                text_content = ""
+                
+                for page_num in range(len(pdf_reader.pages)):
+                    page = pdf_reader.pages[page_num]
+                    text_content += f"\n--- Page {page_num + 1} ---\n"
+                    text_content += page.extract_text()
+                
+                if not text_content.strip():
+                    return f"❌ Could not extract text from PDF: {file_path}"
+                
+                # Анализируем извлеченный текст
+                from ..models.gemini_client import GeminiClient
+                gemini_client = GeminiClient()
+                
+                analysis = gemini_client.chat(
+                    f"Analyze this PDF content in detail. {user_context}\n\nContent:\n{text_content[:4000]}"
+                )
+                
+                return f"✅ PDF analysis completed:\n\n{analysis}"
+                
+        except ImportError:
+            return f"❌ PyPDF2 not installed. Install with: pip install PyPDF2"
+        except Exception as e:
+            return f"❌ Error analyzing PDF {file_path}: {str(e)}"
+    
+    def _analyze_text_file(self, file_path: str, user_context: str = "") -> str:
+        """Анализ текстового файла"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            if not content.strip():
+                return f"❌ File is empty: {file_path}"
+            
+            # Анализируем содержимое
+            from ..models.gemini_client import GeminiClient
+            gemini_client = GeminiClient()
+            
+            analysis = gemini_client.chat(
+                f"Analyze this file content in detail. {user_context}\n\nContent:\n{content[:4000]}"
+            )
+            
+            return f"✅ File analysis completed:\n\n{analysis}"
+            
+        except Exception as e:
+            return f"❌ Error analyzing text file {file_path}: {str(e)}"
+    
     def get_project_structure(self) -> str:
         """Получение структуры проекта"""
         try:
