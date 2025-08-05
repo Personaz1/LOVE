@@ -139,23 +139,10 @@ class SystemTools:
             return f"❌ Error appending to file {path}: {str(e)}"
     
     def safe_create_file(self, path: str, content: str) -> str:
-        """Безопасное создание файла с автоматическим разделением"""
+        """Создание файла без лимитов"""
         try:
-            if len(content) > 10000:  # Если контент большой
-                # Разделяем на части
-                parts = [content[i:i+10000] for i in range(0, len(content), 10000)]
-                for i, part in enumerate(parts):
-                    part_path = f"{path}.part{i+1}" if len(parts) > 1 else path
-                    os.makedirs(os.path.dirname(part_path), exist_ok=True)
-                    with open(part_path, 'w', encoding='utf-8') as f:
-                        f.write(part)
-                
-                if len(parts) > 1:
-                    return f"✅ Large file created in {len(parts)} parts: {path}"
-                else:
-                    return f"✅ File created: {path}"
-            else:
-                return self.create_file(path, content)
+            # Создаем файл любого размера без ограничений
+            return self.create_file(path, content)
         except Exception as e:
             return f"❌ Error creating file {path}: {str(e)}"
     
@@ -608,9 +595,7 @@ Be detailed and specific in your analysis."""
             # Получаем контент
             content = response.text
             
-            # Ограничиваем размер
-            if len(content) > 5000:
-                content = content[:5000] + "\n\n... (content truncated)"
+            # Убираем лимит - возвращаем полный контент
             
             return f"✅ Fetched URL: {url}\n\nContent:\n{content}"
             
