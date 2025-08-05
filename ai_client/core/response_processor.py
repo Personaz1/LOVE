@@ -233,6 +233,33 @@ class ToolExtractor:
                                 content_end = pos
                                 break
                             
+                            # Если не нашли закрывающую кавычку, ищем в оставшемся тексте
+                            if content_end == -1:
+                                # Проверяем, есть ли еще контент после текущего фрагмента
+                                logger.info(f"🔧 TOOL EXTRACTOR: No closing quote found, checking for more content")
+                                # Берем весь оставшийся контент
+                                content = remaining[content_start:]
+                                if content.strip():
+                                    # Убираем лишние символы в конце
+                                    content = content.rstrip('\\n').rstrip('"').rstrip(',')
+                                    # Дополнительная очистка
+                                    while content.endswith('\\n') or content.endswith('"') or content.endswith(','):
+                                        if content.endswith('\\n'):
+                                            content = content[:-2]
+                                        elif content.endswith('"'):
+                                            content = content[:-1]
+                                        elif content.endswith(','):
+                                            content = content[:-1]
+                                        else:
+                                            break
+                                    
+                                    if not content.endswith('*Content was truncated by model response limits.*'):
+                                        content += "\n\n*Content was truncated by model response limits.*"
+                                    
+                                    arguments["arg_1"] = content
+                                    logger.info(f"🔧 TOOL EXTRACTOR: Extracted truncated content: {content[:50]}...")
+                                    return arguments
+                            
                             if content_end > content_start:
                                 content = remaining[content_start:content_end]
                                 arguments["arg_1"] = content
@@ -294,6 +321,16 @@ class ToolExtractor:
                                 content = remaining.strip()
                                 # Убираем лишние символы в конце
                                 content = content.rstrip('\\n').rstrip('"').rstrip(',')
+                                # Дополнительная очистка от обрезанных частей
+                                while content.endswith('\\n') or content.endswith('"') or content.endswith(','):
+                                    if content.endswith('\\n'):
+                                        content = content[:-2]
+                                    elif content.endswith('"'):
+                                        content = content[:-1]
+                                    elif content.endswith(','):
+                                        content = content[:-1]
+                                    else:
+                                        break
                                 arguments["arg_1"] = content
                                 logger.info(f"🔧 TOOL EXTRACTOR: Extracted content without quotes: {content[:50]}...")
                             else:
@@ -390,6 +427,7 @@ class ToolExtractor:
                     
                     # Ищем последнюю кавычку, пропуская экранированные
                     pos = content_start
+                    content_end = -1
                     while True:
                         quote_pos = remaining.find('"', pos)
                         if quote_pos == -1:
@@ -402,23 +440,24 @@ class ToolExtractor:
                         
                         # Нашли последнюю кавычку
                         content_end = quote_pos
+                        break
+                    
+                    if content_end > content_start:
                         second_arg = remaining[content_start:content_end]
-                        
                         # Заменяем экранированные символы
                         second_arg = second_arg.replace('\\n', '\n')
                         second_arg = second_arg.replace('\\"', '"')
                         second_arg = second_arg.replace("\\'", "'")
-                        
                         parts.append(second_arg)
-                        break
-                    
-                    # Если не нашли закрывающую кавычку, берем до конца
-                    if len(parts) == 1:
+                    else:
+                        # Если не нашли закрывающую кавычку, берем до конца
                         second_arg = remaining[content_start:]
                         # Заменяем экранированные символы
                         second_arg = second_arg.replace('\\n', '\n')
                         second_arg = second_arg.replace('\\"', '"')
                         second_arg = second_arg.replace("\\'", "'")
+                        # Убираем лишние символы в конце
+                        second_arg = second_arg.rstrip('\\n').rstrip('"').rstrip(',')
                         parts.append(second_arg)
         
         return parts

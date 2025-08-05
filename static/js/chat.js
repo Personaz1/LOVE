@@ -691,89 +691,11 @@ function updateUserInterface() {
 
 // Format message with reasoning support
 function formatMessage(text) {
-    // Check for reasoning format - both REASONING STEPS and REASONING PROCESS
-    if ((text.includes('REASONING STEPS:') || text.includes('🤖 **REASONING PROCESS:**')) && text.includes('FINAL RESPONSE:')) {
-        return formatReasoningMessage(text);
-    }
-    
-    // Check for technical steps
-    const hasTechnicalSteps = text.includes('🔧 **Executing:') || text.includes('✅ **Result:') || text.includes('🎯 **Ready for final response');
-    
-    if (hasTechnicalSteps) {
-        // Show technical steps with proper formatting
-        return formatTechnicalSteps(text);
-    }
-    
     // Enhanced formatting with rich text support
     return formatRichText(text);
 }
 
-// Format reasoning message with chain of thoughts
-function formatReasoningMessage(text) {
-    // Split reasoning into parts - match both REASONING STEPS and REASONING PROCESS
-    const reasoningMatch = text.match(/(🤖 \*\*REASONING (STEPS|PROCESS):\*\*|REASONING (STEPS|PROCESS):)([\s\S]*?)(💬 \*\*FINAL RESPONSE:\*\*|FINAL RESPONSE:)([\s\S]*)/);
-    
-    if (reasoningMatch) {
-        const reasoningProcess = reasoningMatch[4].trim();
-        const finalResponse = reasoningMatch[6].trim();
-        
-        // Format reasoning steps
-        const reasoningSteps = formatReasoningSteps(reasoningProcess);
-        
-        // Format final response
-        const formattedResponse = formatRichText(finalResponse);
-        
-        return `
-            <div class="reasoning-container">
-                <div class="reasoning-header" onclick="toggleReasoning(this)">
-                    <span class="reasoning-icon">🧠</span>
-                    <span class="reasoning-title">Chain of Thoughts</span>
-                    <span class="reasoning-toggle">▼</span>
-                </div>
-                <div class="reasoning-content collapsed">
-                    <div class="reasoning-steps">
-                        ${reasoningSteps}
-                    </div>
-                </div>
-                <div class="final-response">
-                    <div class="final-response-header">
-                        <span class="response-icon">💬</span>
-                        <span class="response-title">Final Response</span>
-                    </div>
-                    <div class="response-content">
-                        ${formattedResponse}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Fallback to regular formatting
-    return formatRichText(text);
-}
 
-// Format reasoning steps
-function formatReasoningSteps(reasoningText) {
-    // Split by numbered steps
-    const steps = reasoningText.split(/(\d+\.)/).filter(step => step.trim());
-    let formattedSteps = '';
-    
-    for (let i = 0; i < steps.length; i += 2) {
-        if (steps[i] && steps[i + 1]) {
-            const stepNumber = steps[i];
-            const stepContent = steps[i + 1].trim();
-            
-            formattedSteps += `
-                <div class="reasoning-step">
-                    <div class="step-number">${stepNumber}</div>
-                    <div class="step-content">${formatRichText(stepContent)}</div>
-                </div>
-            `;
-        }
-    }
-    
-    return formattedSteps || `<div class="reasoning-text">${formatRichText(reasoningText)}</div>`;
-}
 
 function formatRichText(text) {
     // Remove REASONING STEPS and FINAL RESPONSE headers completely
@@ -830,22 +752,7 @@ function formatRichText(text) {
     return text;
 }
 
-function formatTechnicalSteps(steps) {
-    // Format technical steps with proper styling
-    return steps
-        .replace(/(🔧 \*\*Executing:\*\*)/g, '<div class="executing-step">$1</div>')
-        .replace(/(✅ \*\*Result:\*\*)/g, '<div class="result-step">$1</div>')
-        .replace(/(🎯 \*\*Ready for final response|\🎯 \*\*No more tools needed)/g, '<div class="step-header">$1</div>')
-        .replace(/\n/g, '<br>');
-}
 
-function formatFinalResponse(response) {
-    // Format final response, removing any remaining technical markers
-    return response
-        .replace(/(💬 \*\*Final response:\*\*)/g, '<div class="final-response-header">$1</div>')
-        .replace(/(🎯 \*\*Ready for final response|\🎯 \*\*No more tools needed|\💬 \*\*Generating final response)/g, '')
-        .replace(/\n/g, '<br>');
-}
 
 // Scroll to bottom of messages
 function scrollToBottom() {
@@ -2263,62 +2170,9 @@ function initializeSystemAnalysisButtons() {
     console.log('✅ System Analysis buttons initialized');
 } 
 
-function toggleReasoning(header) {
-    const content = header.nextElementSibling;
-    const toggle = header.querySelector('.reasoning-toggle');
-    
-    if (content.classList.contains('collapsed')) {
-        content.classList.remove('collapsed');
-        toggle.textContent = '▲';
-    } else {
-        content.classList.add('collapsed');
-        toggle.textContent = '▼';
-    }
-}
 
-// Функция для скрытия технических шагов во всех сообщениях
-function hideAllTechnicalSteps() {
-    console.log('🔧 hideAllTechnicalSteps called');
-    const reasoningContainers = document.querySelectorAll('.reasoning-container');
-    console.log(`🔧 Found ${reasoningContainers.length} reasoning containers`);
-    
-    reasoningContainers.forEach((container, index) => {
-        const content = container.querySelector('.reasoning-content');
-        const toggle = container.querySelector('.reasoning-toggle');
-        console.log(`🔧 Container ${index}: content=${!!content}, toggle=${!!toggle}`);
-        
-        if (content && toggle) {
-            content.classList.add('collapsed');
-            toggle.textContent = '▼';
-            console.log(`🔧 Hidden container ${index}`);
-        }
-    });
-    
-    // Показываем уведомление
-    showStatusMessage('Technical steps hidden in all messages', 'success');
-}
 
-// Функция для показа технических шагов во всех сообщениях
-function showAllTechnicalSteps() {
-    console.log('🔧 showAllTechnicalSteps called');
-    const reasoningContainers = document.querySelectorAll('.reasoning-container');
-    console.log(`🔧 Found ${reasoningContainers.length} reasoning containers`);
-    
-    reasoningContainers.forEach((container, index) => {
-        const content = container.querySelector('.reasoning-content');
-        const toggle = container.querySelector('.reasoning-toggle');
-        console.log(`🔧 Container ${index}: content=${!!content}, toggle=${!!toggle}`);
-        
-        if (content && toggle) {
-            content.classList.remove('collapsed');
-            toggle.textContent = '▲';
-            console.log(`🔧 Shown container ${index}`);
-        }
-    });
-    
-    // Показываем уведомление
-    showStatusMessage('Technical steps shown in all messages', 'success');
-}
+
 
 // Private Chat Functions
 let currentPrivateChatId = null;
