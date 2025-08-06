@@ -73,8 +73,8 @@ class ToolExtractor:
         arguments = {}
         args_str = args_str.strip()
         
-        # Если нет аргументов
-        if not args_str:
+        # Если нет аргументов или пустые скобки
+        if not args_str or args_str == '{}':
             return arguments
         
         # Ищем первый аргумент (путь к файлу)
