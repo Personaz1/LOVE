@@ -39,6 +39,7 @@ env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
 # IDE
 .vscode/
@@ -96,6 +97,9 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# Caches and runtime artifacts
+cache/
 
 # User data (keep structure but ignore content)
 
