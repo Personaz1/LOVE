@@ -42,18 +42,18 @@ class GeminiClient:
         except Exception as e:
             logger.warning(f"⚠️ Google Cloud Vision API not available: {e}")
         
-        # Определяем доступные модели - ПОРЯДОК ОТ ЛУЧШИХ К ДЕШЕВЫМ
+        # Определяем доступные модели - приоритет быстрым и дешёвым по умолчанию
         self.models = [
-            {'name': 'gemini-2.5-flash', 'quota': 250},         # ЛУЧШИЙ - качество + лимит
-            {'name': 'gemini-2.0-flash', 'quota': 200},         # Хороший, средний лимит
-            {'name': 'gemini-1.5-flash', 'quota': 500},         # Средний, средний лимит
-            {'name': 'gemini-2.0-flash-lite', 'quota': 1000},   # Дешевый, большой лимит
-            {'name': 'gemini-2.5-flash-lite', 'quota': 1000},   # Дешевый, большой лимит
-            {'name': 'gemini-2.5-pro', 'quota': 100},           # Дорогой, НИЗКИЙ лимит - в конец
-            {'name': 'gemini-1.5-pro', 'quota': 150}            # Дорогой, НИЗКИЙ лимит - в конец
+            {'name': 'gemini-2.0-flash', 'quota': 200},         # DEFAULT
+            {'name': 'gemini-2.5-flash', 'quota': 250},
+            {'name': 'gemini-1.5-flash', 'quota': 500},
+            {'name': 'gemini-2.0-flash-lite', 'quota': 1000},
+            {'name': 'gemini-2.5-flash-lite', 'quota': 1000},
+            {'name': 'gemini-2.5-pro', 'quota': 100},
+            {'name': 'gemini-1.5-pro', 'quota': 150}
         ]
-        
-        self.current_model_index = 0
+
+        self.current_model_index = 0  # gemini-2.0-flash
     
     def _parse_gemini_response(self, response) -> str:
         """УНИВЕРСАЛЬНЫЙ ПАРСЕР - обрабатывает любой формат ответа Gemini"""

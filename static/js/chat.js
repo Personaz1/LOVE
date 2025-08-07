@@ -1190,7 +1190,9 @@ async function loadSystemAnalysis() {
             const data = await response.json();
             
             if (data.success && data.analysis) {
-                updateSystemPanel(data.analysis);
+                // If merged result present, prefer llm_analysis + live_analysis
+                const analysis = data.analysis.llm_analysis || data.analysis;
+                updateSystemPanel(analysis);
                 
                 
             }
@@ -2170,6 +2172,85 @@ function initializeSystemAnalysisButtons() {
     
     console.log('✅ System Analysis buttons initialized');
 } 
+
+// ========== Online Vision Analyzer (Webcam → Server) ==========
+let visionStream = { media: null, timer: null, running: false, lastSendAt: 0 };
+
+async function startVisionAnalyzer() {
+  try {
+    if (visionStream.running) return;
+    const video = document.getElementById('visionVideo');
+    const statusEl = document.getElementById('visionStatus');
+    const resultEl = document.getElementById('visionResult');
+    visionStream.media = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
+    video.srcObject = visionStream.media;
+    await video.play();
+    visionStream.running = true;
+    statusEl.textContent = 'Streaming...';
+    // Capture frame with throttling (every 4s min) and pause when tab hidden
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 640; canvas.height = 360;
+    const loop = async () => {
+      if (!visionStream.running) return;
+      if (document.hidden) { // pause when tab not visible
+        visionStream.timer = setTimeout(loop, 1000);
+        return;
+      }
+      const now = Date.now();
+      const minIntervalMs = 4000;
+      const elapsed = now - (visionStream.lastSendAt || 0);
+      if (elapsed < minIntervalMs) {
+        visionStream.timer = setTimeout(loop, minIntervalMs - elapsed);
+        return;
+      }
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const b64 = canvas.toDataURL('image/jpeg').split(',')[1];
+        const resp = await fetch('/api/vision/analyze-frame?google=false', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_base64: b64 })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          const r = data.result?.opencv;
+          if (r) {
+            resultEl.textContent = `WxH ${r.dimensions.width}x${r.dimensions.height} | bright ${r.brightness} | contrast ${r.contrast} | sharp ${r.sharpness}`;
+          }
+        }
+        visionStream.lastSendAt = Date.now();
+      } catch (e) {
+        console.warn('Vision loop error', e);
+      } finally {
+        visionStream.timer = setTimeout(loop, 4000);
+      }
+    };
+    loop();
+
+    // Auto-stop on visibility change (resume only by user)
+    const onVisibility = () => {
+      if (document.hidden && visionStream.running) {
+        stopVisionAnalyzer();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility, { once: false });
+    visionStream._onVisibility = onVisibility;
+  } catch (e) {
+    alert('Webcam access denied or unavailable');
+  }
+}
+
+function stopVisionAnalyzer() {
+  const statusEl = document.getElementById('visionStatus');
+  if (visionStream.timer) clearTimeout(visionStream.timer);
+  if (visionStream.media) visionStream.media.getTracks().forEach(t => t.stop());
+  if (visionStream._onVisibility) {
+    document.removeEventListener('visibilitychange', visionStream._onVisibility);
+  }
+  visionStream = { media: null, timer: null, running: false, lastSendAt: 0 };
+  statusEl.textContent = 'Stopped';
+}
 
 
 

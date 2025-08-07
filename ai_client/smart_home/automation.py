@@ -58,6 +58,9 @@ class AutomationEngine:
         
         # Контекст выполнения
         self.execution_context: Dict[str, Any] = {}
+
+        # Обработчик команд к актуаторам (интегрируется извне, например через IntegrationHub)
+        self.actuator_command_handler: Optional[Callable[[str, str, Dict[str, Any]], Any]] = None
         
     async def add_rule(self, rule: AutomationRule):
         """Добавление правила автоматизации"""
@@ -289,11 +292,18 @@ class AutomationEngine:
         command = action.get("command")
         parameters = action.get("parameters", {})
         
-        # Здесь должна быть интеграция с ActuatorManager
-        self.logger.info(f"📤 Actuator action: {actuator_id} -> {command}")
+        # Встроенная интеграция через внешний обработчик (если задан)
+        if self.actuator_command_handler:
+            try:
+                await self.actuator_command_handler(actuator_id, command, parameters)
+                self.logger.info(f"📤 Actuator action executed via handler: {actuator_id} -> {command}")
+                return
+            except Exception as e:
+                self.logger.error(f"❌ Actuator handler error for {actuator_id}: {e}")
         
-        # Временная заглушка
-        await asyncio.sleep(0.1)
+        # Fallback: небольшая задержка без действия
+        self.logger.info(f"📤 Actuator action queued (no handler): {actuator_id} -> {command}")
+        await asyncio.sleep(0.05)
     
     async def _execute_notification_action(self, action: Dict, context: Dict[str, Any]):
         """Выполнение действия уведомления"""

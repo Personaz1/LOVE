@@ -26,6 +26,8 @@ from ai_client.utils.cache import system_cache
 load_dotenv()
 
 from ai_client.core.client import AIClient
+from ai_client.autonomous import IntegrationHub, SystemAnalysisAgent, AutonomousSupervisor, GuardianPolicy
+from ai_client.tools.vision_service import vision_service
 from ai_client.core.response_processor import ResponseProcessor
 from ai_client.tools.chat_summary_tools import ChatSummaryTools
 from memory.user_profiles import UserProfile
@@ -87,6 +89,29 @@ SESSION_SECRET = secrets.token_urlsafe(32)
 ai_client = AIClient()
 response_processor = ResponseProcessor(ai_client)
 chat_summary_tools = ChatSummaryTools()
+# Autonomous subsystems (background, no server control here)
+integration_hub = IntegrationHub(ai_client)
+system_agent = SystemAnalysisAgent(ai_client)
+guardian_policy = GuardianPolicy()
+autonomous_supervisor = AutonomousSupervisor(integration_hub, system_agent, interval_seconds=180, policy=guardian_policy)
+
+
+@app.on_event("startup")
+async def _startup_autonomous():
+    try:
+        await integration_hub.start()
+        await autonomous_supervisor.start()
+    except Exception as e:
+        logger.warning(f"Autonomous startup warning: {e}")
+
+
+@app.on_event("shutdown")
+async def _shutdown_autonomous():
+    try:
+        await autonomous_supervisor.stop()
+        await integration_hub.stop()
+    except Exception as e:
+        logger.warning(f"Autonomous shutdown warning: {e}")
 # conversation_history = ConversationHistory() # This line is removed
 
 def get_recent_file_changes() -> str:
@@ -1233,8 +1258,8 @@ async def login_greeting(request: Request):
         
         # Generate greeting
         greeting_response = ai_client.chat(
-            user_message="Generate a brief, personalized greeting for the user login. Keep it under 100 words.",
-            context=greeting_context,
+            message="Generate a brief, personalized greeting for the user login. Keep it under 100 words.",
+            conversation_context=greeting_context,
             user_profile=user_profile_dict,
             additional_prompt="You are welcoming the user back to the system. Be warm, brief, and acknowledge their return."
         )
@@ -1419,12 +1444,16 @@ System Health: {system_health[:500]}"""
             # Инвалидируем кэш при ошибках
             system_cache.invalidate("system_analysis", cache_params)
         
-        return JSONResponse({
-            "success": True,
-            "analysis": analysis_data,
+        # Merge on-demand LLM analysis with live background snapshot
+        try:
+            from ai_client.autonomous import SystemAnalysisAgent  # local import to avoid top-cycle
+            # use already initialized system_agent if available
+            live = globals().get("system_agent").get_last() if globals().get("system_agent") else None
+        except Exception:
+            live = None
 
-            "timestamp": datetime.now().isoformat()
-        })
+        merged = {"llm_analysis": analysis_data, "live_analysis": live or {}}
+        return JSONResponse({"success": True, "analysis": merged, "timestamp": datetime.now().isoformat()})
         
     except Exception as e:
         logger.error(f"❌ System analysis error: {e}")
@@ -1575,13 +1604,46 @@ async def delete_file(request: Request):
             "success": True,
             "message": "File deleted successfully"
         })
-        
     except Exception as e:
         logger.error(f"File deletion error: {e}")
         return JSONResponse({
             "success": False,
             "error": str(e)
         }, status_code=500)
+
+# ========== Vision Online Analyzer ==========
+@app.get("/api/vision/status")
+async def get_vision_status():
+    return JSONResponse({"success": True, "status": vision_service.get_status()})
+
+
+@app.post("/api/vision/analyze-frame")
+async def analyze_frame(request: Request):
+    try:
+        # Simple rate limit: per-IP allow at most 1 request every 3s
+        ip = request.client.host if request.client else "unknown"
+        key = f"vision_rl_{ip}"
+        last = system_cache.get(key, ttl_seconds=3)
+        if last is not None:
+            return JSONResponse({"success": False, "error": "Too many requests"}, status_code=429)
+        system_cache.set(key, {"ip": ip, "ts": datetime.now().isoformat()}, ttl_seconds=3)
+
+        body = await request.body()
+        content_type = request.headers.get("content-type", "")
+        use_google = request.query_params.get("google", "false").lower() == "true"
+        image_bytes: bytes
+        if "application/json" in content_type:
+            data = await request.json()
+            b64 = data.get("image_base64", "")
+            import base64
+            image_bytes = base64.b64decode(b64)
+        else:
+            image_bytes = body
+        result = vision_service.analyze_frame(image_bytes, use_google=use_google)
+        return JSONResponse({"success": True, "result": result})
+    except Exception as e:
+        logger.error(f"Vision analyze error: {e}")
+        return JSONResponse({"success": False, "error": str(e)}, status_code=400)
 
 @app.get("/api/download/{file_path:path}")
 async def download_file(request: Request, file_path: str):

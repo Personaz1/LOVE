@@ -17,6 +17,7 @@ from ..models.gemini_client import GeminiClient
 from ..tools.file_tools import FileTools
 from ..tools.memory_tools import MemoryTools
 from ..tools.system_tools import SystemTools
+from ..tools.vision_tools import VisionTools
 from ..utils.config import Config
 from ..utils.logger import Logger
 from ..utils.error_handler import ErrorHandler
@@ -41,6 +42,7 @@ class AIClient:
         self.file_tools = FileTools()
         self.memory_tools = MemoryTools()
         self.system_tools = SystemTools()
+        self.vision_tools = VisionTools()
         
         # Загружаем основной промпт
         # Load the system prompt directly from file
@@ -114,6 +116,11 @@ class AIClient:
     def system(self):
         """Доступ к системным инструментам"""
         return self.system_tools
+    
+    @property
+    def vision(self):
+        """Доступ к инструментам зрения"""
+        return self.vision_tools
     
     # Утилитарные методы
     def _extract_tool_calls(self, text: str) -> List[str]:

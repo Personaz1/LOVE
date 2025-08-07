@@ -1,0 +1,11 @@
+{
+  "note": "Чтобы сохранить историю чата, выполни в консоли браузера:",
+  "command": "console.log(JSON.stringify(JSON.parse(localStorage.getItem('privateChats')), null, 2))",
+  "instructions": [
+    "1. Открой DevTools (F12)",
+    "2. Перейди в Console",
+    "3. Выполни команду выше",
+    "4. Скопируй результат и вставь сюда"
+  ],
+  "saved_history": []
+} 
