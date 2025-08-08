@@ -360,7 +360,7 @@ async def login(
             key="session_id",
             value=session_id,
             httponly=True,
-            secure=False,  # Set to True in production with HTTPS
+            secure=True,
             samesite="lax",
             max_age=86400  # 24 hours
         )
@@ -393,7 +393,7 @@ async def chat_page(request: Request):
             key="session_id",
             value=session_id,
             httponly=True,
-            secure=False,
+            secure=True,
             samesite="lax",
             max_age=86400
         )
@@ -754,7 +754,7 @@ async def get_conversation_history(
             key="session_id",
             value=session_id,
             httponly=True,
-            secure=False,
+            secure=True,
             samesite="lax",
             max_age=86400
         )
@@ -877,7 +877,7 @@ async def get_conversation_archive(request: Request):
             key="session_id",
             value=session_id,
             httponly=True,
-            secure=False,
+            secure=True,
             samesite="lax",
             max_age=86400
         )
