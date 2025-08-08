@@ -1,0 +1,10 @@
+seed: 42
+steps: 50
+invariants:
+  - "door_state in ['closed','open']"
+actions:
+  - at: 10
+    action: {action: open_door}
+
+
+

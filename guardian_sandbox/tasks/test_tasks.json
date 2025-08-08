@@ -1,3 +1,10 @@
+[
+  {
+    "name": "scenario_patrol_minimal",
+    "scenario": "guardian_sandbox/events/scenario_patrol.yaml",
+    "telem": "guardian_sandbox/events/scenario_patrol.jsonl"
+  }
+]
 {
   "title": "Test Tasks",
   "created_at": "2025-08-01T00:40:18.966277",

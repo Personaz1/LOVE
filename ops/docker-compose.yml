@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: guardian_mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto:/mosquitto
+  emulator:
+    image: python:3.12-slim
+    container_name: guardian_emulator
+    working_dir: /app
+    volumes:
+      - ..:/app
+    command: bash -lc "pip install -r requirements.txt && python -m sim.emulator.mqtt_loop --host mqtt --telem guardian_sandbox/events/sim_telemetry.jsonl"
+    depends_on:
+      - mqtt
+
+

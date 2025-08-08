@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Virtual ΔΣ House Simulator</title>
+  <link rel="stylesheet" href="/static/css/guardian.css" />
+  <style>
+    body { padding: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(200px, 1fr)); gap: 16px; }
+    .card { border: 1px solid #444; border-radius: 8px; padding: 12px; }
+    button { padding: 8px 12px; }
+    pre { background: #111; color: #0f0; padding: 8px; height: 200px; overflow: auto; }
+  </style>
+  <script>
+    async function postJSON(url, data) {
+      const res = await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+      return await res.json();
+    }
+    async function stepOnce() {
+      const step = parseInt(document.getElementById('step').value || '1');
+      const res = await postJSON('/api/sim/step', {step});
+      appendLog('Step result: ' + JSON.stringify(res));
+    }
+    async function openDoor() {
+      const res = await postJSON('/api/sim/door/open', {});
+      appendLog('Door open cmd: ' + JSON.stringify(res));
+    }
+    async function health() {
+      const res = await fetch('/api/sim/health');
+      appendLog('Health: ' + JSON.stringify(await res.json()));
+    }
+    function appendLog(line) {
+      const el = document.getElementById('log');
+      el.textContent += line + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+  </script>
+ </head>
+ <body>
+  <h2>Virtual ΔΣ House Simulator</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Control</h3>
+      <div>
+        <label>Step #: <input id="step" type="number" value="1" min="1" /></label>
+      </div>
+      <div style="margin-top:8px;">
+        <button onclick="stepOnce()">Step</button>
+        <button onclick="openDoor()">Open Door</button>
+        <button onclick="health()">Health</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Log</h3>
+      <pre id="log"></pre>
+    </div>
+  </div>
+ </body>
+ </html>
+
+

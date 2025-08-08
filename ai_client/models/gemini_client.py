@@ -309,6 +309,69 @@ class GeminiClient:
                 return self.chat(message, user_profile, conversation_context, system_prompt)
             else:
                 return f"❌ Error: {error_msg}"
+
+    def analyze_image_with_files_api(
+        self,
+        image_path: str,
+        prompt_text: str = "Describe the image",
+        preferred_model: str = "gemini-1.5-pro"
+    ) -> str:
+        """
+        Анализ изображения через официальную схему Files API + мультимодель Gemini.
+        - По умолчанию использует "gemini-1.5-pro"; при 429 делает fallback на "gemini-1.5-flash".
+        - Если загрузка через Files API не удалась, делает безопасный fallback на inline bytes.
+        """
+        try:
+            if not os.path.exists(image_path):
+                return f"❌ Image not found: {image_path}"
+
+            # Определяем MIME
+            mime_type = "image/jpeg"
+            lp = image_path.lower()
+            if lp.endswith(".png"):
+                mime_type = "image/png"
+            elif lp.endswith(".gif"):
+                mime_type = "image/gif"
+            elif lp.endswith(".webp"):
+                mime_type = "image/webp"
+
+            target_models = [preferred_model, "gemini-1.5-flash"]
+            last_error: Optional[str] = None
+
+            for model_name in target_models:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    # Шаг 1: upload через Files API
+                    try:
+                        uploaded = genai.upload_file(image_path, mime_type=mime_type)
+                        parts = [
+                            {"text": prompt_text},
+                            {"file_data": {"file_uri": uploaded.uri, "mime_type": mime_type}}
+                        ]
+                        response = model.generate_content(parts)
+                        return self._parse_gemini_response(response)
+                    except Exception as upload_error:
+                        # Fallback: inline bytes (на случай проблем Files API)
+                        try:
+                            with open(image_path, "rb") as f:
+                                image_data = f.read()
+                            parts = [
+                                {"mime_type": mime_type, "data": image_data},
+                                {"text": prompt_text}
+                            ]
+                            response = model.generate_content(parts)
+                            return self._parse_gemini_response(response)
+                        except Exception as inline_error:
+                            last_error = f"Upload fail: {upload_error}; Inline fail: {inline_error}"
+                            continue
+                except Exception as e:
+                    # Переключаем модель при квоте/ошибке
+                    last_error = str(e)
+                    continue
+
+            return f"❌ Gemini Vision error: {last_error or 'unknown'}"
+        except Exception as e:
+            return f"❌ Gemini Vision error: {str(e)}"
     
     def _analyze_image_with_vision_api(self, image_path: str) -> str:
         """Анализ изображения через Vision API"""

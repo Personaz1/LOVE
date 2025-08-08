@@ -28,10 +28,13 @@ load_dotenv()
 from ai_client.core.client import AIClient
 from ai_client.autonomous import IntegrationHub, SystemAnalysisAgent, AutonomousSupervisor, GuardianPolicy
 from ai_client.tools.vision_service import vision_service
+from ai_client.tools.vision_tools import vision_tools
 from ai_client.core.response_processor import ResponseProcessor
 from ai_client.tools.chat_summary_tools import ChatSummaryTools
 from memory.user_profiles import UserProfile
 from memory.conversation_history import conversation_history
+from bridge.mqtt_bridge import MqttBridge
+from bridge.topics import SIM_STEP, ACTUATOR_CMD
 
 
 # Configure logging
@@ -95,12 +98,17 @@ system_agent = SystemAnalysisAgent(ai_client)
 guardian_policy = GuardianPolicy()
 autonomous_supervisor = AutonomousSupervisor(integration_hub, system_agent, interval_seconds=180, policy=guardian_policy)
 
+# MQTT bridge for simulator controls
+mqtt_bridge = MqttBridge(host=os.getenv("MQTT_HOST", "localhost"), port=int(os.getenv("MQTT_PORT", "1883")), client_id="web_app")
+
 
 @app.on_event("startup")
 async def _startup_autonomous():
     try:
         await integration_hub.start()
         await autonomous_supervisor.start()
+        # Connect MQTT bridge (non-blocking, tolerate absence)
+        mqtt_bridge.connect()
     except Exception as e:
         logger.warning(f"Autonomous startup warning: {e}")
 
@@ -1337,9 +1345,10 @@ System Status:
 """
 
         
-        # Get recent file changes and system status
+        # Get recent file changes and system status + vision status
         recent_changes = get_recent_file_changes()
         system_health = ai_client.system.diagnose_system_health()
+        vision_status = vision_tools.get_camera_status("default")
         
         # Generate system analysis using AI с дополнительным промптом
         additional_prompt = """Это мини модуль системного анализатора - как общее положение из контекста датчиков (если подключены) и памяти?
@@ -1389,7 +1398,8 @@ Provide your response in this JSON format:
 
 User Context: {context}
 Recent Changes: {recent_changes[:500]}
-System Health: {system_health[:500]}"""
+System Health: {system_health[:500]}
+Vision Status: {vision_status[:500]}"""
 
         analysis_response = ai_client.chat(
             message=analysis_message,
@@ -1417,6 +1427,7 @@ System Health: {system_health[:500]}"""
                 # Fallback if no JSON found
                 logger.warning("⚠️ SYSTEM ANALYSIS: No JSON found in response")
                 analysis_data = {
+                    "system_status": analysis_response,
                     "status": analysis_response,
                     "capabilities": "System is operational"
                 }
@@ -1424,6 +1435,7 @@ System Health: {system_health[:500]}"""
             # Fallback if JSON parsing fails
             logger.error(f"❌ SYSTEM ANALYSIS: JSON parsing failed: {e}")
             analysis_data = {
+                "system_status": analysis_response,
                 "status": analysis_response,
                 "capabilities": "System is operational"
             }
@@ -1431,6 +1443,7 @@ System Health: {system_health[:500]}"""
             # General fallback
             logger.error(f"❌ SYSTEM ANALYSIS: General parsing error: {e}")
             analysis_data = {
+                "system_status": "System analysis completed",
                 "status": "System analysis completed",
                 "capabilities": "System is operational"
             }
@@ -1832,6 +1845,44 @@ async def models_page(request: Request):
         "request": request,
         "username": username
     })
+
+@app.get("/simulator", response_class=HTMLResponse)
+async def simulator_page(request: Request):
+    username = get_current_user(request)
+    if not username:
+        return RedirectResponse(url="/", status_code=302)
+    return templates.TemplateResponse("simulator.html", {"request": request, "username": username})
+
+@app.post("/api/sim/step")
+async def api_sim_step(request: Request):
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        data = await request.json()
+        step = int(data.get("step", 1))
+        ok = mqtt_bridge.publish_json(SIM_STEP, {"dt": 0.05, "sync": True, "step": step})
+        return {"success": ok, "published_step": step}
+    except Exception as e:
+        logger.error(f"/api/sim/step error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/sim/door/open")
+async def api_sim_door_open(request: Request):
+    username = get_current_user(request)
+    if not username:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        topic = ACTUATOR_CMD.format(device_type="door", device_id="door_1")
+        ok = mqtt_bridge.publish_json(topic, {"action": "open"})
+        return {"success": ok}
+    except Exception as e:
+        logger.error(f"/api/sim/door/open error: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/sim/health")
+async def api_sim_health():
+    return {"success": True, "mqtt_connected": mqtt_bridge.is_connected()}
 
 # Vision endpoints
 @app.get("/api/vision/cameras")

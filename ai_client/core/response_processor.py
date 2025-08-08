@@ -40,6 +40,7 @@ class ToolExtractor:
     def extract_tool_calls(self, text: str) -> List[ToolCall]:
         """Извлекает tool calls из текста"""
         tool_calls = []
+        seen = set()
         
         for pattern in self.tool_patterns:
             matches = re.finditer(pattern, text, re.MULTILINE | re.DOTALL)
@@ -52,6 +53,11 @@ class ToolExtractor:
                     # Парсим аргументы
                     arguments = self._parse_arguments(args_str)
                     
+                    key = (function_name, args_str.strip())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+
                     tool_call = ToolCall(
                         function_name=function_name,
                         arguments=arguments,
@@ -113,11 +119,21 @@ class ToolExecutor:
             function_name = tool_call.function_name
             arguments = tool_call.arguments
             
-            # Получаем функцию из ai_client
-            if hasattr(self.ai_client, 'system_tools'):
-                tool_instance = self.ai_client.system_tools
-            else:
-                tool_instance = self.ai_client
+            # Определяем целевой набор инструментов по имени функции
+            # По умолчанию используем системные инструменты
+            tool_instance = getattr(self.ai_client, 'system_tools', self.ai_client)
+
+            # Функции зрения, которые должны исполняться через VisionTools
+            vision_functions = {
+                'list_cameras',
+                'capture_image',
+                'detect_motion',
+                'get_camera_status',
+            }
+
+            # Если обнаружили вызов функции зрения — маршрутизируем в VisionTools
+            if function_name in vision_functions and hasattr(self.ai_client, 'vision_tools'):
+                tool_instance = self.ai_client.vision_tools
             
             if hasattr(tool_instance, function_name):
                 func = getattr(tool_instance, function_name)
@@ -168,12 +184,70 @@ class ToolExecutor:
                         while f'arg_{i}' in arguments:
                             sorted_args.append(arguments[f'arg_{i}'])
                             i += 1
+                        # Убираем пустые хвостовые аргументы
+                        while sorted_args and (sorted_args[-1] is None or (isinstance(sorted_args[-1], str) and sorted_args[-1].strip() == '')):
+                            sorted_args.pop()
                         result = func(*sorted_args)
                     else:
                         # Если нет аргументов, возвращаем ошибку
                         return {
                             'success': False,
                             'error': 'analyze_file requires at least one argument (file_path)'
+                        }
+                    return {
+                        'success': True,
+                        'result': result,
+                        'function': function_name
+                    }
+                elif function_name == 'analyze_image':
+                    # Явная поддержка VisionTools.analyze_image(image_path)
+                    # Маршрутизируем в VisionTools при наличии
+                    tool_for_call = tool_instance
+                    if hasattr(self.ai_client, 'vision_tools'):
+                        tool_for_call = self.ai_client.vision_tools
+                        func = getattr(tool_for_call, function_name, func)
+                    # Собираем позиционные аргументы
+                    if arguments:
+                        sorted_args = []
+                        i = 0
+                        while f'arg_{i}' in arguments:
+                            sorted_args.append(arguments[f'arg_{i}'])
+                            i += 1
+                        # Убираем пустые хвостовые аргументы
+                        while sorted_args and (sorted_args[-1] is None or (isinstance(sorted_args[-1], str) and sorted_args[-1].strip() == '')):
+                            sorted_args.pop()
+                        result = func(*sorted_args)
+                        # Auto-log insight to memory graph if possible
+                        try:
+                            image_path = sorted_args[0] if sorted_args else ''
+                            if image_path:
+                                analysis_json = image_path.rsplit('.', 1)[0] + '_analysis.json'
+                                import os, json, datetime
+                                if os.path.exists(analysis_json):
+                                    with open(analysis_json, 'r', encoding='utf-8') as f:
+                                        data = json.load(f)
+                                    # Сформируем краткий инсайт
+                                    gv = data.get('google_vision') or {}
+                                    basics = data.get('basic') or {}
+                                    labels = ', '.join((gv.get('labels') or [])[:5])
+                                    objects = ', '.join((gv.get('objects') or [])[:5])
+                                    faces = gv.get('faces_detected')
+                                    dims = basics.get('dimensions')
+                                    insight = (
+                                        f"Image {os.path.basename(image_path)} | {dims} | "
+                                        f"GV labels: {labels or '—'} | GV objects: {objects or '—'} | GV faces: {faces}"
+                                    )
+                                    title = datetime.datetime.now().strftime('%Y-%m-%d %H:%M') + ' - Vision Insight'
+                                    content = f"\n## {title}\n- {insight}\n"
+                                    # Append to memory graph
+                                    if hasattr(self.ai_client, 'system_tools'):
+                                        self.ai_client.system_tools.append_to_file('guardian_sandbox/memory_graph.md', content)
+                        except Exception:
+                            pass
+                    else:
+                        return {
+                            'success': False,
+                            'error': 'analyze_image requires image_path'
                         }
                     return {
                         'success': True,
@@ -189,6 +263,9 @@ class ToolExecutor:
                         while f'arg_{i}' in arguments:
                             sorted_args.append(arguments[f'arg_{i}'])
                             i += 1
+                        # Убираем пустые хвостовые аргументы
+                        while sorted_args and (sorted_args[-1] is None or (isinstance(sorted_args[-1], str) and sorted_args[-1].strip() == '')):
+                            sorted_args.pop()
                         result = func(*sorted_args)
                     else:
                         result = func()
@@ -278,6 +355,12 @@ class ResponseProcessor:
         """Очищает внутренний код AI из ответа"""
         # Убираем python блоки
         text = re.sub(r'```python\s*\n.*?\n```', '', text, flags=re.DOTALL)
+        # Убираем tool_code блоки
+        text = re.sub(r'```tool_code\s*\n.*?\n```', '', text, flags=re.DOTALL)
+        # Убираем строки, начинающиеся с 'tool_code' и следующий JSON/вставку кода до пустой строки
+        text = re.sub(r'^tool_code\n[\s\S]*?(?:\n\s*\n|$)', '', text, flags=re.MULTILINE)
         # Убираем одиночные python
         text = re.sub(r'^python\s*$', '', text, flags=re.MULTILINE)
+        # Убираем лишние тройные бектики без языка
+        text = re.sub(r'```\s*\n[\s\S]*?\n```', '', text, flags=re.DOTALL)
         return text.strip() 
