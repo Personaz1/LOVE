@@ -2182,14 +2182,6 @@ async function startVisionAnalyzer() {
     const video = document.getElementById('visionVideo');
     const statusEl = document.getElementById('visionStatus');
     const resultEl = document.getElementById('visionResult');
-
-    // Require secure context (HTTPS) or localhost for camera
-    const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    if (!window.isSecureContext && !isLocalhost) {
-      alert('Webcam requires HTTPS or localhost. Open https://' + location.host + ' or use http://localhost:8000 via SSH tunnel.');
-      statusEl.textContent = 'Insecure context: blocked';
-      return;
-    }
     visionStream.media = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360 } });
     video.srcObject = visionStream.media;
     await video.play();
