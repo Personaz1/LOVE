@@ -120,4 +120,4 @@ shared_context.json
 !memory/user_profiles/
 !memory/user_profiles/insights/
 !memory/user_profiles/diaries/
-!memory/ 
+!memory/ geminisetup.md
