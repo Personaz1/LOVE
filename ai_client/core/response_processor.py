@@ -113,14 +113,22 @@ class ToolExecutor:
             function_name = tool_call.function_name
             arguments = tool_call.arguments
             
-            # Получаем функцию из ai_client
+            # Разрешаем инструменты из нескольких пространств: SystemTools и VisionTools
+            candidates = []
             if hasattr(self.ai_client, 'system_tools'):
-                tool_instance = self.ai_client.system_tools
-            else:
-                tool_instance = self.ai_client
+                candidates.append(self.ai_client.system_tools)
+            if hasattr(self.ai_client, 'vision'):
+                candidates.append(self.ai_client.vision)
+            if hasattr(self.ai_client, 'vision_tools'):
+                candidates.append(self.ai_client.vision_tools)
+
+            func = None
+            for inst in candidates:
+                if hasattr(inst, function_name):
+                    func = getattr(inst, function_name)
+                    break
             
-            if hasattr(tool_instance, function_name):
-                func = getattr(tool_instance, function_name)
+            if func is not None:
                 
                 # Вызываем функцию с аргументами
                 if function_name in ['create_file', 'append_to_file']:
